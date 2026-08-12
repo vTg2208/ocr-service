@@ -1,0 +1,28 @@
+# Python environments and caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Local OCR models and runtime artifacts
+uploads/
+/models/
+.paddleocr/
+
+# Coverage, logs, and editor/OS files
+.coverage
+htmlcov/
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
