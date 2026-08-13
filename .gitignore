@@ -26,3 +26,6 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local Git worktrees
+.worktrees/
