@@ -1,0 +1,2213 @@
+{
+  "type": "FeatureCollection",
+  "name": "Example Village synthetic parcel registry",
+  "metadata": {
+    "synthetic": true,
+    "authoritative": false,
+    "warning": "Development-only synthetic cadastral boundaries. Never present as authoritative land data.",
+    "source_version": "synthetic-2026-01",
+    "feature_count": 50
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "synthetic-701-4B",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "701",
+        "subdivision_number": "4B",
+        "official_area_sqm": 1200,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-701-4B",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.38,
+              10.96
+            ],
+            [
+              79.381,
+              10.96
+            ],
+            [
+              79.381,
+              10.961
+            ],
+            [
+              79.38,
+              10.961
+            ],
+            [
+              79.38,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-702-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "702",
+        "subdivision_number": "A",
+        "official_area_sqm": 1125,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-702-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3812,
+              10.96
+            ],
+            [
+              79.3822,
+              10.96
+            ],
+            [
+              79.3822,
+              10.961
+            ],
+            [
+              79.3812,
+              10.961
+            ],
+            [
+              79.3812,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-703-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "703",
+        "subdivision_number": "A",
+        "official_area_sqm": 1150,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-703-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3824,
+              10.96
+            ],
+            [
+              79.3834,
+              10.96
+            ],
+            [
+              79.3834,
+              10.961
+            ],
+            [
+              79.3824,
+              10.961
+            ],
+            [
+              79.3824,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-704-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "704",
+        "subdivision_number": "A",
+        "official_area_sqm": 1175,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-704-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3836,
+              10.96
+            ],
+            [
+              79.3846,
+              10.96
+            ],
+            [
+              79.3846,
+              10.961
+            ],
+            [
+              79.3836,
+              10.961
+            ],
+            [
+              79.3836,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-705-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "705",
+        "subdivision_number": "A",
+        "official_area_sqm": 1200,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-705-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3848,
+              10.96
+            ],
+            [
+              79.3858,
+              10.96
+            ],
+            [
+              79.3858,
+              10.961
+            ],
+            [
+              79.3848,
+              10.961
+            ],
+            [
+              79.3848,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-706-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "706",
+        "subdivision_number": "A",
+        "official_area_sqm": 1225,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-706-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.386,
+              10.96
+            ],
+            [
+              79.387,
+              10.96
+            ],
+            [
+              79.387,
+              10.961
+            ],
+            [
+              79.386,
+              10.961
+            ],
+            [
+              79.386,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-707-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "707",
+        "subdivision_number": "A",
+        "official_area_sqm": 1250,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-707-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3872,
+              10.96
+            ],
+            [
+              79.3882,
+              10.96
+            ],
+            [
+              79.3882,
+              10.961
+            ],
+            [
+              79.3872,
+              10.961
+            ],
+            [
+              79.3872,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-708-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "708",
+        "subdivision_number": "A",
+        "official_area_sqm": 1100,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-708-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3884,
+              10.96
+            ],
+            [
+              79.3894,
+              10.96
+            ],
+            [
+              79.3894,
+              10.961
+            ],
+            [
+              79.3884,
+              10.961
+            ],
+            [
+              79.3884,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-709-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "709",
+        "subdivision_number": "A",
+        "official_area_sqm": 1125,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-709-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3896,
+              10.96
+            ],
+            [
+              79.3906,
+              10.96
+            ],
+            [
+              79.3906,
+              10.961
+            ],
+            [
+              79.3896,
+              10.961
+            ],
+            [
+              79.3896,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-710-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "710",
+        "subdivision_number": "A",
+        "official_area_sqm": 1150,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-710-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3908,
+              10.96
+            ],
+            [
+              79.3918,
+              10.96
+            ],
+            [
+              79.3918,
+              10.961
+            ],
+            [
+              79.3908,
+              10.961
+            ],
+            [
+              79.3908,
+              10.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-711-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "711",
+        "subdivision_number": "A",
+        "official_area_sqm": 1175,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-711-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.38,
+              10.9612
+            ],
+            [
+              79.381,
+              10.9612
+            ],
+            [
+              79.381,
+              10.9622
+            ],
+            [
+              79.38,
+              10.9622
+            ],
+            [
+              79.38,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-712-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "712",
+        "subdivision_number": "A",
+        "official_area_sqm": 1200,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-712-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3812,
+              10.9612
+            ],
+            [
+              79.3822,
+              10.9612
+            ],
+            [
+              79.3822,
+              10.9622
+            ],
+            [
+              79.3812,
+              10.9622
+            ],
+            [
+              79.3812,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-713-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "713",
+        "subdivision_number": "A",
+        "official_area_sqm": 1225,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-713-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3824,
+              10.9612
+            ],
+            [
+              79.3834,
+              10.9612
+            ],
+            [
+              79.3834,
+              10.9622
+            ],
+            [
+              79.3824,
+              10.9622
+            ],
+            [
+              79.3824,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-714-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "714",
+        "subdivision_number": "A",
+        "official_area_sqm": 1250,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-714-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3836,
+              10.9612
+            ],
+            [
+              79.3846,
+              10.9612
+            ],
+            [
+              79.3846,
+              10.9622
+            ],
+            [
+              79.3836,
+              10.9622
+            ],
+            [
+              79.3836,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-715-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "715",
+        "subdivision_number": "A",
+        "official_area_sqm": 1100,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-715-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3848,
+              10.9612
+            ],
+            [
+              79.3858,
+              10.9612
+            ],
+            [
+              79.3858,
+              10.9622
+            ],
+            [
+              79.3848,
+              10.9622
+            ],
+            [
+              79.3848,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-716-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "716",
+        "subdivision_number": "A",
+        "official_area_sqm": 1125,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-716-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.386,
+              10.9612
+            ],
+            [
+              79.387,
+              10.9612
+            ],
+            [
+              79.387,
+              10.9622
+            ],
+            [
+              79.386,
+              10.9622
+            ],
+            [
+              79.386,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-717-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "717",
+        "subdivision_number": "A",
+        "official_area_sqm": 1150,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-717-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3872,
+              10.9612
+            ],
+            [
+              79.3882,
+              10.9612
+            ],
+            [
+              79.3882,
+              10.9622
+            ],
+            [
+              79.3872,
+              10.9622
+            ],
+            [
+              79.3872,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-718-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "718",
+        "subdivision_number": "A",
+        "official_area_sqm": 1175,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-718-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3884,
+              10.9612
+            ],
+            [
+              79.3894,
+              10.9612
+            ],
+            [
+              79.3894,
+              10.9622
+            ],
+            [
+              79.3884,
+              10.9622
+            ],
+            [
+              79.3884,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-719-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "719",
+        "subdivision_number": "A",
+        "official_area_sqm": 1200,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-719-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3896,
+              10.9612
+            ],
+            [
+              79.3906,
+              10.9612
+            ],
+            [
+              79.3906,
+              10.9622
+            ],
+            [
+              79.3896,
+              10.9622
+            ],
+            [
+              79.3896,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-720-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "720",
+        "subdivision_number": "A",
+        "official_area_sqm": 1225,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-720-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3908,
+              10.9612
+            ],
+            [
+              79.3918,
+              10.9612
+            ],
+            [
+              79.3918,
+              10.9622
+            ],
+            [
+              79.3908,
+              10.9622
+            ],
+            [
+              79.3908,
+              10.9612
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-721-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "721",
+        "subdivision_number": "A",
+        "official_area_sqm": 1250,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-721-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.38,
+              10.9624
+            ],
+            [
+              79.381,
+              10.9624
+            ],
+            [
+              79.381,
+              10.9634
+            ],
+            [
+              79.38,
+              10.9634
+            ],
+            [
+              79.38,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-722-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "722",
+        "subdivision_number": "A",
+        "official_area_sqm": 1100,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-722-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3812,
+              10.9624
+            ],
+            [
+              79.3822,
+              10.9624
+            ],
+            [
+              79.3822,
+              10.9634
+            ],
+            [
+              79.3812,
+              10.9634
+            ],
+            [
+              79.3812,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-723-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "723",
+        "subdivision_number": "A",
+        "official_area_sqm": 1125,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-723-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3824,
+              10.9624
+            ],
+            [
+              79.3834,
+              10.9624
+            ],
+            [
+              79.3834,
+              10.9634
+            ],
+            [
+              79.3824,
+              10.9634
+            ],
+            [
+              79.3824,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-724-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "724",
+        "subdivision_number": "A",
+        "official_area_sqm": 1150,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-724-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3836,
+              10.9624
+            ],
+            [
+              79.3846,
+              10.9624
+            ],
+            [
+              79.3846,
+              10.9634
+            ],
+            [
+              79.3836,
+              10.9634
+            ],
+            [
+              79.3836,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-725-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "725",
+        "subdivision_number": "A",
+        "official_area_sqm": 1175,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-725-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3848,
+              10.9624
+            ],
+            [
+              79.3858,
+              10.9624
+            ],
+            [
+              79.3858,
+              10.9634
+            ],
+            [
+              79.3848,
+              10.9634
+            ],
+            [
+              79.3848,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-726-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "726",
+        "subdivision_number": "A",
+        "official_area_sqm": 1200,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-726-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.386,
+              10.9624
+            ],
+            [
+              79.387,
+              10.9624
+            ],
+            [
+              79.387,
+              10.9634
+            ],
+            [
+              79.386,
+              10.9634
+            ],
+            [
+              79.386,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-727-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "727",
+        "subdivision_number": "A",
+        "official_area_sqm": 1225,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-727-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3872,
+              10.9624
+            ],
+            [
+              79.3882,
+              10.9624
+            ],
+            [
+              79.3882,
+              10.9634
+            ],
+            [
+              79.3872,
+              10.9634
+            ],
+            [
+              79.3872,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-728-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "728",
+        "subdivision_number": "A",
+        "official_area_sqm": 1250,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-728-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3884,
+              10.9624
+            ],
+            [
+              79.3894,
+              10.9624
+            ],
+            [
+              79.3894,
+              10.9634
+            ],
+            [
+              79.3884,
+              10.9634
+            ],
+            [
+              79.3884,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-729-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "729",
+        "subdivision_number": "A",
+        "official_area_sqm": 1100,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-729-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3896,
+              10.9624
+            ],
+            [
+              79.3906,
+              10.9624
+            ],
+            [
+              79.3906,
+              10.9634
+            ],
+            [
+              79.3896,
+              10.9634
+            ],
+            [
+              79.3896,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-730-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "730",
+        "subdivision_number": "A",
+        "official_area_sqm": 1125,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-730-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3908,
+              10.9624
+            ],
+            [
+              79.3918,
+              10.9624
+            ],
+            [
+              79.3918,
+              10.9634
+            ],
+            [
+              79.3908,
+              10.9634
+            ],
+            [
+              79.3908,
+              10.9624
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-731-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "731",
+        "subdivision_number": "A",
+        "official_area_sqm": 1150,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-731-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.38,
+              10.9636
+            ],
+            [
+              79.381,
+              10.9636
+            ],
+            [
+              79.381,
+              10.9646
+            ],
+            [
+              79.38,
+              10.9646
+            ],
+            [
+              79.38,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-732-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "732",
+        "subdivision_number": "A",
+        "official_area_sqm": 1175,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-732-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3812,
+              10.9636
+            ],
+            [
+              79.3822,
+              10.9636
+            ],
+            [
+              79.3822,
+              10.9646
+            ],
+            [
+              79.3812,
+              10.9646
+            ],
+            [
+              79.3812,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-733-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "733",
+        "subdivision_number": "A",
+        "official_area_sqm": 1200,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-733-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3824,
+              10.9636
+            ],
+            [
+              79.3834,
+              10.9636
+            ],
+            [
+              79.3834,
+              10.9646
+            ],
+            [
+              79.3824,
+              10.9646
+            ],
+            [
+              79.3824,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-734-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "734",
+        "subdivision_number": "A",
+        "official_area_sqm": 1225,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-734-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3836,
+              10.9636
+            ],
+            [
+              79.3846,
+              10.9636
+            ],
+            [
+              79.3846,
+              10.9646
+            ],
+            [
+              79.3836,
+              10.9646
+            ],
+            [
+              79.3836,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-735-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "735",
+        "subdivision_number": "A",
+        "official_area_sqm": 1250,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-735-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3848,
+              10.9636
+            ],
+            [
+              79.3858,
+              10.9636
+            ],
+            [
+              79.3858,
+              10.9646
+            ],
+            [
+              79.3848,
+              10.9646
+            ],
+            [
+              79.3848,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-736-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "736",
+        "subdivision_number": "A",
+        "official_area_sqm": 1100,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-736-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.386,
+              10.9636
+            ],
+            [
+              79.387,
+              10.9636
+            ],
+            [
+              79.387,
+              10.9646
+            ],
+            [
+              79.386,
+              10.9646
+            ],
+            [
+              79.386,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-737-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "737",
+        "subdivision_number": "A",
+        "official_area_sqm": 1125,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-737-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3872,
+              10.9636
+            ],
+            [
+              79.3882,
+              10.9636
+            ],
+            [
+              79.3882,
+              10.9646
+            ],
+            [
+              79.3872,
+              10.9646
+            ],
+            [
+              79.3872,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-738-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "738",
+        "subdivision_number": "A",
+        "official_area_sqm": 1150,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-738-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3884,
+              10.9636
+            ],
+            [
+              79.3894,
+              10.9636
+            ],
+            [
+              79.3894,
+              10.9646
+            ],
+            [
+              79.3884,
+              10.9646
+            ],
+            [
+              79.3884,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-739-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "739",
+        "subdivision_number": "A",
+        "official_area_sqm": 1175,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-739-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3896,
+              10.9636
+            ],
+            [
+              79.3906,
+              10.9636
+            ],
+            [
+              79.3906,
+              10.9646
+            ],
+            [
+              79.3896,
+              10.9646
+            ],
+            [
+              79.3896,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-740-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "740",
+        "subdivision_number": "A",
+        "official_area_sqm": 1200,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-740-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3908,
+              10.9636
+            ],
+            [
+              79.3918,
+              10.9636
+            ],
+            [
+              79.3918,
+              10.9646
+            ],
+            [
+              79.3908,
+              10.9646
+            ],
+            [
+              79.3908,
+              10.9636
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-741-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "741",
+        "subdivision_number": "A",
+        "official_area_sqm": 1225,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-741-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.38,
+              10.9648
+            ],
+            [
+              79.381,
+              10.9648
+            ],
+            [
+              79.381,
+              10.9658
+            ],
+            [
+              79.38,
+              10.9658
+            ],
+            [
+              79.38,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-742-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "742",
+        "subdivision_number": "A",
+        "official_area_sqm": 1250,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-742-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3812,
+              10.9648
+            ],
+            [
+              79.3822,
+              10.9648
+            ],
+            [
+              79.3822,
+              10.9658
+            ],
+            [
+              79.3812,
+              10.9658
+            ],
+            [
+              79.3812,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-743-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "743",
+        "subdivision_number": "A",
+        "official_area_sqm": 1100,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-743-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3824,
+              10.9648
+            ],
+            [
+              79.3834,
+              10.9648
+            ],
+            [
+              79.3834,
+              10.9658
+            ],
+            [
+              79.3824,
+              10.9658
+            ],
+            [
+              79.3824,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-744-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "744",
+        "subdivision_number": "A",
+        "official_area_sqm": 1125,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-744-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3836,
+              10.9648
+            ],
+            [
+              79.3846,
+              10.9648
+            ],
+            [
+              79.3846,
+              10.9658
+            ],
+            [
+              79.3836,
+              10.9658
+            ],
+            [
+              79.3836,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-745-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "745",
+        "subdivision_number": "A",
+        "official_area_sqm": 1150,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-745-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3848,
+              10.9648
+            ],
+            [
+              79.3858,
+              10.9648
+            ],
+            [
+              79.3858,
+              10.9658
+            ],
+            [
+              79.3848,
+              10.9658
+            ],
+            [
+              79.3848,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-746-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "746",
+        "subdivision_number": "A",
+        "official_area_sqm": 1175,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-746-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.386,
+              10.9648
+            ],
+            [
+              79.387,
+              10.9648
+            ],
+            [
+              79.387,
+              10.9658
+            ],
+            [
+              79.386,
+              10.9658
+            ],
+            [
+              79.386,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-747-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "747",
+        "subdivision_number": "A",
+        "official_area_sqm": 1200,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-747-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3872,
+              10.9648
+            ],
+            [
+              79.3882,
+              10.9648
+            ],
+            [
+              79.3882,
+              10.9658
+            ],
+            [
+              79.3872,
+              10.9658
+            ],
+            [
+              79.3872,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-748-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "748",
+        "subdivision_number": "A",
+        "official_area_sqm": 1225,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-748-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3884,
+              10.9648
+            ],
+            [
+              79.3894,
+              10.9648
+            ],
+            [
+              79.3894,
+              10.9658
+            ],
+            [
+              79.3884,
+              10.9658
+            ],
+            [
+              79.3884,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-749-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "749",
+        "subdivision_number": "A",
+        "official_area_sqm": 1250,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-749-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3896,
+              10.9648
+            ],
+            [
+              79.3906,
+              10.9648
+            ],
+            [
+              79.3906,
+              10.9658
+            ],
+            [
+              79.3896,
+              10.9658
+            ],
+            [
+              79.3896,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-750-A",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "750",
+        "subdivision_number": "A",
+        "official_area_sqm": 1100,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-750-A",
+        "boundary_quality": "synthetic"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.3908,
+              10.9648
+            ],
+            [
+              79.3918,
+              10.9648
+            ],
+            [
+              79.3918,
+              10.9658
+            ],
+            [
+              79.3908,
+              10.9658
+            ],
+            [
+              79.3908,
+              10.9648
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

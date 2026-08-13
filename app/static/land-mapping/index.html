@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parcel Ledger — Patta Mapping</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23164c3b'/%3E%3Cpath d='M7 24 16 6l9 18z' fill='none' stroke='%23f1ecdf' stroke-width='2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/static/land-mapping/styles.css">
+</head>
+<body>
+  <div class="top-rule"></div>
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Central cadastral claim registry</p>
+      <h1>Parcel <em>Ledger</em></h1>
+    </div>
+    <div class="auth-box">
+      <label for="authToken">Signed access token</label>
+      <input id="authToken" type="password" autocomplete="off" placeholder="Paste your JWT">
+    </div>
+  </header>
+
+  <main>
+    <ol class="steps" aria-label="Claim workflow">
+      <li class="step active" data-step="1" aria-current="step"><span>01</span> Upload</li>
+      <li class="step" data-step="2"><span>02</span> Confirm</li>
+      <li class="step" data-step="3"><span>03</span> Locate</li>
+      <li class="step" data-step="4"><span>04</span> Register</li>
+    </ol>
+
+    <section class="upload-sheet" id="uploadSection">
+      <div>
+        <p class="folio">New document / 2026</p>
+        <h2>Map a patta to its parcel</h2>
+        <p>Upload the record. We’ll extract the administrative location and survey reference, then ask you to verify every field before recording a claim.</p>
+      </div>
+      <label class="drop-zone" id="dropZone" for="pattaFile">
+        <input id="pattaFile" type="file" accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff,.pdf">
+        <span class="drop-mark" aria-hidden="true">⌁</span>
+        <strong>Drop the patta here</strong>
+        <small>or choose an image / PDF · max 10 MB</small>
+      </label>
+      <button class="primary" id="processButton" disabled>Extract parcel reference</button>
+      <p class="status" id="processStatus" role="status"></p>
+    </section>
+
+    <section class="workspace" id="workspace" hidden>
+      <article class="field-sheet">
+        <div class="section-heading">
+          <div><p class="folio">Transcription</p><h2>Confirm the record</h2></div>
+          <span class="confidence" id="confidenceBadge">— confidence</span>
+        </div>
+        <form id="fieldForm" class="field-grid">
+          <label>State<input name="state" required><small data-evidence="state"></small></label>
+          <label>District<input name="district" required><small data-evidence="district"></small></label>
+          <label>Taluk<input name="taluk" required><small data-evidence="taluk"></small></label>
+          <label>Village<input name="village" required><small data-evidence="village"></small></label>
+          <label>Survey number<input name="survey_number" required><small data-evidence="survey_number"></small></label>
+          <label>Subdivision<input name="subdivision_number" required><small data-evidence="subdivision_number"></small></label>
+          <label class="span-two">Document area (m²)<input name="document_area_sqm" type="number" min="0" step="0.01"><small data-evidence="area"></small></label>
+          <button class="secondary span-two" type="submit">Resolve corrected fields</button>
+        </form>
+        <div class="warnings" id="warnings" aria-live="polite"></div>
+        <div class="candidates" id="candidates"></div>
+      </article>
+
+      <article class="map-sheet">
+        <div class="section-heading">
+          <div><p class="folio">Cadastral registry</p><h2>Located boundary</h2></div>
+          <span class="match-pill" id="matchPill">Waiting</span>
+        </div>
+        <div id="parcelMap" role="region" aria-label="Map showing the selected parcel polygon"></div>
+        <dl class="parcel-summary" id="parcelSummary">
+          <div><dt>Survey</dt><dd>—</dd></div><div><dt>Village</dt><dd>—</dd></div>
+          <div><dt>Official area</dt><dd>—</dd></div><div><dt>Document area</dt><dd>—</dd></div>
+        </dl>
+        <label class="confirm-check"><input id="confirmParcel" type="checkbox" disabled> I confirm this parcel and the transcribed details.</label>
+        <button class="primary register" id="claimButton" disabled>Register this claim</button>
+        <div class="claim-result" id="claimResult" role="status"></div>
+      </article>
+    </section>
+  </main>
+  <footer>Uploading a document records a claim. It does not change registered ownership.</footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/static/land-mapping/app.js"></script>
+</body>
+</html>

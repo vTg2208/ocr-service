@@ -11,7 +11,9 @@ import time
 import threading
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.models.response_models import HealthResponse, OCREvaluationResponse, OCRResponse
 from app.services.evaluation import evaluate_ocr_text
@@ -21,6 +23,7 @@ from app.services.pdf_processor import PDFProcessingError, PDFProcessor
 from app.services.llm_service import LLMService
 from app.services.quality_assessment import assess_ocr_quality
 from app.utils.file_validation import FileValidationError, validate_upload
+from app.db.session import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -66,6 +69,15 @@ def _get_or_raise_ocr_engine() -> PaddleOCREngine:
 @router.get("/health", response_model=HealthResponse)
 async def health_check() -> HealthResponse:
     return HealthResponse(status="healthy")
+
+
+@router.get("/health/ready", response_model=HealthResponse)
+async def readiness_check(db: Session = Depends(get_db)) -> HealthResponse:
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
+    return HealthResponse(status="ready")
 
 
 @router.post("/evaluate", response_model=OCREvaluationResponse)

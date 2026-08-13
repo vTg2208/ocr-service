@@ -298,8 +298,9 @@ model changes are required.
   characters before being echoed back in responses.
 - File content is sniffed (not just the extension) to confirm the real
   file type before processing.
-- Uploaded files are processed entirely in memory; nothing is written
-  to disk during a normal request.
+- The standalone `/ocr` route processes uploads in memory. Authenticated
+  `/api/pattas/process` uploads are retained in private local or S3 storage
+  so their resulting claims remain auditable; they are never served publicly.
 - Extracted text is never written to logs — only metadata (filename,
   size, type, timing, and errors) is logged.
 
@@ -339,3 +340,109 @@ This service is intentionally decoupled from any main application: it
 only communicates via HTTP, and its OCR engine can be replaced without
 any changes to consumers of the `/ocr` endpoint. This makes it easy to
 run as a shared internal service across multiple applications.
+
+---
+
+## Patta-to-parcel mapping and claims
+
+The service now includes a central cadastral registry workflow while preserving `/ocr` as an independent endpoint:
+
+```text
+patta upload -> OCR -> deterministic parcel fields -> user confirmation
+             -> registry lookup -> polygon map -> claim -> conflict review
+```
+
+A parcel is a geographic registry boundary. A claim is a user's assertion that their document relates to that parcel. Uploading a patta never changes registered ownership, and a conflict never decides ownership.
+
+### Local PostGIS setup
+
+1. Copy `.env.example` to `.env`, replace the database password and `AUTH_SECRET`, and keep `.env` out of version control.
+2. Start PostgreSQL/PostGIS and ClamAV with `docker compose up -d db clamav`.
+3. Install development dependencies with `python -m pip install -r requirements-dev.txt`.
+4. Apply the schema with `alembic upgrade head`.
+5. Import development aliases and parcels:
+
+   ```text
+   python -m scripts.import_aliases data/administrative_aliases.json
+   python -m scripts.import_parcels data/synthetic_example_village.geojson
+   ```
+
+   The included 50-parcel dataset is synthetic, development-only, and explicitly non-authoritative. The acceptance parcel is Example Village survey `701`, subdivision `4B`.
+
+6. Create development users and tokens:
+
+   ```text
+   python -m scripts.create_user alice --display-name Alice
+   python -m scripts.create_user admin --display-name Administrator --role admin
+   python -m scripts.mint_dev_token alice
+   ```
+
+7. Start with `uvicorn app.main:app --reload`, open `http://localhost:8000/land-mapping`, and paste the signed token into the access-token field.
+
+For a lightweight SQLite demonstration, set `DATABASE_URL=sqlite+pysqlite:///./ocr_land.db`, set `MALWARE_SCAN_REQUIRED=false`, and run the same migration/import commands. SQLite is not the production spatial database.
+
+### Land API
+
+All `/api` routes require `Authorization: Bearer <signed-JWT>`. Upload and claim writes also require `Idempotency-Key`.
+
+| Route | Purpose |
+|---|---|
+| `POST /api/pattas/process` | Securely store, OCR, normalize, and attempt resolution; does not create a claim |
+| `POST /api/parcels/resolve` | Resolve user-corrected fields and persist valid candidate IDs |
+| `GET /api/parcels/{id}` | Privacy-safe metadata and GeoJSON polygon |
+| `POST /api/claims` | Transactionally create an idempotent claim and conflicts |
+| `GET /api/claims/mine` | Current user's claims only |
+| `GET /api/notifications/mine` | Generic current-user review notifications |
+| `GET /api/admin/conflicts` | Administrator conflict queue with evidence and boundaries |
+| `GET /api/admin/conflicts/{id}` | Administrator conflict detail |
+| `PATCH /api/admin/conflicts/{id}` | Record an audited review status, notes, and history |
+
+JWT subjects must match a central `users.external_id`. Roles are read from the database, not trusted from token claims. Replace the local symmetric-token arrangement with the deployment's OIDC issuer/verifier at the authentication adapter boundary when integrating an identity provider.
+
+### Cadastral imports
+
+`scripts/import_parcels.py` accepts a GeoJSON `FeatureCollection`. It converts Polygon to MultiPolygon, rejects empty/non-polygon geometry, safely repairs valid polygonal results, normalizes lookup fields, and upserts on:
+
+```text
+state + district + taluk + village + survey_number + subdivision_number
+```
+
+The report contains inserted, updated, skipped, invalid, duplicate, and repaired counts. Re-importing unchanged data is idempotent. Preserve `source`, `source_version`, and `source_record_id` for every authoritative update.
+
+### Matching and conflicts
+
+- Survey/subdivision normalization accepts `701/4b`, `701 / 4 B`, and `701-4B` without treating them as area.
+- Ambiguous OCR pairs such as `B/8` and `O/0` require confirmation; alternatives never silently replace evidence.
+- Areas support square metres, hectares, acres, cents, and `H.A.SqM` notation such as `0.12.00`.
+- Exact automatic matching requires the complete administrative and survey/subdivision key. Aliases are verified registry entries. Fuzzy spelling results are suggestions only.
+- PostGIS conflict calculations use intersection geography area and compare overlap against the smaller parcel. Configurable square-metre and percentage thresholds suppress precision slivers.
+- Normal claim responses contain generic conflict facts only. Claimant identity, documents, detailed evidence, and both boundaries are restricted to administrators.
+
+### Configuration
+
+In addition to the OCR settings above, land mapping uses:
+
+| Variable | Default | Purpose |
+|---|---:|---|
+| `DATABASE_URL` | local SQLite | Use PostgreSQL/PostGIS in production |
+| `AUTH_SECRET` | development placeholder | HS256 development token verifier secret |
+| `AUTH_ISSUER`, `AUTH_AUDIENCE` | local registry/API values | Required signed-token scope |
+| `SECURE_UPLOAD_DIR` | `private_uploads` | Non-public local object root |
+| `UPLOAD_STORAGE_BACKEND` | `local` | `local` or `s3` |
+| `S3_BUCKET`, `S3_PREFIX` | empty / `patta-documents` | Private encrypted object storage |
+| `CLAMAV_HOST`, `CLAMAV_PORT` | empty / `3310` | Malware scanning daemon |
+| `MALWARE_SCAN_REQUIRED` | `false` | Fail closed when scanning is unavailable |
+| `AREA_TOLERANCE_PERCENT` | `10` | Registry/document area warning threshold |
+| `OVERLAP_MIN_SQM` | `1` | Spatial sliver area threshold |
+| `OVERLAP_MIN_PERCENT` | `1` | Spatial sliver percentage threshold |
+| `AUTOMATIC_MATCH_CONFIDENCE` | `0.85` | Automatic match policy threshold |
+| `RATE_LIMIT_REQUESTS` | `60` | Protected writes per identity/window |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | In-process limiter window |
+
+Terminate TLS at a trusted ingress, encrypt database/storage/backups at rest, and use managed secrets in production. For multiple API replicas, replace the in-process rate-limit store with a shared gateway/Redis policy.
+
+### Tests and operations
+
+Run all tests with `python -m pytest -q`. The suite covers existing OCR behavior plus normalization, aliases, area conversion, migration, GeoJSON idempotency, exact/fuzzy resolution, transaction rollback, exact/spatial/duplicate conflicts, thresholds, authorization, upload/claim idempotency, notifications, UI delivery, and privacy-safe responses.
+
+See [operations](docs/OPERATIONS.md) for alerts and tested backup/restore procedures, and [privacy and retention](docs/PRIVACY_RETENTION.md) for the production policy baseline.

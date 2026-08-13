@@ -12,11 +12,15 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY migrations ./migrations
+COPY alembic.ini ./alembic.ini
+COPY data ./data
+COPY scripts ./scripts
 
 # Present even though processing is done in-memory; kept for any
 # temporary artifacts a future OCR engine implementation might need.
-RUN mkdir -p /app/uploads
+RUN mkdir -p /var/lib/ocr/private_uploads
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

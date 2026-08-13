@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class HealthResponse(BaseModel):
-    status: str = Field(..., example="healthy")
+    status: str = Field(..., json_schema_extra={"example": "healthy"})
 
 
 class SurveyFieldCandidate(BaseModel):

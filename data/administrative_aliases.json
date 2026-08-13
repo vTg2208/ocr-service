@@ -1,0 +1,7 @@
+[
+  {"level": "state", "alias": "தமிழ்நாடு", "canonical_name": "Tamil Nadu", "language": "ta"},
+  {"level": "district", "alias": "Thanjavoor", "canonical_name": "Thanjavur", "language": "en"},
+  {"level": "district", "alias": "தஞ்சாவூர்", "canonical_name": "Thanjavur", "language": "ta"},
+  {"level": "taluk", "alias": "கும்பகோணம்", "canonical_name": "Kumbakonam", "language": "ta"},
+  {"level": "village", "alias": "எடுத்துக்காட்டு கிராமம்", "canonical_name": "Example Village", "language": "ta"}
+]

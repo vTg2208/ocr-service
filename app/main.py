@@ -7,13 +7,18 @@ the same {"success": false, "message": "..."} shape.
 """
 
 import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.api.land_routes import router as land_router
+from app.api.patta_routes import router as patta_router
 from app.config import get_settings
+from app.middleware import RequestContextMiddleware
 
 settings = get_settings()
 
@@ -23,14 +28,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    logger.info("%s starting up.", settings.app_name)
+    yield
+    logger.info("%s shutting down.", settings.app_name)
+
+
 app = FastAPI(
     title=settings.app_name,
     description="Standalone OCR microservice for extracting text from images and PDFs.",
     version="1.0.0",
+    lifespan=lifespan,
+)
+app.add_middleware(
+    RequestContextMiddleware, requests=settings.rate_limit_requests,
+    window_seconds=settings.rate_limit_window_seconds,
 )
 
 app.include_router(router)
 app.include_router(land_router)
+app.include_router(patta_router)
+
+static_root = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=static_root), name="static")
+
+
+@app.get("/land-mapping", include_in_schema=False)
+async def land_mapping_ui() -> FileResponse:
+    return FileResponse(static_root / "land-mapping" / "index.html")
 
 
 @app.exception_handler(HTTPException)
@@ -48,8 +74,3 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         status_code=500,
         content={"success": False, "message": "Internal server error."},
     )
-
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    logger.info("%s starting up.", settings.app_name)
