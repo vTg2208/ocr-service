@@ -22,6 +22,13 @@ from app.middleware import RequestContextMiddleware
 
 settings = get_settings()
 
+
+class RevalidatingStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -51,7 +58,7 @@ app.include_router(land_router)
 app.include_router(patta_router)
 
 static_root = Path(__file__).parent / "static"
-app.mount("/static", StaticFiles(directory=static_root), name="static")
+app.mount("/static", RevalidatingStaticFiles(directory=static_root), name="static")
 
 
 @app.get("/land-mapping", include_in_schema=False)

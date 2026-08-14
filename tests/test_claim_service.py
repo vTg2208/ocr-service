@@ -95,6 +95,32 @@ class ClaimServiceTests(unittest.TestCase):
         self.assertEqual(first["claim_id"], second["claim_id"])
         self.assertEqual(count, 1)
 
+    def test_same_claimant_new_document_does_not_conflict_with_own_claim(self):
+        with Session(self.engine) as session:
+            self._mark_candidate(session, self.document_a_id)
+            user = session.get(User, self.user_a_id)
+            second_document = self._document(session, user, "c")
+            session.flush()
+            self._mark_candidate(session, second_document.id)
+            service = ClaimService(session)
+            first = service.submit(
+                claimant_id=self.user_a_id, document_id=self.document_a_id,
+                parcel_id=self.parcel_id, confirmed_fields={},
+                idempotency_key="first-supporting-document", request_id="r1",
+            )
+            second = service.submit(
+                claimant_id=self.user_a_id, document_id=second_document.id,
+                parcel_id=self.parcel_id, confirmed_fields={},
+                idempotency_key="second-supporting-document", request_id="r2",
+            )
+            session.commit()
+            conflict_count = session.scalar(select(func.count()).select_from(ClaimConflict))
+
+        self.assertEqual(first["status"], "matched")
+        self.assertEqual(second["status"], "matched")
+        self.assertEqual(second["conflicts"], [])
+        self.assertEqual(conflict_count, 0)
+
     def test_rejects_document_owned_by_another_user_or_unresolved_parcel(self):
         with Session(self.engine) as session:
             service = ClaimService(session)

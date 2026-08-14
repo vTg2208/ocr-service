@@ -182,6 +182,12 @@ class LandAPITests(unittest.TestCase):
         self.assertIn('id="fieldForm"', response.text)
         self.assertIn('id="parcelMap"', response.text)
         self.assertIn('id="claimButton"', response.text)
+        self.assertIn('/static/land-mapping/app.js?v=', response.text)
+
+    def test_ui_static_assets_must_revalidate_after_a_deployment(self):
+        response = self.client.get("/static/land-mapping/app.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("no-cache", response.headers.get("cache-control", ""))
 
     def test_conflict_creates_generic_notifications_for_both_users(self):
         self.create_conflict("notify")

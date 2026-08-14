@@ -41,7 +41,9 @@ def _create_conflict(session, new_claim, existing_claim, conflict_type, area, pe
 def detect_conflicts(session, new_claim: Claim, *, min_sqm=1.0, min_percent=1.0):
     conflicts = []
     active_claims = list(session.scalars(select(Claim).where(
-        Claim.id != new_claim.id, Claim.status.not_in(INACTIVE_STATUSES)
+        Claim.id != new_claim.id,
+        Claim.claimant_id != new_claim.claimant_id,
+        Claim.status.not_in(INACTIVE_STATUSES),
     )))
     new_parcel = session.get(Parcel, new_claim.parcel_id)
     new_document = new_claim.document

@@ -49,6 +49,10 @@
     }
   }
   function renderResolution(resolution) {
+    confirmParcel.checked = false;
+    claimButton.disabled = true;
+    $('#claimResult').className = 'claim-result';
+    $('#claimResult').textContent = '';
     ensureMap();
     state.layers.forEach((layer) => layer.remove()); state.layers = [];
     state.parcel = resolution.parcel;

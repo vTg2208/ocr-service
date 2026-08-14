@@ -35,6 +35,7 @@ services:
     ports: ["8000:8000"]
     volumes:
       - private_uploads:/var/lib/ocr/private_uploads
+      - paddle_models:/root/.paddlex
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
@@ -45,3 +46,4 @@ volumes:
   postgres_data:
   clamav_data:
   private_uploads:
+  paddle_models:
