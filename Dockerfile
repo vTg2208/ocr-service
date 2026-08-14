@@ -11,6 +11,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# PaddleOCR installs opencv-contrib-python, whose native module links libGL.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY app ./app
 COPY migrations ./migrations
 COPY alembic.ini ./alembic.ini
