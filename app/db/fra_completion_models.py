@@ -122,7 +122,7 @@ class FRAArchiveRecord(Base):
         ForeignKey("fra_import_batches.id"), nullable=False
     )
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), nullable=False)
-    linked_claim_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fra_claims.id"))
+    promoted_claim_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fra_claims.id"))
     legacy_reference: Mapped[str] = mapped_column(String(255), nullable=False)
     state_code: Mapped[str] = mapped_column(String(8), nullable=False)
     claim_number: Mapped[str | None] = mapped_column(String(100))
@@ -148,7 +148,7 @@ class FRAArchiveRecord(Base):
 
     batch: Mapped[FRAImportBatch] = relationship(back_populates="records")
     document: Mapped["Document"] = relationship(foreign_keys=[document_id])
-    linked_claim: Mapped["FRAClaim | None"] = relationship(foreign_keys=[linked_claim_id])
+    promoted_claim: Mapped["FRAClaim | None"] = relationship(foreign_keys=[promoted_claim_id])
     reviewer: Mapped["User | None"] = relationship(foreign_keys=[reviewed_by])
     extraction_runs: Mapped[list["FRAExtractionRun"]] = relationship(
         back_populates="archive_record", order_by="FRAExtractionRun.created_at"
@@ -209,6 +209,7 @@ class FRAExtractionRun(Base):
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     standardized_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     field_evidence_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    provenance_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     overall_confidence: Mapped[Decimal | None] = mapped_column(Numeric(8, 5))
     processing_time_ms: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
