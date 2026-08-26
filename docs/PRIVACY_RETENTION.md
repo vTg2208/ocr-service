@@ -13,6 +13,9 @@ This service records document claims; it does not determine or transfer legal ow
 - S3 storage must use private buckets, blocked public access, server-side encryption, and a narrowly scoped API role.
 - Satellite source URIs are private metadata. API responses expose the observation and supporting-evidence label without returning the source URI.
 - DSS audit and recommendation rows may retain declared facts and rule identifiers, but never raw document content.
+- FRA archive raw text, reviewed fields, extraction evidence, and printable archive reports are restricted reviewer data. Archive reports require reviewer or administrator access.
+- Atlas responses minimize rights-holder identifiers for normal users. Private source/artifact URIs are excluded from asset, model, and report responses.
+- Synthetic status is a mandatory provenance field, not a substitute for access control.
 
 ## Retention
 
@@ -22,6 +25,7 @@ This service records document claims; it does not determine or transfer legal ow
 - Closed-case document retention must be configured with the responsible authority before production; the recommended baseline is seven years unless local law requires otherwise.
 - Audit events are append-only. Corrections add events and do not overwrite historical evidence.
 - A legal hold suspends deletion for all related documents, OCR results, claims, conflicts, and audits.
+- Processing-job payloads, extraction runs, inference runs, asset revisions, DSS referrals, and generated-report audit events follow the related case retention duty. Failed jobs must be quarantined or expired by an approved retention job, never silently discarded.
 
 ## Subject and administrator operations
 
@@ -32,3 +36,5 @@ This service records document claims; it does not determine or transfer legal ow
 ## Production release gate
 
 Before launch, document the controller/processor, lawful basis, geographic storage region, retention duration, incident contact, encryption/key ownership, backup retention, restore test date, and approved cadastral-data license.
+
+For FRA operational use, also document the authoritative Tamil Nadu reference-data license and version, the approved scheme-rule authority, model training/evaluation data governance, bias and error review, model activation approver, human-review procedure, report access purpose, and the process for correcting an observation without overwriting its history.

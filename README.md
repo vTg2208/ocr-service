@@ -25,6 +25,8 @@ The legacy registry keeps its exclusive-land rule: exact parcel duplicates and m
 - Keeps the standalone OCR and optional land-enrichment APIs available separately.
 - Models FRA rights holders, Gram Sabhas, claim decisions, versioned geometries, evidence, and titles under `/api/fra/*`.
 - Evaluates FRA overlaps by right type, creates explicitly supporting local satellite evidence, and returns versioned advisory DSS recommendations.
+- Provides a protected Tamil Nadu-first `/fra` workspace with searchable archive review, synchronized Atlas filters and summaries, versioned asset observations, advisory referrals, and privacy-safe printable reports.
+- Keeps OCR, entity extraction, and asset models behind replaceable versioned gateways so trained models can be attached later without changing the legal workflow.
 
 ## Staff workflow
 
@@ -107,6 +109,8 @@ app/
 data/
   administrative_aliases.json
   demo_dss_rules.json
+  synthetic_tamil_nadu_fra_archive.json
+  synthetic_tamil_nadu_fra_atlas.geojson
   synthetic_example_village.geojson
 docs/                     Operations, privacy, specifications, and implementation plans
 migrations/               Alembic database migrations
@@ -172,11 +176,21 @@ The GeoJSON file contains 52 synthetic parcels, including irregular shapes used 
 ### 5. Open the application
 
 - Staff login: <http://localhost:8000/login>
+- Tamil Nadu FRA workspace: <http://localhost:8000/fra>
 - API documentation: <http://localhost:8000/docs>
 - Liveness: <http://localhost:8000/health>
 - Database readiness: <http://localhost:8000/health/ready>
 
 For the demonstration configuration, sign in with access code `1234` or the value assigned to `DEMO_ACCESS_CODE`.
+
+Seed the complete invented Tamil Nadu FRA story after migrations:
+
+```bash
+docker compose exec api python -m scripts.seed_tamil_nadu_fra_demo
+docker compose exec api python -m scripts.run_fra_jobs --max-jobs 20
+```
+
+The seed is idempotent and includes three synthetic village profiles, IFR/CR/CFR archive examples, claims and versioned geometry, a synthetic title, time-separated supporting observations, and advisory rule/referral examples. It is not authoritative case data. Trained models are optional and can be attached later using [the model adapter guide](docs/MODEL_ADAPTERS.md).
 
 ### Stop the stack
 

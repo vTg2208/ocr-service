@@ -22,7 +22,22 @@ python -m pytest tests/test_migrations.py tests/test_land_api.py
 
 Record the restore date, duration, row counts, PostGIS geometry validity check, and reviewer. Never test restoration against production.
 
-After restoring an FRA-enabled database, confirm that `alembic heads` reports `20260826_0003`, then reconcile counts for FRA claims, decisions, geometry/title versions, evidence, satellite observations, rule sets, recommendations, and audit events. Never repair history by deleting an earlier decision or version.
+After restoring an FRA-enabled database, confirm that `alembic heads` reports `20260826_0004`, then reconcile counts for FRA claims, decisions, geometry/title versions, archive records, processing jobs, model versions, assets, referrals, reports, and audit events. Never repair history by deleting an earlier decision or version.
+
+## Tamil Nadu FRA demonstration and workers
+
+Apply migrations before using the completed FRA workspaces:
+
+```text
+python -m alembic upgrade head
+python -m scripts.seed_tamil_nadu_fra_demo
+python -m scripts.seed_tamil_nadu_fra_demo
+python -m scripts.run_fra_jobs --max-jobs 20
+```
+
+The seed is idempotent: the first run reports created records and the second reports `created: 0`. Everything it inserts is invented, visibly synthetic Tamil Nadu demonstration data. Do not run this seed in an authoritative database. The UI is protected at `/fra`; Archive, Atlas, Assets, DSS Planner, and Reports share the Tamil Nadu context bar.
+
+The worker uses durable `processing_jobs` rows and bounded retries. Alert on quarantined jobs, repeated failures, or a growing oldest-queued age. A missing or inactive model is an unavailable-model condition, not a successful inference. See `docs/MODEL_ADAPTERS.md` before attaching trained weights.
 
 ## Cadastral updates
 
