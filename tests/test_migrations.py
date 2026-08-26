@@ -22,6 +22,11 @@ class MigrationTests(unittest.TestCase):
             }
             engine.dispose()
         self.assertTrue({"parcels", "documents", "ocr_results", "claims", "claim_conflicts", "audit_events"} <= tables)
+        self.assertTrue({
+            "rights_holders", "gram_sabhas", "fra_claims", "fra_decisions",
+            "fra_geometry_versions", "satellite_observations", "fra_evidence_items",
+            "fra_titles", "scheme_rule_sets", "dss_recommendations",
+        } <= tables)
         self.assertIn("uq_claim_parcel_exclusive", claim_constraints)
 
 

@@ -26,6 +26,16 @@ class DatabaseModelTests(unittest.TestCase):
                 "parcels",
                 "notifications",
                 "users",
+                "rights_holders",
+                "gram_sabhas",
+                "fra_claims",
+                "fra_decisions",
+                "fra_geometry_versions",
+                "fra_evidence_items",
+                "fra_titles",
+                "satellite_observations",
+                "scheme_rule_sets",
+                "dss_recommendations",
             },
         )
 
