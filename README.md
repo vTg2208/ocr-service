@@ -1,10 +1,10 @@
 # AranyaSetu
 
-Patta OCR, cadastral parcel matching, and exclusive land-claim registration for registry-office staff.
+Patta OCR, cadastral parcel matching, exclusive legacy land-claim registration, and a protected Forest Rights Act workflow foundation for authorized staff.
 
 AranyaSetu accepts Tamil and English patta scans, extracts the parcel reference, asks staff to verify the result, locates the corresponding cadastral polygon, and records the accepted document-to-parcel link. Registered polygons remain visible in a searchable map ledger, and authorized staff can reopen the original patta that created each claim.
 
-The central rule is simple: **the same land cannot receive a second claim**. Exact parcel duplicates and material polygon overlaps are rejected before another claim is stored.
+The legacy registry keeps its exclusive-land rule: exact parcel duplicates and material polygon overlaps are rejected before another legacy claim is stored. Native FRA claims use a separate right-aware policy because IFR, CR, and CFR rights can have different exclusivity and layering rules.
 
 > [!IMPORTANT]
 > This repository is a working demonstration, not a legal land-ownership system. A claim records a patta-to-parcel association; it does not create, transfer, or certify ownership. The included cadastral data is synthetic and must never be presented as authoritative.
@@ -23,6 +23,10 @@ The central rule is simple: **the same land cannot receive a second claim**. Exa
 - Opens the privately stored original patta from a registered claim.
 - Records upload, correction, claim, rejection, and patta-view audit events.
 - Keeps the standalone OCR and optional land-enrichment APIs available separately.
+- Models FRA rights holders, Gram Sabhas, claim decisions, versioned geometries, evidence, and titles under `/api/fra/*`.
+- Evaluates FRA overlaps by right type, creates explicitly supporting local satellite evidence, and returns versioned advisory DSS recommendations.
+- Provides a protected Tamil Nadu-first `/fra` workspace with searchable archive review, synchronized Atlas filters and summaries, versioned asset observations, advisory referrals, and privacy-safe printable reports.
+- Keeps OCR, entity extraction, and asset models behind replaceable versioned gateways so trained models can be attached later without changing the legal workflow.
 
 ## Staff workflow
 
@@ -81,6 +85,12 @@ Staff browser
 
 Standalone API clients
   -> OCR, evaluation, and optional enrichment routes
+
+Authorized FRA clients
+  -> protected FRA claim, evidence, spatial, satellite, and DSS routes
+      -> append-only decisions and versioned geometries/titles
+      -> right-aware PostGIS/Shapely spatial policy
+      -> local replaceable provider interfaces
 ```
 
 The browser UI never stores or displays its signed session token. Parcel responses expose registry geometry and provenance without claimant identifiers or private storage keys. Original pattas are streamed only through an authenticated, audited endpoint.
@@ -98,6 +108,9 @@ app/
   utils/                  Upload validation helpers
 data/
   administrative_aliases.json
+  demo_dss_rules.json
+  synthetic_tamil_nadu_fra_archive.json
+  synthetic_tamil_nadu_fra_atlas.geojson
   synthetic_example_village.geojson
 docs/                     Operations, privacy, specifications, and implementation plans
 migrations/               Alembic database migrations
@@ -163,11 +176,21 @@ The GeoJSON file contains 52 synthetic parcels, including irregular shapes used 
 ### 5. Open the application
 
 - Staff login: <http://localhost:8000/login>
+- Tamil Nadu FRA workspace: <http://localhost:8000/fra>
 - API documentation: <http://localhost:8000/docs>
 - Liveness: <http://localhost:8000/health>
 - Database readiness: <http://localhost:8000/health/ready>
 
 For the demonstration configuration, sign in with access code `1234` or the value assigned to `DEMO_ACCESS_CODE`.
+
+Seed the complete invented Tamil Nadu FRA story after migrations:
+
+```bash
+docker compose exec api python -m scripts.seed_tamil_nadu_fra_demo
+docker compose exec api python -m scripts.run_fra_jobs --max-jobs 20
+```
+
+The seed is idempotent and includes three synthetic village profiles, IFR/CR/CFR archive examples, claims and versioned geometry, a synthetic title, time-separated supporting observations, and advisory rule/referral examples. It is not authoritative case data. Trained models are optional and can be attached later using [the model adapter guide](docs/MODEL_ADAPTERS.md).
 
 ### Stop the stack
 
@@ -301,6 +324,12 @@ The base `/ocr` route does not require an LLM key. It returns extracted text, av
 | `PATCH` | `/api/admin/conflicts/{conflict_id}` | Administrator |
 
 These routes support historical conflict records. New competing claims are rejected by the exclusive-claim gate instead of creating a second claim and conflict record.
+
+### Protected FRA foundation routes
+
+The `/api/fra/*` domain covers rights holders, Gram Sabhas, IFR/CR/CFR claims, versioned geometry and evidence, reviewer-controlled transitions and titles, legacy promotion, right-aware spatial evaluation, supporting satellite observations, and explainable DSS recommendations. It is backward-compatible with the legacy routes above.
+
+Satellite observations are supporting evidence and do not determine legal validity. DSS recommendations are advisory and do not approve or sanction benefits. See the [FRA foundation guide](docs/FRA_FOUNDATION.md) for routes, roles, local manifests, demo rules, and limitations.
 
 ## API examples
 
@@ -512,6 +541,7 @@ Check that the private upload volume or S3 object still exists and that the curr
 
 - [Operations guide](docs/OPERATIONS.md)
 - [Privacy and retention baseline](docs/PRIVACY_RETENTION.md)
+- [Forest Rights Act foundation](docs/FRA_FOUNDATION.md)
 - [Exclusive land-claims design](docs/superpowers/specs/2026-08-26-exclusive-land-claims-design.md)
 - [Exclusive land-claims implementation plan](docs/superpowers/plans/2026-08-26-exclusive-land-claims.md)
 

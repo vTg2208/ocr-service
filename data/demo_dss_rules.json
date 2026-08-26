@@ -1,0 +1,47 @@
+[
+  {
+    "scheme_code": "DEMO-WATER-SUPPORT",
+    "display_name": "Demo Water Support Review",
+    "version": "demo-1",
+    "required_facts": ["has_title", "water_body_present"],
+    "condition": {
+      "all": [
+        {"eq": {"fact": "has_title", "value": true}},
+        {"eq": {"fact": "water_body_present", "value": false}}
+      ]
+    },
+    "recommendation_text": "Refer the case for departmental water-support review.",
+    "source_reference": "demo://water-support/v1",
+    "advisory_only": true
+  },
+  {
+    "scheme_code": "DEMO-HOUSING-SUPPORT",
+    "display_name": "Demo Housing Support Review",
+    "version": "demo-1",
+    "required_facts": ["has_title", "homestead_present"],
+    "condition": {
+      "all": [
+        {"eq": {"fact": "has_title", "value": true}},
+        {"eq": {"fact": "homestead_present", "value": false}}
+      ]
+    },
+    "recommendation_text": "Refer the case for departmental housing-support review.",
+    "source_reference": "demo://housing-support/v1",
+    "advisory_only": true
+  },
+  {
+    "scheme_code": "DEMO-LIVELIHOOD-SUPPORT",
+    "display_name": "Demo Livelihood Support Review",
+    "version": "demo-1",
+    "required_facts": ["has_title", "agricultural_cover"],
+    "condition": {
+      "all": [
+        {"eq": {"fact": "has_title", "value": true}},
+        {"gte": {"fact": "agricultural_cover", "value": 0.25}}
+      ]
+    },
+    "recommendation_text": "Refer the case for departmental livelihood-support review.",
+    "source_reference": "demo://livelihood-support/v1",
+    "advisory_only": true
+  }
+]

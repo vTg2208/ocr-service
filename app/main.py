@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -19,8 +19,17 @@ from app.api.land_routes import router as land_router
 from app.api.patta_routes import router as patta_router
 from app.api.session_routes import router as session_router
 from app.api.claim_registry_routes import router as claim_registry_router
+from app.api.fra_routes import router as fra_router
+from app.api.fra_archive_routes import router as fra_archive_router
+from app.api.fra_operations_routes import router as fra_operations_router
+from app.api.fra_atlas_routes import router as fra_atlas_router
+from app.api.fra_asset_routes import router as fra_asset_router
+from app.api.fra_planning_routes import router as fra_planning_router
+from app.api.auth import SESSION_COOKIE, get_current_user
 from app.config import get_settings
+from app.db.session import get_db
 from app.middleware import RequestContextMiddleware
+from sqlalchemy.orm import Session
 
 settings = get_settings()
 
@@ -60,6 +69,12 @@ app.include_router(land_router)
 app.include_router(patta_router)
 app.include_router(session_router)
 app.include_router(claim_registry_router)
+app.include_router(fra_router)
+app.include_router(fra_archive_router)
+app.include_router(fra_operations_router)
+app.include_router(fra_atlas_router)
+app.include_router(fra_asset_router)
+app.include_router(fra_planning_router)
 
 static_root = Path(__file__).parent / "static"
 app.mount("/static", RevalidatingStaticFiles(directory=static_root), name="static")
@@ -78,6 +93,19 @@ async def login_ui() -> FileResponse:
 @app.get("/land-mapping", include_in_schema=False)
 async def land_mapping_ui() -> FileResponse:
     return FileResponse(static_root / "land-mapping" / "index.html")
+
+
+@app.get("/fra", include_in_schema=False)
+async def fra_workspace(request: Request, db: Session = Depends(get_db)):
+    try:
+        get_current_user(
+            authorization=request.headers.get("Authorization"),
+            session_token=request.cookies.get(SESSION_COOKIE),
+            db=db,
+        )
+    except HTTPException:
+        return RedirectResponse("/login")
+    return FileResponse(static_root / "fra" / "index.html")
 
 
 @app.exception_handler(HTTPException)

@@ -31,3 +31,6 @@ Thumbs.db
 
 # Local Git worktrees
 .worktrees/
+
+# Local visual brainstorming sessions
+.superpowers/

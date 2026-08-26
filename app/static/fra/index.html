@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AranyaSetu — Tamil Nadu FRA Platform</title>
+  <link rel="icon" href="/static/brand/aranyasetu-emblem.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/static/fra/styles.css?v=20260826.2">
+</head>
+<body>
+  <a class="skip-link" id="skipLink" href="#workspaceMain">Skip to workspace</a>
+  <div class="app-shell">
+    <aside class="navigation-rail">
+      <a class="rail-brand" href="/fra" aria-label="AranyaSetu Tamil Nadu FRA Platform">
+        <span class="brand-emblem" aria-hidden="true"><img src="/static/brand/aranyasetu-emblem.png" alt=""></span>
+        <span><strong>AranyaSetu</strong><small>Tamil Nadu FRA Platform</small></span>
+      </a>
+      <nav id="workspaceNav" aria-label="FRA workspaces">
+        <button class="rail-link active" type="button" data-section="archive" aria-current="page"><span aria-hidden="true">A</span>Archive</button>
+        <button class="rail-link" type="button" data-section="atlas"><span aria-hidden="true">M</span>FRA Atlas</button>
+        <button class="rail-link" type="button" data-section="assets"><span aria-hidden="true">O</span>Assets</button>
+        <button class="rail-link" type="button" data-section="planner"><span aria-hidden="true">D</span>DSS Planner</button>
+        <button class="rail-link" type="button" data-section="reports"><span aria-hidden="true">R</span>Reports</button>
+      </nav>
+      <a class="rail-secondary" href="/land-mapping">Patta registry</a>
+    </aside>
+    <div class="application">
+      <header class="context-bar">
+        <label><span>State</span><select id="contextState" disabled><option value="TN">Tamil Nadu</option></select></label>
+        <label><span>District</span><select id="contextDistrict"><option value="">All districts</option></select></label>
+        <label><span>Block/Taluk</span><select id="contextBlock"><option value="">All blocks/taluks</option></select></label>
+        <label><span>Village</span><select id="contextVillage"><option value="">All villages</option></select></label>
+        <div class="session-account"><span><small>Signed in as</small><strong id="staffName">Registry staff</strong></span><button id="logoutButton" type="button">Logout</button></div>
+      </header>
+      <div class="warning-strip" role="note"><strong>Synthetic demonstration data — not authoritative</strong><span>Supporting observations do not determine legal validity</span></div>
+      <main id="workspaceMain" tabindex="-1">
+        <p class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"></p>
+        <section class="workspace-panel active" id="archivePanel" data-panel="archive" aria-labelledby="archiveTitle">
+          <header class="workspace-title"><div><h1 id="archiveTitle">Archive</h1><p>Review digitized IFR, CR and CFR source records before promotion.</p></div><span id="archiveCount">0 records</span></header>
+          <div class="archive-layout">
+            <aside class="queue-sheet" aria-labelledby="queueTitle">
+              <header class="sheet-heading"><div><h2 id="queueTitle">Review queue</h2><p>Search reviewed fields and legacy references.</p></div><button id="refreshArchive" class="text-action" type="button">Refresh</button></header>
+              <form class="archive-filters" id="archiveFilters">
+                <label class="search-field"><span>Search archive</span><input id="archiveSearch" name="query" type="search" placeholder="Claim, holder or village" autocomplete="off"></label>
+                <label><span>Review state</span><select id="archiveReviewState" name="review_state"><option value="">All states</option><option value="needs_review">Needs review</option><option value="reviewed">Reviewed</option><option value="promoted">Promoted</option></select></label>
+                <label><span>Right type</span><select id="archiveRightType" name="right_type"><option value="">All rights</option><option>IFR</option><option>CR</option><option>CFR</option></select></label>
+                <button class="secondary-action" type="submit">Apply filters</button>
+              </form>
+              <ol class="archive-list" id="archiveList" aria-label="Archive records"></ol>
+              <div class="empty-state" id="archiveEmpty" hidden><strong>No archive records</strong><span>Import a Tamil Nadu source batch to begin review.</span></div>
+            </aside>
+            <article class="evidence-sheet" id="archiveDetail" aria-labelledby="evidenceTitle">
+              <header class="sheet-heading"><div><h2 id="evidenceTitle">Source evidence</h2><p id="recordReference">Select a record from the review queue.</p></div><span class="record-state" id="recordState">Waiting</span></header>
+              <div class="evidence-review-grid">
+                <section class="source-evidence" id="sourceEvidence" aria-labelledby="sourceTitle">
+                  <div class="section-bar"><h3 id="sourceTitle">Document extraction</h3><span id="modelVersion">Model —</span></div>
+                  <pre id="rawExtraction">Raw OCR text is available to reviewers.</pre>
+                  <dl class="provenance-list" id="extractionProvenance"><div><dt>Confidence</dt><dd>—</dd></div><div><dt>Processing</dt><dd>—</dd></div><div><dt>Provenance</dt><dd>—</dd></div></dl>
+                </section>
+                <section class="review-fields" aria-labelledby="fieldsTitle">
+                  <div class="section-bar"><h3 id="fieldsTitle">Standardized fields</h3><span>Reviewer values</span></div>
+                  <form id="reviewForm">
+                    <div class="field-table" id="reviewedFields"><p>Select an archive record to review standardized fields.</p></div>
+                    <label class="notes-field"><span>Reviewer notes</span><textarea id="reviewNotes" rows="3" placeholder="Record corrections or supporting context"></textarea></label>
+                    <div class="review-actions"><button class="secondary-action" id="saveReviewButton" type="submit" disabled>Save review</button><button class="primary-action" id="promoteButton" type="button" disabled>Promote to FRA claim</button></div>
+                  </form>
+                </section>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section class="workspace-panel" id="atlasPanel" data-panel="atlas" aria-labelledby="atlasTitle" hidden>
+          <header class="workspace-title"><div><h1 id="atlasTitle">FRA Atlas</h1><p>Explore Tamil Nadu village, right, title and supporting asset layers.</p></div><span>Reference view</span></header>
+          <div class="map-workspace">
+            <aside class="tool-sheet">
+              <form id="atlasFilters" class="stacked-form">
+                <div class="section-bar"><h2>Atlas filters</h2><span>One shared query</span></div>
+                <label><span>Right type</span><select name="right_type"><option value="">All rights</option><option>IFR</option><option>CR</option><option>CFR</option></select></label>
+                <label><span>Claim status</span><select name="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="gram_sabha_verified">Gram Sabha verified</option><option value="sdlc_review">SDLC review</option><option value="dlc_decided">DLC decided</option><option value="granted">Granted</option><option value="rejected">Rejected</option><option value="remanded">Remanded</option><option value="withdrawn">Withdrawn</option></select></label>
+                <label><span>Tribal group</span><input name="tribal_group" placeholder="Optional exact match"></label>
+                <label><span>Year</span><input name="year" inputmode="numeric" pattern="[0-9]{4}" placeholder="YYYY"></label>
+                <fieldset id="atlasLayers"><legend>Visible layers</legend><label><input type="checkbox" name="layers" value="village" checked>Villages</label><label><input type="checkbox" name="layers" value="claim" checked>Claims</label><label><input type="checkbox" name="layers" value="title" checked>Titles</label><label><input type="checkbox" name="layers" value="asset" checked>Assets</label></fieldset>
+                <button class="primary-action" type="submit">Apply to map and summary</button>
+              </form>
+              <section id="atlasSummary" class="summary-ledger" aria-live="polite"><p>Open the Atlas to load the Tamil Nadu summary.</p></section>
+            </aside>
+            <div class="map-sheet"><div id="atlasMap" class="map-canvas" role="img" aria-label="Filtered Tamil Nadu FRA features"></div><p class="map-note">Boundaries and observations shown in this demonstration are synthetic and not authoritative.</p></div>
+            <aside class="result-sheet"><div class="section-bar"><h2>Mapped records</h2><span id="atlasFeatureCount">0 features</span></div><ol id="atlasResults" class="result-list" aria-label="Filtered Atlas features"></ol></aside>
+          </div>
+        </section>
+        <section class="workspace-panel" id="assetsPanel" data-panel="assets" aria-labelledby="assetsTitle" hidden>
+          <header class="workspace-title"><div><h1 id="assetsTitle">Assets</h1><p>Run versioned observations and record human verification.</p></div><span>Human-in-the-loop</span></header>
+          <p class="legal-warning">Every model observation is supporting evidence and requires human verification; it does not determine legal validity.</p>
+          <div class="asset-workspace">
+            <aside class="tool-sheet">
+              <form id="assetInferenceForm" class="stacked-form">
+                <div class="section-bar"><h2>New observation</h2><span>Queued job</span></div>
+                <label><span>Active model</span><select id="assetModel" required><option value="">No active model attached</option></select></label>
+                <label><span>Village</span><select id="assetVillage"><option value="">Choose a village</option></select></label>
+                <label><span>Scene reference</span><input id="assetScene" required value="synthetic-tn-scene-001"></label>
+                <label><span>Asset class</span><select id="assetClass"><option value="water_body">Water body</option><option value="agricultural_cover">Agricultural cover</option><option value="forest_cover">Forest cover</option><option value="homestead">Homestead</option></select></label>
+                <button class="primary-action" type="submit">Queue inference</button>
+                <p id="assetJobStatus" class="inline-status" aria-live="polite"></p>
+              </form>
+            </aside>
+            <div class="map-sheet"><div id="assetMap" class="map-canvas" role="img" aria-label="Supporting asset observations"></div><p class="map-note">Confidence is displayed as model provenance, never as an entitlement decision.</p></div>
+            <aside class="result-sheet"><div class="section-bar"><h2>Observation register</h2><button id="refreshAssets" class="text-action" type="button">Refresh</button></div><ol id="assetList" class="result-list" aria-label="Asset observations"></ol></aside>
+          </div>
+        </section>
+        <section class="workspace-panel" id="plannerPanel" data-panel="planner" aria-labelledby="plannerTitle" hidden>
+          <header class="workspace-title"><div><h1 id="plannerTitle">DSS Planner</h1><p>Inspect explainable recommendations and manage advisory referrals.</p></div><span>Advisory only</span></header>
+          <p class="legal-warning">This decision-support workspace does not approve or sanction benefits. A responsible department must independently review every referral.</p>
+          <div class="planner-layout">
+            <aside class="tool-sheet"><form id="recommendationFilters" class="stacked-form"><div class="section-bar"><h2>Recommendation filters</h2><span>Explainable rules</span></div><label><span>Outcome</span><select name="outcome"><option value="">All outcomes</option><option value="recommended">Recommended</option><option value="not_recommended">Not recommended</option><option value="insufficient_data">Insufficient data</option></select></label><label><span>Scheme code</span><input name="scheme_code" placeholder="Optional exact code"></label><label><span>Referral department</span><input id="referralDepartment" value="District Rural Development Agency" required></label><button class="primary-action" type="submit">Load recommendations</button></form></aside>
+            <section class="recommendation-sheet"><div class="section-bar"><h2>Advisory recommendations</h2><span id="recommendationCount">0 records</span></div><ol id="recommendationList" class="recommendation-list" aria-live="polite"></ol></section>
+          </div>
+        </section>
+        <section class="workspace-panel" id="reportsPanel" data-panel="reports" aria-labelledby="reportsTitle" hidden>
+          <header class="workspace-title"><div><h1 id="reportsTitle">Reports</h1><p>Open privacy-safe printable case and village reports.</p></div><span>Protected output</span></header>
+          <div class="report-grid">
+            <section class="report-sheet"><span class="report-kicker">Village profile</span><h2>Context report</h2><p>Summarizes reference attributes, FRA counts and provenance for one Tamil Nadu village.</p><label><span>Village</span><select id="reportVillage"><option value="">Choose a village</option></select></label><button id="openVillageReport" class="primary-action" type="button">Open village report</button></section>
+            <section class="report-sheet"><span class="report-kicker">Archive evidence</span><h2>Reviewer case sheet</h2><p>Shows source, extraction, reviewed fields and audit-safe provenance. Reviewer access is required.</p><label><span>Archive record ID</span><input id="reportArchive" placeholder="UUID from Archive"></label><button id="openArchiveReport" class="secondary-action" type="button">Open archive report</button></section>
+            <aside class="print-guidance"><strong>Print / Save as PDF</strong><p>Reports open in a protected, no-store view. Use the browser print dialog only for an approved case purpose.</p><p>Personal fields are minimized by role and report type.</p></aside>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260826.2"></script><script src="/static/fra/atlas.js?v=20260826.2"></script><script src="/static/fra/assets.js?v=20260826.2"></script><script src="/static/fra/planner.js?v=20260826.2"></script><script src="/static/fra/reports.js?v=20260826.2"></script><script src="/static/fra/app.js?v=20260826.2"></script>
+</body>
+</html>
