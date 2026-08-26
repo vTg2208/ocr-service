@@ -2,9 +2,13 @@ const FRAAssetsUI = (() => {
   function legalRole() { return 'Each observation is supporting evidence and requires human verification; it does not determine legal validity.'; }
   function manifest(assetClass, village) {
     const point = village?.boundary?.coordinates?.[0]?.[0]?.[0] || [78.65, 11.1];
-    return { synthetic: true, acquired_at: '2026-08-26', source: 'Synthetic UI demonstration; no pixel inference', features: [{ asset_class: assetClass, geometry: { type: 'Point', coordinates: point }, value: { present: true }, confidence: 0.72 }] };
+    return { synthetic: true, acquired_at: '2026-08-26', source: 'Synthetic sample observation; no pixel inference', features: [{ asset_class: assetClass, geometry: { type: 'Point', coordinates: point }, value: { present: true }, confidence: 0.72 }] };
   }
-  return { legalRole, manifest };
+  function preferredVillageId(villages) {
+    if (!Array.isArray(villages) || !villages.length) return '';
+    return (villages.find((item) => item.village_name === 'Kottur') || villages[0]).id;
+  }
+  return { legalRole, manifest, preferredVillageId };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = FRAAssetsUI;
 
@@ -16,8 +20,8 @@ if (typeof document !== 'undefined') (() => {
   function contextQuery() { const params = new URLSearchParams(); [['district', '#contextDistrict'], ['block', '#contextBlock'], ['village', '#contextVillage']].forEach(([key, selector]) => { const value = document.querySelector(selector)?.value; if (value) params.set(key, value); }); return params.toString(); }
   async function loadReference() {
     const [models, villageResult] = await Promise.all([FRAApi.request('/api/fra/models?task=asset_detection&status=active'), FRAApi.request('/api/fra/villages')]); villages = villageResult.items;
-    modelSelect.replaceChildren(new Option(models.items.length ? 'Choose an active model' : 'No active model attached', '')); models.items.forEach((item) => modelSelect.add(new Option(`${item.name} ${item.version}`, item.id)));
-    villageSelect.replaceChildren(new Option('Choose a village', '')); villages.forEach((item) => villageSelect.add(new Option(`${item.village_name} — ${item.district_name}`, item.id)));
+    modelSelect.replaceChildren(new Option(models.items.length ? 'Select an active model' : 'Awaiting trained model', '')); models.items.forEach((item) => modelSelect.add(new Option(`${item.name} ${item.version}`, item.id))); if (models.items.length) modelSelect.value = models.items[0].id;
+    villageSelect.replaceChildren(); villages.forEach((item) => villageSelect.add(new Option(`${item.village_name} — ${item.district_name}`, item.id))); if (!villages.length) villageSelect.add(new Option('Village list unavailable', '')); villageSelect.value = FRAAssetsUI.preferredVillageId(villages);
   }
   function renderAssets(items) {
     list.replaceChildren(); ensureMap(); layer?.clearLayers(); const collection = { type: 'FeatureCollection', features: [] };

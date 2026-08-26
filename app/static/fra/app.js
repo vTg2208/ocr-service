@@ -7,8 +7,12 @@ const FRAWorkspace = (() => {
     if (action?.type === 'archive') return { ...state, archive: { ...state.archive, ...(action.value || {}) } };
     return state;
   }
+  function preferredRecord(records, selectedId) {
+    if (!Array.isArray(records) || !records.length) return null;
+    return records.find((record) => record.id === selectedId) || records[0];
+  }
   async function ensureBrowserSession(fetchImpl, redirect) { try { return await FRAApi.request('/api/auth/session', {}, fetchImpl); } catch (error) { if (error.status === 401) redirect('/login'); return null; } }
-  return { SECTIONS, ensureBrowserSession, initialState, reduce };
+  return { SECTIONS, ensureBrowserSession, initialState, preferredRecord, reduce };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = FRAWorkspace;
 
@@ -35,10 +39,24 @@ if (typeof document !== 'undefined') (() => {
       const provenance = $('#extractionProvenance'); provenance.replaceChildren();
       [['Confidence', latest?.confidence == null ? '—' : `${Math.round(latest.confidence * 100)}%`], ['Processing', latest?.processing_time_ms == null ? '—' : `${latest.processing_time_ms} ms`], ['Provenance', latest?.provenance?.adapter || 'not recorded']].forEach(([term, value]) => { const row = document.createElement('div'); const dt = document.createElement('dt'); const dd = document.createElement('dd'); dt.textContent = term; dd.textContent = value; row.append(dt, dd); provenance.appendChild(row); });
       FRAArchiveUI.renderFields($('#reviewedFields'), detail.reviewed_fields && Object.keys(detail.reviewed_fields).length ? detail.reviewed_fields : latest?.standardized_fields || {}); $('#saveReviewButton').disabled = !latest || detail.review_state === 'promoted'; $('#promoteButton').disabled = detail.review_state !== 'reviewed'; setStatus('');
+      document.dispatchEvent(new CustomEvent('fra:archive-selection', { detail: { id: detail.id, legacy_reference: detail.legacy_reference } }));
     } catch (error) { setStatus(error.message, 'error'); }
   }
+  function clearRecord() {
+    state = FRAWorkspace.reduce(state, { type: 'archive', value: { selected: null } });
+    $('#recordReference').textContent = 'No archive record matches the current filters.';
+    $('#recordState').textContent = 'No match';
+    $('#modelVersion').textContent = 'No extraction selected';
+    $('#rawExtraction').textContent = 'Select another filter to review source evidence.';
+    FRAArchiveUI.renderFields($('#reviewedFields'), {});
+    $('#extractionProvenance').replaceChildren();
+    $('#reviewNotes').value = 'No record selected.';
+    $('#saveReviewButton').disabled = true;
+    $('#promoteButton').disabled = true;
+    setStatus('');
+  }
   async function loadArchive() {
-    try { setStatus('Loading the review queue…'); const suffix = FRAArchiveUI.query(archiveFilters()); const result = await FRAApi.request(`/api/fra/archive/records${suffix ? `?${suffix}` : ''}`); state = FRAWorkspace.reduce(state, { type: 'archive', value: { records: result.items, loading: false } }); FRAArchiveUI.renderRecords($('#archiveList'), result.items, state.archive.selected?.id, loadRecord); renderArchiveEmpty(result.items); $('#archiveCount').textContent = `${result.items.length} ${result.items.length === 1 ? 'record' : 'records'}`; setStatus(''); } catch (error) { setStatus(error.message, 'error'); }
+    try { setStatus('Loading the review queue…'); const suffix = FRAArchiveUI.query(archiveFilters()); const result = await FRAApi.request(`/api/fra/archive/records${suffix ? `?${suffix}` : ''}`); const preferred = FRAWorkspace.preferredRecord(result.items, state.archive.selected?.id); state = FRAWorkspace.reduce(state, { type: 'archive', value: { records: result.items, selected: preferred, loading: false } }); FRAArchiveUI.renderRecords($('#archiveList'), result.items, preferred?.id, loadRecord); renderArchiveEmpty(result.items); $('#archiveCount').textContent = `${result.items.length} ${result.items.length === 1 ? 'record' : 'records'}`; if (preferred) await loadRecord(preferred); else clearRecord(); } catch (error) { setStatus(error.message, 'error'); }
   }
   async function saveReview(event) {
     event.preventDefault(); if (!state.archive.selected) return;

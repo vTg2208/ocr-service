@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
+from app.api.auth import settings
 from app.db.session import get_db
 from app.main import app
 
@@ -54,6 +55,18 @@ class DemoAuthenticationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
         self.assertNotIn("parcel_registry_session=", response.headers.get("set-cookie", ""))
+
+    def test_disabled_access_code_login_uses_operational_wording(self):
+        previous = settings.demo_auth_enabled
+        settings.demo_auth_enabled = False
+        try:
+            response = self.client.post("/api/auth/demo-login", json={"access_code": "1234"})
+        finally:
+            settings.demo_auth_enabled = previous
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["message"], "Access-code login is disabled.")
+        self.assertNotIn("demonstration", response.text.casefold())
 
     def test_logout_clears_session(self):
         self.client.post("/api/auth/demo-login", json={"access_code": "1234"})

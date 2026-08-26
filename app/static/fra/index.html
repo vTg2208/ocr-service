@@ -34,11 +34,11 @@
         <label><span>Village</span><select id="contextVillage"><option value="">All villages</option></select></label>
         <div class="session-account"><span><small>Signed in as</small><strong id="staffName">Registry staff</strong></span><button id="logoutButton" type="button">Logout</button></div>
       </header>
-      <div class="warning-strip" role="note"><strong>Synthetic demonstration data — not authoritative</strong><span>Supporting observations do not determine legal validity</span></div>
+      <div class="warning-strip" role="note"><strong>Synthetic sample data — not authoritative</strong><span>Supporting observations do not determine legal validity</span></div>
       <main id="workspaceMain" tabindex="-1">
         <p class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"></p>
         <section class="workspace-panel active" id="archivePanel" data-panel="archive" aria-labelledby="archiveTitle">
-          <header class="workspace-title"><div><h1 id="archiveTitle">Archive</h1><p>Review digitized IFR, CR and CFR source records before promotion.</p></div><span id="archiveCount">0 records</span></header>
+          <header class="workspace-title"><div><h1 id="archiveTitle">Archive</h1><p>Review digitized IFR, CR and CFR source records before promotion.</p></div><span id="archiveCount">Loading records</span></header>
           <div class="archive-layout">
             <aside class="queue-sheet" aria-labelledby="queueTitle">
               <header class="sheet-heading"><div><h2 id="queueTitle">Review queue</h2><p>Search reviewed fields and legacy references.</p></div><button id="refreshArchive" class="text-action" type="button">Refresh</button></header>
@@ -52,18 +52,18 @@
               <div class="empty-state" id="archiveEmpty" hidden><strong>No archive records</strong><span>Import a Tamil Nadu source batch to begin review.</span></div>
             </aside>
             <article class="evidence-sheet" id="archiveDetail" aria-labelledby="evidenceTitle">
-              <header class="sheet-heading"><div><h2 id="evidenceTitle">Source evidence</h2><p id="recordReference">Select a record from the review queue.</p></div><span class="record-state" id="recordState">Waiting</span></header>
+              <header class="sheet-heading"><div><h2 id="evidenceTitle">Source evidence</h2><p id="recordReference">Loading the first archive record.</p></div><span class="record-state" id="recordState">Loading</span></header>
               <div class="evidence-review-grid">
                 <section class="source-evidence" id="sourceEvidence" aria-labelledby="sourceTitle">
-                  <div class="section-bar"><h3 id="sourceTitle">Document extraction</h3><span id="modelVersion">Model —</span></div>
-                  <pre id="rawExtraction">Raw OCR text is available to reviewers.</pre>
-                  <dl class="provenance-list" id="extractionProvenance"><div><dt>Confidence</dt><dd>—</dd></div><div><dt>Processing</dt><dd>—</dd></div><div><dt>Provenance</dt><dd>—</dd></div></dl>
+                  <div class="section-bar"><h3 id="sourceTitle">Document extraction</h3><span id="modelVersion">Model loading</span></div>
+                  <pre id="rawExtraction">Loading reviewer-accessible source text.</pre>
+                  <dl class="provenance-list" id="extractionProvenance"><div><dt>Confidence</dt><dd>Loading</dd></div><div><dt>Processing</dt><dd>Loading</dd></div><div><dt>Provenance</dt><dd>Loading</dd></div></dl>
                 </section>
                 <section class="review-fields" aria-labelledby="fieldsTitle">
                   <div class="section-bar"><h3 id="fieldsTitle">Standardized fields</h3><span>Reviewer values</span></div>
                   <form id="reviewForm">
-                    <div class="field-table" id="reviewedFields"><p>Select an archive record to review standardized fields.</p></div>
-                    <label class="notes-field"><span>Reviewer notes</span><textarea id="reviewNotes" rows="3" placeholder="Record corrections or supporting context"></textarea></label>
+                    <div class="field-table" id="reviewedFields"><p>Loading standardized reviewer values.</p></div>
+                    <label class="notes-field"><span>Reviewer notes</span><textarea id="reviewNotes" rows="3" placeholder="Record corrections or supporting context">Reviewed against the synthetic source record.</textarea></label>
                     <div class="review-actions"><button class="secondary-action" id="saveReviewButton" type="submit" disabled>Save review</button><button class="primary-action" id="promoteButton" type="button" disabled>Promote to FRA claim</button></div>
                   </form>
                 </section>
@@ -79,15 +79,15 @@
                 <div class="section-bar"><h2>Atlas filters</h2><span>One shared query</span></div>
                 <label><span>Right type</span><select name="right_type"><option value="">All rights</option><option>IFR</option><option>CR</option><option>CFR</option></select></label>
                 <label><span>Claim status</span><select name="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="gram_sabha_verified">Gram Sabha verified</option><option value="sdlc_review">SDLC review</option><option value="dlc_decided">DLC decided</option><option value="granted">Granted</option><option value="rejected">Rejected</option><option value="remanded">Remanded</option><option value="withdrawn">Withdrawn</option></select></label>
-                <label><span>Tribal group</span><input name="tribal_group" placeholder="Optional exact match"></label>
-                <label><span>Year</span><input name="year" inputmode="numeric" pattern="[0-9]{4}" placeholder="YYYY"></label>
+                <label><span>Tribal group</span><input name="tribal_group" placeholder="All tribal groups"></label>
+                <label><span>Year</span><input name="year" inputmode="numeric" pattern="[0-9]{4}" placeholder="All years"></label>
                 <fieldset id="atlasLayers"><legend>Visible layers</legend><label><input type="checkbox" name="layers" value="village" checked>Villages</label><label><input type="checkbox" name="layers" value="claim" checked>Claims</label><label><input type="checkbox" name="layers" value="title" checked>Titles</label><label><input type="checkbox" name="layers" value="asset" checked>Assets</label></fieldset>
                 <button class="primary-action" type="submit">Apply to map and summary</button>
               </form>
-              <section id="atlasSummary" class="summary-ledger" aria-live="polite"><p>Open the Atlas to load the Tamil Nadu summary.</p></section>
+              <section id="atlasSummary" class="summary-ledger" aria-live="polite"><p>Loading the Tamil Nadu summary.</p></section>
             </aside>
-            <div class="map-sheet"><div id="atlasMap" class="map-canvas" role="img" aria-label="Filtered Tamil Nadu FRA features"></div><p class="map-note">Boundaries and observations shown in this demonstration are synthetic and not authoritative.</p></div>
-            <aside class="result-sheet"><div class="section-bar"><h2>Mapped records</h2><span id="atlasFeatureCount">0 features</span></div><ol id="atlasResults" class="result-list" aria-label="Filtered Atlas features"></ol></aside>
+            <div class="map-sheet"><div id="atlasMap" class="map-canvas" role="img" aria-label="Filtered Tamil Nadu FRA features"></div><p class="map-note">Boundaries and observations shown here are synthetic samples and not authoritative.</p></div>
+            <aside class="result-sheet"><div class="section-bar"><h2>Mapped records</h2><span id="atlasFeatureCount">Loading features</span></div><ol id="atlasResults" class="result-list" aria-label="Filtered Atlas features"></ol></aside>
           </div>
         </section>
         <section class="workspace-panel" id="assetsPanel" data-panel="assets" aria-labelledby="assetsTitle" hidden>
@@ -97,8 +97,8 @@
             <aside class="tool-sheet">
               <form id="assetInferenceForm" class="stacked-form">
                 <div class="section-bar"><h2>New observation</h2><span>Queued job</span></div>
-                <label><span>Active model</span><select id="assetModel" required><option value="">No active model attached</option></select></label>
-                <label><span>Village</span><select id="assetVillage"><option value="">Choose a village</option></select></label>
+                <label><span>Active model</span><select id="assetModel" required><option value="">Awaiting trained model</option></select></label>
+                <label><span>Village</span><select id="assetVillage"><option value="">Loading Tamil Nadu villages</option></select></label>
                 <label><span>Scene reference</span><input id="assetScene" required value="synthetic-tn-scene-001"></label>
                 <label><span>Asset class</span><select id="assetClass"><option value="water_body">Water body</option><option value="agricultural_cover">Agricultural cover</option><option value="forest_cover">Forest cover</option><option value="homestead">Homestead</option></select></label>
                 <button class="primary-action" type="submit">Queue inference</button>
@@ -113,14 +113,14 @@
           <header class="workspace-title"><div><h1 id="plannerTitle">DSS Planner</h1><p>Inspect explainable recommendations and manage advisory referrals.</p></div><span>Advisory only</span></header>
           <p class="legal-warning">This decision-support workspace does not approve or sanction benefits. A responsible department must independently review every referral.</p>
           <div class="planner-layout">
-            <aside class="tool-sheet"><form id="recommendationFilters" class="stacked-form"><div class="section-bar"><h2>Recommendation filters</h2><span>Explainable rules</span></div><label><span>Outcome</span><select name="outcome"><option value="">All outcomes</option><option value="recommended">Recommended</option><option value="not_recommended">Not recommended</option><option value="insufficient_data">Insufficient data</option></select></label><label><span>Scheme code</span><input name="scheme_code" placeholder="Optional exact code"></label><label><span>Referral department</span><input id="referralDepartment" value="District Rural Development Agency" required></label><button class="primary-action" type="submit">Load recommendations</button></form></aside>
-            <section class="recommendation-sheet"><div class="section-bar"><h2>Advisory recommendations</h2><span id="recommendationCount">0 records</span></div><ol id="recommendationList" class="recommendation-list" aria-live="polite"></ol></section>
+            <aside class="tool-sheet"><form id="recommendationFilters" class="stacked-form"><div class="section-bar"><h2>Recommendation filters</h2><span>Explainable rules</span></div><label><span>Outcome</span><select name="outcome"><option value="">All outcomes</option><option value="recommended">Recommended</option><option value="not_recommended">Not recommended</option><option value="insufficient_data">Insufficient data</option></select></label><label><span>Scheme code</span><input name="scheme_code" value="TN-FRA-WATER-SUPPORT"></label><label><span>Referral department</span><input id="referralDepartment" value="District Rural Development Agency" required></label><button class="primary-action" type="submit">Load recommendations</button></form></aside>
+            <section class="recommendation-sheet"><div class="section-bar"><h2>Advisory recommendations</h2><span id="recommendationCount">Loading recommendations</span></div><ol id="recommendationList" class="recommendation-list" aria-live="polite"></ol></section>
           </div>
         </section>
         <section class="workspace-panel" id="reportsPanel" data-panel="reports" aria-labelledby="reportsTitle" hidden>
           <header class="workspace-title"><div><h1 id="reportsTitle">Reports</h1><p>Open privacy-safe printable case and village reports.</p></div><span>Protected output</span></header>
           <div class="report-grid">
-            <section class="report-sheet"><span class="report-kicker">Village profile</span><h2>Context report</h2><p>Summarizes reference attributes, FRA counts and provenance for one Tamil Nadu village.</p><label><span>Village</span><select id="reportVillage"><option value="">Choose a village</option></select></label><button id="openVillageReport" class="primary-action" type="button">Open village report</button></section>
+            <section class="report-sheet"><span class="report-kicker">Village profile</span><h2>Context report</h2><p>Summarizes reference attributes, FRA counts and provenance for one Tamil Nadu village.</p><label><span>Village</span><select id="reportVillage"><option value="">Loading Tamil Nadu villages</option></select></label><button id="openVillageReport" class="primary-action" type="button">Open village report</button></section>
             <section class="report-sheet"><span class="report-kicker">Archive evidence</span><h2>Reviewer case sheet</h2><p>Shows source, extraction, reviewed fields and audit-safe provenance. Reviewer access is required.</p><label><span>Archive record ID</span><input id="reportArchive" placeholder="UUID from Archive"></label><button id="openArchiveReport" class="secondary-action" type="button">Open archive report</button></section>
             <aside class="print-guidance"><strong>Print / Save as PDF</strong><p>Reports open in a protected, no-store view. Use the browser print dialog only for an approved case purpose.</p><p>Personal fields are minimized by role and report type.</p></aside>
           </div>

@@ -53,6 +53,8 @@ class LandMappingUITests(unittest.TestCase):
         self.assertTrue({"loginForm", "accessCode", "loginButton", "loginStatus"}.issubset(parser.ids))
         self.assertIn('inputmode="numeric"', html)
         self.assertIn('maxlength="4"', html)
+        self.assertIn("Authorized registry access", html)
+        self.assertNotIn("demonstration", html.casefold())
 
     def test_confidence_badge_is_labeled_as_ocr_quality(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")

@@ -11,11 +11,28 @@ const FRAReportsUI = require('../app/static/fra/reports.js');
 
 test('workspace preserves Tamil Nadu context between sections', () => {
   const state = FRAWorkspace.reduce(FRAWorkspace.initialState(),
-    { type: 'context', value: { district: 'Thanjavur', village: 'Kottur Demo' } });
+    { type: 'context', value: { district: 'Thanjavur', village: 'Kottur' } });
   const atlas = FRAWorkspace.reduce(state, { type: 'section', value: 'atlas' });
-  assert.equal(atlas.context.village, 'Kottur Demo');
+  assert.equal(atlas.context.village, 'Kottur');
   assert.equal(atlas.context.state, 'TN');
   assert.equal(atlas.section, 'atlas');
+});
+
+test('workspace selects a populated archive record by default', () => {
+  const records = [{ id: 'a-1' }, { id: 'a-2' }];
+  assert.equal(FRAWorkspace.preferredRecord(records, null).id, 'a-1');
+  assert.equal(FRAWorkspace.preferredRecord(records, 'a-2').id, 'a-2');
+  assert.equal(FRAWorkspace.preferredRecord([], null), null);
+});
+
+test('asset and report workspaces choose a populated village by default', () => {
+  const villages = [
+    { id: 'v-1', village_name: 'Aranya Malai' },
+    { id: 'v-2', village_name: 'Kottur' },
+  ];
+  assert.equal(FRAAssetsUI.preferredVillageId(villages), 'v-2');
+  assert.equal(FRAReportsUI.preferredVillageId(villages), 'v-2');
+  assert.equal(FRAReportsUI.archiveRecordId({ id: 'archive-1' }), 'archive-1');
 });
 
 test('workspace rejects unknown sections without losing current state', () => {

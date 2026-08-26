@@ -45,8 +45,9 @@ class FRAWorkspaceUITests(unittest.TestCase):
             "saveReviewButton", "promoteButton", "workspaceStatus",
         }.issubset(parser.ids))
         self.assertTrue({"nav", "main", "header", "aside"}.issubset(parser.landmarks))
-        self.assertIn("Synthetic demonstration data — not authoritative", html)
+        self.assertIn("Synthetic sample data — not authoritative", html)
         self.assertIn("Supporting observations do not determine legal validity", html)
+        self.assertNotIn("demonstration", html.casefold())
         self.assertNotIn("approved benefit", html.casefold())
 
     def test_workspace_uses_modular_scripts_and_leaflet(self):
@@ -69,6 +70,10 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn("supporting evidence and requires human verification", html)
         self.assertIn("does not approve or sanction benefits", html)
         self.assertIn("Print / Save as PDF", html)
+        self.assertIn("Awaiting trained model", html)
+        self.assertIn('placeholder="All tribal groups"', html)
+        self.assertIn('placeholder="All years"', html)
+        self.assertIn('value="TN-FRA-WATER-SUPPORT"', html)
         self.assertIn('<option value="recommended">Recommended</option>', html)
         self.assertIn('<option value="not_recommended">Not recommended</option>', html)
         self.assertNotIn('<option value="eligible">', html)

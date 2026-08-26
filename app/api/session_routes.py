@@ -30,7 +30,7 @@ class DemoLoginRequest(BaseModel):
 @router.post("/demo-login")
 def demo_login(payload: DemoLoginRequest, db: Session = Depends(get_db)):
     if not settings.demo_auth_enabled:
-        raise HTTPException(status_code=404, detail="Demonstration login is disabled.")
+        raise HTTPException(status_code=404, detail="Access-code login is disabled.")
     if not secrets.compare_digest(payload.access_code, settings.demo_access_code):
         raise HTTPException(status_code=401, detail="Invalid access code.")
 
