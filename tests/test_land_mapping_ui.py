@@ -32,6 +32,17 @@ class StructureParser(HTMLParser):
 
 
 class LandMappingUITests(unittest.TestCase):
+    def test_fra_platform_is_a_prominent_icon_link_outside_the_tablist(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn('class="fra-platform-link" href="/fra"', html)
+        self.assertIn('src="/static/fra/icons/atlas.png"', html)
+        self.assertIn("Go to FRA Platform", html)
+        self.assertNotIn(">Tamil Nadu FRA platform</a>", html)
+        tablist = re.search(r'<nav class="app-tabs".*?>(?P<body>.*?)</nav>', html, re.DOTALL)
+        self.assertIsNotNone(tablist)
+        self.assertNotIn('href="/fra"', tablist.group("body"))
+
     def test_staff_workflow_has_three_real_stages_and_recovery_actions(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         parser = StructureParser()

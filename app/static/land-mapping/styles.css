@@ -45,7 +45,7 @@ body {
 button, input { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-button:focus-visible, input:focus-visible, summary:focus-visible, .drop-zone:focus-within {
+button:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible, .drop-zone:focus-within {
   outline: 3px solid var(--focus-600);
   outline-offset: 3px;
 }
@@ -98,11 +98,18 @@ button:focus-visible, input:focus-visible, summary:focus-visible, .drop-zone:foc
 .session-account .text-button { min-height: 38px; }
 
 main { max-width: 1320px; margin: auto; padding: var(--space-5) var(--space-6) var(--space-8); }
-.app-tabs {
+.registry-navigation {
   margin-bottom: var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--rule);
+}
+.app-tabs {
+  margin: 0;
   display: inline-flex;
   gap: var(--space-1);
-  border-bottom: 1px solid var(--rule);
 }
 .app-tab {
   min-height: 44px;
@@ -116,6 +123,37 @@ main { max-width: 1320px; margin: auto; padding: var(--space-5) var(--space-6) v
 }
 .app-tab:hover { color: var(--green-800); }
 .app-tab.active { color: var(--green-800); border-bottom-color: var(--green-800); }
+.fra-platform-link {
+  min-height: 44px;
+  margin-bottom: 8px;
+  padding: 5px 12px 5px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--paper-50);
+  border: 1px solid var(--green-800);
+  border-radius: 3px;
+  background: var(--green-800);
+  box-shadow: 0 3px 0 var(--ink-900);
+  font-size: .76rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.fra-platform-link:hover { background: var(--green-700); }
+.fra-platform-icon {
+  width: 30px;
+  height: 30px;
+  padding: 2px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, white 55%, transparent);
+  border-radius: 5px;
+  background: var(--paper-50);
+}
+.fra-platform-icon img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.fra-platform-chevron { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 .workflow-nav { margin-bottom: var(--space-5); }
 .steps {
   margin: 0;
@@ -490,8 +528,10 @@ footer { padding: var(--space-5); color: var(--ink-500); border-top: 1px solid v
   .session-account { gap: var(--space-2); }
   .session-account > span { display: none; }
   main { padding: var(--space-4) var(--space-4) var(--space-8); }
+  .registry-navigation { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; justify-content: stretch; gap: var(--space-3); border-bottom: 0; }
   .app-tabs { width: 100%; }
   .app-tab { flex: 1; padding-inline: var(--space-3); }
+  .fra-platform-link { width: auto; min-height: 48px; margin: 0; justify-content: center; }
   .workflow-nav { margin-bottom: var(--space-4); }
   .step { min-height: 52px; padding: var(--space-2); gap: var(--space-2); }
   .step-number { width: 24px; height: 24px; font-size: .68rem; }

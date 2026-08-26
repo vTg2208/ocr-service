@@ -33,6 +33,13 @@ class WorkspaceParser(HTMLParser):
 
 
 class FRAWorkspaceUITests(unittest.TestCase):
+    def test_workspace_has_a_clear_back_action_to_the_patta_registry(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn('class="rail-secondary" href="/land-mapping"', html)
+        self.assertIn('class="rail-secondary-icon"', html)
+        self.assertIn("Back to Patta Registry", html)
+
     def test_workspace_has_five_sections_shared_context_and_archive_review_regions(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         parser = WorkspaceParser(); parser.feed(html)
@@ -98,6 +105,14 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn("@media (max-width: 760px)", css)
         self.assertIn("prefers-reduced-motion", css)
         self.assertNotIn("linear-gradient", css)
+
+    def test_desktop_workspace_context_is_inset_but_mobile_remains_edge_to_edge(self):
+        css = (UI_ROOT / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn(".application { min-width: 0; padding-top: var(--space-4); }", css)
+        self.assertIn("margin: 0 var(--space-5)", css)
+        self.assertIn(".application { padding-top: 0; }", css)
+        self.assertIn(".context-bar { margin: 0;", css)
         self.assertNotIn("backdrop-filter", css)
 
     def test_fra_route_redirects_anonymous_and_serves_authenticated_session(self):

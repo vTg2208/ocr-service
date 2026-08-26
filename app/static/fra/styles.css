@@ -27,9 +27,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .rail-icon { width: 32px; height: 32px; padding: 2px; display: block; flex: 0 0 auto; object-fit: contain; border: 1px solid color-mix(in oklch, white 32%, transparent); border-radius: 7px; background: var(--paper-50); }
 .rail-link:hover, .rail-link.active { color: white; background: color-mix(in oklch, white 13%, transparent); }
 .rail-link.active { border-color: color-mix(in oklch, white 18%, transparent); }
-.rail-secondary { margin: auto var(--space-4) var(--space-5); padding-top: var(--space-4); color: color-mix(in oklch, white 78%, transparent); border-top: 1px solid color-mix(in oklch, white 28%, transparent); font-size: .72rem; text-decoration: none; }
-.application { min-width: 0; }
-.context-bar { min-height: 68px; display: grid; grid-template-columns: repeat(4, minmax(145px, 1fr)) auto; background: var(--paper-50); border-bottom: 1px solid var(--rule); }
+.rail-secondary { min-height: 52px; margin: auto var(--space-3) var(--space-5); padding: 9px 10px; display: flex; align-items: center; gap: 10px; color: white; border: 1px solid color-mix(in oklch, white 30%, transparent); border-radius: 3px; background: color-mix(in oklch, white 10%, transparent); font-size: .72rem; font-weight: 700; text-decoration: none; }
+.rail-secondary:hover { border-color: color-mix(in oklch, white 55%, transparent); background: color-mix(in oklch, white 16%, transparent); }
+.rail-secondary-icon { width: 29px; height: 29px; display: grid; flex: 0 0 auto; place-items: center; border: 1px solid color-mix(in oklch, white 60%, transparent); border-radius: 50%; background: color-mix(in oklch, var(--paper-50) 10%, transparent); }
+.rail-secondary-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.application { min-width: 0; padding-top: var(--space-4); }
+.context-bar { min-height: 68px; margin: 0 var(--space-5); display: grid; grid-template-columns: repeat(4, minmax(145px, 1fr)) auto; overflow: hidden; background: var(--paper-50); border: 1px solid var(--rule); border-radius: 3px; }
 .context-bar label { min-width: 0; padding: 8px 14px; display: grid; gap: 2px; border-right: 1px solid var(--rule); }
 .context-bar label span, .session-account small, label > span { color: var(--ink-500); font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .context-bar select { width: 100%; min-height: 34px; padding: 0 24px 0 0; border: 0; background: transparent; }
@@ -149,11 +152,13 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 760px) {
   .app-shell { display: block; }
   .navigation-rail { position: static; width: 100%; height: auto; }
+  .application { padding-top: 0; }
   .rail-brand { min-height: 76px; padding: 10px 14px; display: flex; justify-content: start; text-align: left; }
   .brand-emblem { width: 48px; height: 48px; }.brand-emblem img { width: 110px; transform: translate(-30px, -22px); }
   #workspaceNav { padding: 8px; display: flex; gap: 4px; overflow-x: auto; }
-  .rail-link { min-width: max-content; min-height: 44px; display: flex; padding: 7px 9px; }.rail-icon { width: 26px; height: 26px; padding: 1px; border-radius: 6px; }.rail-secondary { display: none; }
-  .context-bar { grid-template-columns: 1fr 1fr; }.context-bar label { border-bottom: 1px solid var(--rule); }
+  .rail-link { min-width: max-content; min-height: 44px; display: flex; padding: 7px 9px; }.rail-icon { width: 26px; height: 26px; padding: 1px; border-radius: 6px; }
+  .rail-secondary { min-height: 46px; margin: 0 8px 8px; padding: 7px 10px; justify-content: center; }.rail-secondary-icon { width: 27px; height: 27px; }
+  .context-bar { margin: 0; grid-template-columns: 1fr 1fr; border-right: 0; border-left: 0; border-radius: 0; }.context-bar label { border-bottom: 1px solid var(--rule); }
   .session-account { grid-column: 1 / -1; grid-row: auto; justify-content: space-between; }
   .warning-strip { margin: 12px; display: grid; justify-content: stretch; text-align: left; }
   .warning-strip strong { padding: 0 0 8px; border-right: 0; border-bottom: 1px solid color-mix(in oklch, var(--warning-700) 38%, transparent); }

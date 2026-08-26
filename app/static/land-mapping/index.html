@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <link rel="stylesheet" href="/static/land-mapping/styles.css?v=20260826.12">
+  <link rel="stylesheet" href="/static/land-mapping/styles.css?v=20260826.14">
 </head>
 <body>
   <div class="top-rule"></div>
@@ -31,11 +31,17 @@
   </header>
 
   <main>
-    <nav class="app-tabs" aria-label="Registry sections" role="tablist">
-      <button class="app-tab active" id="newClaimTab" type="button" role="tab" aria-selected="true" aria-controls="newClaimView">New claim</button>
-      <button class="app-tab" id="claimedLandTab" type="button" role="tab" aria-selected="false" aria-controls="claimedLandView">Claimed land</button>
-      <a class="app-tab" href="/fra">Tamil Nadu FRA platform</a>
-    </nav>
+    <div class="registry-navigation">
+      <nav class="app-tabs" aria-label="Registry sections" role="tablist">
+        <button class="app-tab active" id="newClaimTab" type="button" role="tab" aria-selected="true" aria-controls="newClaimView">New claim</button>
+        <button class="app-tab" id="claimedLandTab" type="button" role="tab" aria-selected="false" aria-controls="claimedLandView">Claimed land</button>
+      </nav>
+      <a class="fra-platform-link" href="/fra">
+        <span class="fra-platform-icon" aria-hidden="true"><img src="/static/fra/icons/atlas.png" alt=""></span>
+        <span>Go to FRA Platform</span>
+        <svg class="fra-platform-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"></path></svg>
+      </a>
+    </div>
 
     <section id="newClaimView" role="tabpanel" aria-labelledby="newClaimTab">
     <nav class="workflow-nav" aria-label="Claim workflow">
