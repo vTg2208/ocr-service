@@ -147,6 +147,8 @@ class FRAArchiveAPITests(unittest.TestCase):
             f"/api/fra/archive/records/{created.json()['id']}", headers=self.headers()
         )
         self.assertNotIn("Private raw OCR text", normal_detail.text)
+        self.assertEqual(normal_detail.json()["warning"], "Synthetic sample data")
+        self.assertNotIn("demonstration", normal_detail.text.casefold())
         reviewer_detail = self.client.get(
             f"/api/fra/archive/records/{created.json()['id']}",
             headers=self.headers("archive-reviewer"),

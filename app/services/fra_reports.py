@@ -16,7 +16,7 @@ SUPPORTING_WARNING = (
 ADVISORY_WARNING = (
     "Scheme recommendations and referrals are advisory and do not approve or sanction benefits."
 )
-SYNTHETIC_WARNING = "Synthetic demonstration data are not authoritative government records."
+SYNTHETIC_WARNING = "Synthetic sample data are not authoritative government records."
 
 
 class ReportNotFoundError(LookupError):

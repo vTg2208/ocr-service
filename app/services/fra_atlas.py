@@ -71,7 +71,7 @@ def _normalized_multipolygon(raw: Any) -> dict:
         raise AtlasValidationError(str(error)) from error
     min_x, min_y, max_x, max_y = parsed.bounds
     if min_x < 76 or max_x > 81 or min_y < 8 or max_y > 14:
-        raise AtlasValidationError("Village geometry must fall within the Tamil Nadu demo extent.")
+        raise AtlasValidationError("Village geometry must fall within the Tamil Nadu reference extent.")
     return geometry
 
 
@@ -361,7 +361,7 @@ def atlas_features(session, filters: AtlasFilters, *, privileged: bool) -> dict:
         "features": features,
         "metadata": {
             "state_code": "TN",
-            "synthetic_warning": "Synthetic demonstration data are not authoritative.",
+            "synthetic_warning": "Synthetic sample data are not authoritative.",
         },
     }
 

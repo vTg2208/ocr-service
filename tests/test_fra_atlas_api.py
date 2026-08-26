@@ -88,7 +88,8 @@ class FRAAtlasAPITests(unittest.TestCase):
         )
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()["state_code"], "TN")
-        self.assertIn("Synthetic demonstration data", detail.json()["warning"])
+        self.assertIn("Synthetic sample data", detail.json()["warning"])
+        self.assertNotIn("demonstration", detail.json()["warning"].casefold())
 
     def test_atlas_rejects_unsupported_state_and_invalid_layer(self):
         unsupported = self.client.get(

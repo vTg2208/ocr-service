@@ -23,6 +23,14 @@ class InvalidRuleError(ValueError):
     pass
 
 
+def recommendation_for_outcome(outcome: str, recommended_text: str) -> str:
+    if outcome == "recommended":
+        return recommended_text
+    if outcome == "insufficient_data":
+        return "Required information is incomplete; collect the missing inputs before human review."
+    return "Rule conditions were not met; retain the case for human review if circumstances change."
+
+
 @dataclass(frozen=True)
 class ConditionResult:
     value: bool | None
@@ -108,17 +116,18 @@ def evaluate_condition(condition: dict, facts: dict[str, Any]) -> ConditionResul
     return ConditionResult(value, reasons, missing)
 
 
-def _active_rules(session) -> list[SchemeRuleSet]:
+def _active_rules(session, rule_set_ids=None) -> list[SchemeRuleSet]:
     today = date.today()
+    statement = select(SchemeRuleSet).where(
+        SchemeRuleSet.active.is_(True),
+        or_(SchemeRuleSet.effective_from.is_(None), SchemeRuleSet.effective_from <= today),
+        or_(SchemeRuleSet.effective_to.is_(None), SchemeRuleSet.effective_to >= today),
+    )
+    if rule_set_ids is not None:
+        statement = statement.where(SchemeRuleSet.id.in_(list(rule_set_ids)))
     return list(
         session.scalars(
-            select(SchemeRuleSet)
-            .where(
-                SchemeRuleSet.active.is_(True),
-                or_(SchemeRuleSet.effective_from.is_(None), SchemeRuleSet.effective_from <= today),
-                or_(SchemeRuleSet.effective_to.is_(None), SchemeRuleSet.effective_to >= today),
-            )
-            .order_by(SchemeRuleSet.scheme_code, SchemeRuleSet.version)
+            statement.order_by(SchemeRuleSet.scheme_code, SchemeRuleSet.version)
         )
     )
 
@@ -131,6 +140,7 @@ def evaluate_rules(
     actor_id,
     idempotency_key: str,
     request_id: str | None = None,
+    rule_set_ids=None,
 ) -> list[DSSRecommendation]:
     claim = session.get(FRAClaim, claim_id)
     if claim is None:
@@ -140,7 +150,7 @@ def evaluate_rules(
         raise ValueError("A DSS idempotency key is required.")
 
     recommendations: list[DSSRecommendation] = []
-    for rule in _active_rules(session):
+    for rule in _active_rules(session, rule_set_ids):
         existing = session.scalar(
             select(DSSRecommendation).where(
                 DSSRecommendation.actor_id == actor_id,
@@ -172,6 +182,7 @@ def evaluate_rules(
             if result.value
             else "not_recommended"
         )
+        recommendation = recommendation_for_outcome(outcome, rule.recommendation_text)
         output = {
             "scheme_code": rule.scheme_code,
             "scheme_name": rule.display_name,
@@ -179,7 +190,7 @@ def evaluate_rules(
             "outcome": outcome,
             "reasons": result.reasons,
             "missing_inputs": sorted(result.missing_inputs),
-            "recommendation": rule.recommendation_text if outcome == "recommended" else None,
+            "recommendation": recommendation,
             "source_reference": rule.source_reference,
             "advisory_only": True,
             "disclaimer": DISCLAIMER,

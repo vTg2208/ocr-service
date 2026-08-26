@@ -224,7 +224,7 @@ def get_record(
         "reviewed_fields": dict(record.reviewed_fields_json or {}),
         "provenance": dict(record.provenance_json or {}),
         "extraction_runs": extractions,
-        "warning": "Synthetic demonstration data" if record.synthetic else None,
+        "warning": "Synthetic sample data" if record.synthetic else None,
     }
 
 

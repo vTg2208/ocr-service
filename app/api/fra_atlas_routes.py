@@ -120,7 +120,7 @@ def _village_dict(village, *, detailed: bool = False) -> dict:
                 "socioeconomic": dict(village.socioeconomic_json or {}),
                 "provenance": dict(village.provenance_json or {}),
                 "warning": (
-                    "Synthetic demonstration data are not authoritative."
+                    "Synthetic sample data are not authoritative."
                     if village.synthetic
                     else None
                 ),

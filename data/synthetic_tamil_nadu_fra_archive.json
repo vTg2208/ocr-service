@@ -4,29 +4,29 @@
     "state_name": "Tamil Nadu",
     "synthetic": true,
     "source": "Synthetic final-year project archive pack; not authoritative",
-    "version": "tn-demo-v1"
+    "version": "tn-sample-v1"
   },
   "records": [
     {
-      "legacy_reference": "TN-DEMO-IFR-001",
-      "raw_text": "SYNTHETIC Form A. Kaveri Demo Household, Kottur Demo, individual forest right.",
+      "legacy_reference": "TN-FRA-IFR-001",
+      "raw_text": "SYNTHETIC Form A. Kaveri Household, Kottur, individual forest right.",
       "review": true,
       "promote": true,
-      "fields": {"holder_name": "Kaveri Demo Household", "district": "Thanjavur", "block": "Kumbakonam", "village": "Kottur Demo", "right_type": "IFR", "claim_status": "granted", "claim_number": "TN-DEMO-IFR-001", "claim_year": 2012, "confidence": 0.91}
+      "fields": {"holder_name": "Kaveri Household", "district": "Thanjavur", "block": "Kumbakonam", "village": "Kottur", "right_type": "IFR", "claim_status": "granted", "claim_number": "TN-FRA-IFR-001", "claim_year": 2012, "confidence": 0.91}
     },
     {
-      "legacy_reference": "TN-DEMO-CR-001",
-      "raw_text": "SYNTHETIC community rights register. Aranya Malai Demo Gram Sabha, Salem.",
+      "legacy_reference": "TN-FRA-CR-001",
+      "raw_text": "SYNTHETIC community rights register. Aranya Malai Gram Sabha, Salem.",
       "review": true,
       "promote": true,
-      "fields": {"holder_name": "Aranya Malai Demo Gram Sabha", "district": "Salem", "block": "Yercaud", "village": "Aranya Malai Demo", "right_type": "CR", "claim_status": "filed", "claim_number": "TN-DEMO-CR-001", "claim_year": 2016, "confidence": 0.88}
+      "fields": {"holder_name": "Aranya Malai Gram Sabha", "district": "Salem", "block": "Yercaud", "village": "Aranya Malai", "right_type": "CR", "claim_status": "submitted", "claim_number": "TN-FRA-CR-001", "claim_year": 2016, "confidence": 0.88}
     },
     {
-      "legacy_reference": "TN-DEMO-CFR-001",
-      "raw_text": "SYNTHETIC community forest resource record awaiting reviewer confirmation, Solai Demo.",
+      "legacy_reference": "TN-FRA-CFR-001",
+      "raw_text": "SYNTHETIC community forest resource record awaiting reviewer confirmation, Solai.",
       "review": false,
       "promote": false,
-      "fields": {"holder_name": "Solai Demo Forest Collective", "district": "The Nilgiris", "block": "Kotagiri", "village": "Solai Demo", "right_type": "CFR", "claim_status": "submitted", "claim_number": "TN-DEMO-CFR-001", "claim_year": 2019, "confidence": 0.79}
+      "fields": {"holder_name": "Solai Forest Collective", "district": "The Nilgiris", "block": "Kotagiri", "village": "Solai", "right_type": "CFR", "claim_status": "submitted", "claim_number": "TN-FRA-CFR-001", "claim_year": 2019, "confidence": 0.79}
     }
   ]
 }

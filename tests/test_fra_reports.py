@@ -30,20 +30,21 @@ class FRAReportTests(unittest.TestCase):
             village = FRAVillageProfile(
                 state_code="TN", state_name="Tamil Nadu", district_code="TN-13",
                 district_name="Thanjavur", block_code="TN-13-01", block_name="Kumbakonam",
-                village_code="TN-13-01-001", village_name="Kottur <Demo>", boundary=BOUNDARY,
-                tribal_groups_json=["Synthetic community"], socioeconomic_json={},
+                village_code="TN-13-01-001", village_name="Kottur <Sample>", boundary=BOUNDARY,
+                tribal_groups_json=["Synthetic community"], socioeconomic_json={"water_access": "documented"},
                 provenance_json={"synthetic": True, "source": "private://must-redact"},
-                reference_version="demo-v1", synthetic=True,
+                reference_version="tn-sample-1", synthetic=True,
             )
             session.add_all([planner, village]); session.flush()
 
             html = render_village_report(session, village.id, actor_id=planner.id)
 
-            self.assertIn("Synthetic demonstration data", html)
+            self.assertIn("Synthetic sample data", html)
             self.assertIn("supporting evidence and do not determine legal validity", html)
             self.assertIn("advisory and do not approve or sanction benefits", html)
             self.assertNotIn("private://", html)
-            self.assertIn("Kottur &lt;Demo&gt;", html)
+            self.assertIn("Kottur &lt;Sample&gt;", html)
+            self.assertNotIn("demonstration", html.casefold())
             self.assertIn("@media print", html)
 
     def test_archive_report_requires_reviewer_and_escapes_raw_text(self):
