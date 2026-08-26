@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", protected_namespaces=())
 
 
 class FRAImportBatchCreate(StrictModel):
@@ -47,3 +47,20 @@ class ModelVersionCreate(StrictModel):
 
 
 JobState = Literal["queued", "running", "completed", "failed", "quarantined"]
+
+
+class AssetInferenceJobCreate(StrictModel):
+    village_id: UUID | None = None
+    claim_id: UUID | None = None
+    model_version_id: UUID
+    scene_id: str = Field(min_length=1, max_length=255)
+    idempotency_key: str = Field(min_length=1, max_length=255)
+    manifest: dict[str, Any]
+
+
+class AssetReviewCreate(StrictModel):
+    outcome: Literal["verified", "rejected", "corrected"]
+    expected_revision: int = Field(ge=0)
+    reasons: list[str] = Field(default_factory=list)
+    corrected_value: dict[str, Any] | None = None
+    corrected_geometry: dict[str, Any] | None = None

@@ -23,6 +23,7 @@ from app.api.fra_routes import router as fra_router
 from app.api.fra_archive_routes import router as fra_archive_router
 from app.api.fra_operations_routes import router as fra_operations_router
 from app.api.fra_atlas_routes import router as fra_atlas_router
+from app.api.fra_asset_routes import router as fra_asset_router
 from app.config import get_settings
 from app.middleware import RequestContextMiddleware
 
@@ -68,6 +69,7 @@ app.include_router(fra_router)
 app.include_router(fra_archive_router)
 app.include_router(fra_operations_router)
 app.include_router(fra_atlas_router)
+app.include_router(fra_asset_router)
 
 static_root = Path(__file__).parent / "static"
 app.mount("/static", RevalidatingStaticFiles(directory=static_root), name="static")

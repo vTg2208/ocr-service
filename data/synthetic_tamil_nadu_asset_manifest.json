@@ -1,0 +1,21 @@
+{
+  "state_code": "TN",
+  "synthetic": true,
+  "source": "Synthetic local observation manifest; no pixel inference",
+  "scenes": {
+    "tn-scene-2005": {
+      "acquired_at": "2005-01-15",
+      "features": [
+        {"asset_class": "forest_cover", "geometry": {"type": "MultiPolygon", "coordinates": [[[[79.10, 10.70], [79.12, 10.70], [79.12, 10.72], [79.10, 10.72], [79.10, 10.70]]]]}, "value": {"coverage_fraction": 0.62}, "confidence": 0.81},
+        {"asset_class": "water_body", "geometry": {"type": "Point", "coordinates": [79.11, 10.71]}, "value": {"present": true}, "confidence": 0.74}
+      ]
+    },
+    "tn-scene-2025": {
+      "acquired_at": "2025-01-15",
+      "features": [
+        {"asset_class": "agricultural_cover", "geometry": {"type": "MultiPolygon", "coordinates": [[[[79.103, 10.703], [79.111, 10.703], [79.111, 10.711], [79.103, 10.711], [79.103, 10.703]]]]}, "value": {"coverage_fraction": 0.31}, "confidence": 0.77},
+        {"asset_class": "homestead", "geometry": {"type": "Point", "coordinates": [79.108, 10.708]}, "value": {"present": true}, "confidence": 0.69}
+      ]
+    }
+  }
+}
