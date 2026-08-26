@@ -172,10 +172,11 @@ def _seed_claim_details(session, records, actor_id) -> list[FRAClaim]:
 
 
 def _seed_assets(session, villages, actor_id) -> None:
+    by_name = {village.village_name: village for village in villages}
     observations = [
-        (villages[0], "water_body", "tn-demo-scene-2005", date(2005, 1, 15), [79.11, 10.71], "verified"),
-        (villages[0], "agricultural_cover", "tn-demo-scene-2025", date(2025, 1, 15), [79.108, 10.708], "unverified"),
-        (villages[1], "forest_cover", "tn-demo-scene-2025-yercaud", date(2025, 2, 12), [78.65, 11.49], "unverified"),
+        (by_name["Kottur Demo"], "water_body", "tn-demo-scene-2005", date(2005, 1, 15), [79.11, 10.71], "verified"),
+        (by_name["Kottur Demo"], "agricultural_cover", "tn-demo-scene-2025", date(2025, 1, 15), [79.108, 10.708], "unverified"),
+        (by_name["Aranya Malai Demo"], "forest_cover", "tn-demo-scene-2025-yercaud", date(2025, 2, 12), [78.65, 11.49], "unverified"),
     ]
     for village, asset_class, reference, acquired_at, point, verification in observations:
         if session.scalar(select(AssetFeature).where(AssetFeature.source_reference == reference, AssetFeature.asset_class == asset_class)):

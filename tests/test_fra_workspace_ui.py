@@ -69,6 +69,11 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn("supporting evidence and requires human verification", html)
         self.assertIn("does not approve or sanction benefits", html)
         self.assertIn("Print / Save as PDF", html)
+        self.assertIn('<option value="recommended">Recommended</option>', html)
+        self.assertIn('<option value="not_recommended">Not recommended</option>', html)
+        self.assertNotIn('<option value="eligible">', html)
+        self.assertIn('<option value="submitted">Submitted</option>', html)
+        self.assertNotIn('<option value="filed">', html)
 
     def test_styles_have_existing_palette_visible_focus_and_mobile_layout(self):
         css = (UI_ROOT / "styles.css").read_text(encoding="utf-8")
