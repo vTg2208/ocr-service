@@ -26,6 +26,33 @@ class PattaExtractionTests(unittest.TestCase):
         self.assertEqual(result["document_area_sqm"], 1200)
         self.assertEqual(result["original_area"]["value"], "0.12.00")
 
+    def test_extracts_lookup_key_from_tamil_patta_table_layout(self):
+        result = extract_normalized_parcel_fields(
+            """தமிழ்நாடு அரசு
+மாவட்டம் : விழுப்புரம்
+வட்டம் : விழுப்புரம்
+வருவாய் கிராமம் : அற்பிசம்பாளையம்
+பட்டா எண் : 2151
+புல எண்
+உட்பிரிவு
+பரப்பு
+நீர்வை
+614
+1B
+0 - 5.00
+0.21""",
+            ocr_confidence=97.86,
+        )
+
+        self.assertEqual(result["state"], "தமிழ்நாடு")
+        self.assertEqual(result["district"], "விழுப்புரம்")
+        self.assertEqual(result["taluk"], "விழுப்புரம்")
+        self.assertEqual(result["village"], "அற்பிசம்பாளையம்")
+        self.assertEqual(result["survey_number"], "614")
+        self.assertEqual(result["subdivision_number"], "1B")
+        self.assertEqual(result["document_area_sqm"], 500)
+        self.assertEqual(result["original_area"], {"value": "0 - 5.00", "unit": "hectare-are"})
+
 
 if __name__ == "__main__":
     unittest.main()

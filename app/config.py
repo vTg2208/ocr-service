@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # --- LLM Engine (Groq) ---
     llm_api_key: str = ""
     llm_base_url: str = "https://api.groq.com/openai/v1"
-    llm_model_name: str = "llama3-70b-8192"
+    llm_model_name: str = "openai/gpt-oss-120b"
 
     # --- Central land registry ---
     database_url: str = "sqlite+pysqlite:///./ocr_land.db"
