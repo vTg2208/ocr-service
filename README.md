@@ -271,6 +271,8 @@ All settings are environment-driven (see `.env`):
 | `PADDLEOCR_RECOGNITION_MODEL_NAME` | `ta_PP-OCRv5_mobile_rec`             | Tamil/English recognition model       |
 | `PADDLEOCR_DET_MODEL_DIR` | unset                                      | Optional local detection model path   |
 | `PADDLEOCR_REC_MODEL_DIR` | unset                                      | Optional local recognition model path |
+| `LLM_BASE_URL`        | `https://api.groq.com/openai/v1`            | OpenAI-compatible LLM endpoint         |
+| `LLM_MODEL_NAME`      | `openai/gpt-oss-120b`                       | Groq production model for analysis     |
 
 ---
 
@@ -349,10 +351,10 @@ The service now includes a central cadastral registry workflow while preserving 
 
 ```text
 patta upload -> OCR -> deterministic parcel fields -> user confirmation
-             -> registry lookup -> polygon map -> claim -> conflict review
+             -> registry lookup -> polygon map -> availability gate -> claim
 ```
 
-A parcel is a geographic registry boundary. A claim is a user's assertion that their document relates to that parcel. Uploading a patta never changes registered ownership, and a conflict never decides ownership.
+A parcel is a geographic registry boundary. A claim records the patta-to-parcel link used by registry staff; it does not change registered ownership. Once land is claimed, another claim for the same parcel or a materially overlapping polygon is rejected before a second record can be created.
 
 ### Local PostGIS setup
 
@@ -367,30 +369,26 @@ A parcel is a geographic registry boundary. A claim is a user's assertion that t
    python -m scripts.import_parcels data/synthetic_example_village.geojson
    ```
 
-   The included 50-parcel dataset is synthetic, development-only, and explicitly non-authoritative. The acceptance parcel is Example Village survey `701`, subdivision `4B`.
+   The included 52-parcel dataset is synthetic, development-only, and explicitly non-authoritative. The acceptance parcel is Example Village survey `701`, subdivision `4B`.
 
-6. Create development users and tokens:
+6. Start with `uvicorn app.main:app --reload`, open `http://localhost:8000/login`, and enter the demonstration access code `1234`.
 
-   ```text
-   python -m scripts.create_user alice --display-name Alice
-   python -m scripts.create_user admin --display-name Administrator --role admin
-   python -m scripts.mint_dev_token alice
-   ```
-
-7. Start with `uvicorn app.main:app --reload`, open `http://localhost:8000/land-mapping`, and paste the signed token into the access-token field.
+The browser receives an HttpOnly session cookie and never displays or stores the signed token. The demonstration login is temporary; replace it with the deployment's OIDC identity provider before real registry use.
 
 For a lightweight SQLite demonstration, set `DATABASE_URL=sqlite+pysqlite:///./ocr_land.db`, set `MALWARE_SCAN_REQUIRED=false`, and run the same migration/import commands. SQLite is not the production spatial database.
 
 ### Land API
 
-All `/api` routes require `Authorization: Bearer <signed-JWT>`. Upload and claim writes also require `Idempotency-Key`.
+All protected `/api` routes accept the signed browser session cookie. Existing integrations may continue to use `Authorization: Bearer <signed-JWT>`. Upload and claim writes also require `Idempotency-Key`.
 
 | Route | Purpose |
 |---|---|
 | `POST /api/pattas/process` | Securely store, OCR, normalize, and attempt resolution; does not create a claim |
 | `POST /api/parcels/resolve` | Resolve user-corrected fields and persist valid candidate IDs |
 | `GET /api/parcels/{id}` | Privacy-safe metadata and GeoJSON polygon |
-| `POST /api/claims` | Transactionally create an idempotent claim and conflicts |
+| `POST /api/claims` | Create an idempotent claim, or return `409` when the land is already claimed |
+| `GET /api/claims/registry` | Persistent privacy-safe claimed polygons and aggregate area |
+| `GET /api/claims/{id}/patta` | Open the private source patta for an authenticated registry user |
 | `GET /api/claims/mine` | Current user's claims only |
 | `GET /api/notifications/mine` | Generic current-user review notifications |
 | `GET /api/admin/conflicts` | Administrator conflict queue with evidence and boundaries |
@@ -409,14 +407,15 @@ state + district + taluk + village + survey_number + subdivision_number
 
 The report contains inserted, updated, skipped, invalid, duplicate, and repaired counts. Re-importing unchanged data is idempotent. Preserve `source`, `source_version`, and `source_record_id` for every authoritative update.
 
-### Matching and conflicts
+### Matching and exclusive claims
 
 - Survey/subdivision normalization accepts `701/4b`, `701 / 4 B`, and `701-4B` without treating them as area.
 - Ambiguous OCR pairs such as `B/8` and `O/0` require confirmation; alternatives never silently replace evidence.
 - Areas support square metres, hectares, acres, cents, and `H.A.SqM` notation such as `0.12.00`.
 - Exact automatic matching requires the complete administrative and survey/subdivision key. Aliases are verified registry entries. Fuzzy spelling results are suggestions only.
-- PostGIS conflict calculations use intersection geography area and compare overlap against the smaller parcel. Configurable square-metre and percentage thresholds suppress precision slivers.
-- Normal claim responses contain generic conflict facts only. Claimant identity, documents, detailed evidence, and both boundaries are restricted to administrators.
+- PostGIS availability calculations use intersection geography area and compare overlap against the smaller parcel. Configurable square-metre and percentage thresholds suppress precision slivers.
+- Exact-parcel uniqueness, a transaction lock, and the spatial availability check prevent concurrent competing claims. A rejected attempt creates an audit event but no second claim.
+- Claimed-land responses contain polygons and source-document view URLs, but never claimant identifiers or private storage keys. Patta content is authenticated, non-cacheable, and each successful view is audited.
 
 ### Configuration
 
@@ -427,6 +426,9 @@ In addition to the OCR settings above, land mapping uses:
 | `DATABASE_URL` | local SQLite | Use PostgreSQL/PostGIS in production |
 | `AUTH_SECRET` | development placeholder | HS256 development token verifier secret |
 | `AUTH_ISSUER`, `AUTH_AUDIENCE` | local registry/API values | Required signed-token scope |
+| `DEMO_AUTH_ENABLED` | `true` | Enables the temporary four-digit registry login |
+| `DEMO_ACCESS_CODE` | `1234` | Demonstration-only staff code; replace with OIDC for production |
+| `DEMO_SESSION_MINUTES` | `480` | Browser session lifetime for the demonstration login |
 | `SECURE_UPLOAD_DIR` | `private_uploads` | Non-public local object root |
 | `UPLOAD_STORAGE_BACKEND` | `local` | `local` or `s3` |
 | `S3_BUCKET`, `S3_PREFIX` | empty / `patta-documents` | Private encrypted object storage |
@@ -443,6 +445,6 @@ Terminate TLS at a trusted ingress, encrypt database/storage/backups at rest, an
 
 ### Tests and operations
 
-Run all tests with `python -m pytest -q`. The suite covers existing OCR behavior plus normalization, aliases, area conversion, migration, GeoJSON idempotency, exact/fuzzy resolution, transaction rollback, exact/spatial/duplicate conflicts, thresholds, authorization, upload/claim idempotency, notifications, UI delivery, and privacy-safe responses.
+Run all tests with `python -m pytest -q`. The suite covers existing OCR behavior plus normalization, aliases, area conversion, migration, GeoJSON idempotency, exact/fuzzy resolution, transactional exact/spatial claim rejection, browser and bearer authentication, protected patta retrieval, UI delivery, and privacy-safe registry responses.
 
 See [operations](docs/OPERATIONS.md) for alerts and tested backup/restore procedures, and [privacy and retention](docs/PRIVACY_RETENTION.md) for the production policy baseline.
