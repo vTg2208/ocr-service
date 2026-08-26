@@ -166,6 +166,7 @@ class Claim(Base):
     __tablename__ = "claims"
     __table_args__ = (
         UniqueConstraint("claimant_id", "idempotency_key", name="uq_claim_idempotency"),
+        UniqueConstraint("parcel_id", name="uq_claim_parcel_exclusive"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)

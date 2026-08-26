@@ -6,7 +6,9 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, UploadFile
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.responses import JSONResponse
 
 from app.api.auth import AuthenticatedUser, get_current_user, require_admin
 from app.api.routes import ocr_endpoint
@@ -15,6 +17,7 @@ from app.db.models import Claim, ClaimConflict, Document, Notification, OCRResul
 from app.db.session import get_db
 from app.models.land_mapping_models import ClaimRequest, ConflictUpdate, ResolveRequest
 from app.services.audit import record_audit
+from app.services.claim_eligibility import ClaimUnavailableError
 from app.services.claim_service import ClaimService
 from app.services.parcel_resolver import ParcelLookup, ParcelResolver, parcel_public_dict
 from app.services.patta_extraction import extract_normalized_parcel_fields
@@ -160,6 +163,39 @@ def submit_claim(
             )
         db.commit()
         return response
+    except ClaimUnavailableError as exc:
+        db.rollback()
+        record_audit(
+            db, actor_id=user.id, action="claim_rejected", entity_type="parcel",
+            entity_id=payload.parcel_id,
+            after={"reason": exc.reason, "blocking_claim_id": str(exc.blocking_claim_id)},
+            request_id=_request_id(request),
+        )
+        db.commit()
+        return JSONResponse(
+            status_code=409,
+            content={
+                "success": False,
+                "message": "This land is already claimed.",
+                "reason": exc.reason,
+            },
+        )
+    except IntegrityError:
+        db.rollback()
+        record_audit(
+            db, actor_id=user.id, action="claim_rejected", entity_type="parcel",
+            entity_id=payload.parcel_id, after={"reason": "same_parcel"},
+            request_id=_request_id(request),
+        )
+        db.commit()
+        return JSONResponse(
+            status_code=409,
+            content={
+                "success": False,
+                "message": "This land is already claimed.",
+                "reason": "same_parcel",
+            },
+        )
     except PermissionError as exc:
         db.rollback(); raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

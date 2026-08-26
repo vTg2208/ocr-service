@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base
 from app.db.models import AuditEvent, Claim, ClaimConflict, Document, OCRResult, Parcel, User
+from app.services.claim_eligibility import ClaimUnavailableError
 from app.services.claim_service import ClaimService, ordered_claim_pair
 
 
@@ -57,7 +58,7 @@ class ClaimServiceTests(unittest.TestCase):
         high, low = uuid.UUID(int=2), uuid.UUID(int=1)
         self.assertEqual(ordered_claim_pair(high, low), (low, high))
 
-    def test_second_active_claim_creates_privacy_safe_same_parcel_conflict(self):
+    def test_second_active_claim_is_rejected_without_creating_a_second_claim(self):
         with Session(self.engine) as session:
             self._mark_candidate(session, self.document_a_id)
             self._mark_candidate(session, self.document_b_id)
@@ -66,17 +67,17 @@ class ClaimServiceTests(unittest.TestCase):
                 claimant_id=self.user_a_id, document_id=self.document_a_id, parcel_id=self.parcel_id,
                 confirmed_fields={"document_area_sqm": 1200}, idempotency_key="claim-a", request_id="r1",
             )
-            second = service.submit(
-                claimant_id=self.user_b_id, document_id=self.document_b_id, parcel_id=self.parcel_id,
-                confirmed_fields={"document_area_sqm": 1200}, idempotency_key="claim-b", request_id="r2",
-            )
+            with self.assertRaises(ClaimUnavailableError) as raised:
+                service.submit(
+                    claimant_id=self.user_b_id, document_id=self.document_b_id, parcel_id=self.parcel_id,
+                    confirmed_fields={"document_area_sqm": 1200}, idempotency_key="claim-b", request_id="r2",
+                )
             session.commit()
+            count = session.scalar(select(func.count()).select_from(Claim))
 
         self.assertEqual(first["status"], "matched")
-        self.assertEqual(second["status"], "conflicting")
-        self.assertEqual(second["conflicts"][0]["type"], "same_parcel")
-        self.assertNotIn("claimant_id", second["conflicts"][0])
-        self.assertNotIn("document_id", second["conflicts"][0])
+        self.assertEqual(raised.exception.reason, "same_parcel")
+        self.assertEqual(count, 1)
 
     def test_duplicate_idempotency_key_returns_same_claim_without_duplicate_conflict(self):
         with Session(self.engine) as session:
@@ -95,7 +96,7 @@ class ClaimServiceTests(unittest.TestCase):
         self.assertEqual(first["claim_id"], second["claim_id"])
         self.assertEqual(count, 1)
 
-    def test_same_claimant_new_document_does_not_conflict_with_own_claim(self):
+    def test_same_claimant_cannot_create_a_second_claim_for_the_same_land(self):
         with Session(self.engine) as session:
             self._mark_candidate(session, self.document_a_id)
             user = session.get(User, self.user_a_id)
@@ -108,17 +109,18 @@ class ClaimServiceTests(unittest.TestCase):
                 parcel_id=self.parcel_id, confirmed_fields={},
                 idempotency_key="first-supporting-document", request_id="r1",
             )
-            second = service.submit(
-                claimant_id=self.user_a_id, document_id=second_document.id,
-                parcel_id=self.parcel_id, confirmed_fields={},
-                idempotency_key="second-supporting-document", request_id="r2",
-            )
+            with self.assertRaises(ClaimUnavailableError):
+                service.submit(
+                    claimant_id=self.user_a_id, document_id=second_document.id,
+                    parcel_id=self.parcel_id, confirmed_fields={},
+                    idempotency_key="second-supporting-document", request_id="r2",
+                )
             session.commit()
+            claim_count = session.scalar(select(func.count()).select_from(Claim))
             conflict_count = session.scalar(select(func.count()).select_from(ClaimConflict))
 
         self.assertEqual(first["status"], "matched")
-        self.assertEqual(second["status"], "matched")
-        self.assertEqual(second["conflicts"], [])
+        self.assertEqual(claim_count, 1)
         self.assertEqual(conflict_count, 0)
 
     def test_rejects_document_owned_by_another_user_or_unresolved_parcel(self):
@@ -143,7 +145,7 @@ class ClaimServiceTests(unittest.TestCase):
             self._mark_candidate(session, self.document_a_id)
             service = ClaimService(
                 session,
-                conflict_detector=lambda *_, **__: (_ for _ in ()).throw(RuntimeError("boom")),
+                eligibility_checker=lambda *_, **__: (_ for _ in ()).throw(RuntimeError("boom")),
             )
             with self.assertRaises(RuntimeError):
                 with session.begin_nested():

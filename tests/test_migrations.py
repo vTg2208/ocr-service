@@ -15,9 +15,14 @@ class MigrationTests(unittest.TestCase):
             config.set_main_option("sqlalchemy.url", f"sqlite+pysqlite:///{database.as_posix()}")
             command.upgrade(config, "head")
             engine = create_engine(f"sqlite+pysqlite:///{database.as_posix()}")
-            tables = set(inspect(engine).get_table_names())
+            inspector = inspect(engine)
+            tables = set(inspector.get_table_names())
+            claim_constraints = {
+                item.get("name") for item in inspector.get_unique_constraints("claims")
+            }
             engine.dispose()
         self.assertTrue({"parcels", "documents", "ocr_results", "claims", "claim_conflicts", "audit_events"} <= tables)
+        self.assertIn("uq_claim_parcel_exclusive", claim_constraints)
 
 
 if __name__ == "__main__":
