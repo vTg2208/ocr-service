@@ -6,6 +6,7 @@ from pathlib import Path
 
 UI_ROOT = Path(__file__).parents[1] / "app" / "static" / "land-mapping"
 LOGIN_ROOT = Path(__file__).parents[1] / "app" / "static" / "login"
+BRAND_ROOT = Path(__file__).parents[1] / "app" / "static" / "brand"
 
 
 class StructureParser(HTMLParser):
@@ -59,6 +60,87 @@ class LandMappingUITests(unittest.TestCase):
         match = re.search(r'<span\b[^>]*id="confidenceBadge"[^>]*>([^<]*)</span>', html)
         self.assertIsNotNone(match)
         self.assertEqual(match.group(1), "— OCR quality")
+
+    def test_current_document_is_inside_document_fields_during_review(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+
+        field_sheet = re.search(
+            r'<article class="field-sheet">(?P<body>.*?)</article>', html, re.DOTALL
+        )
+        self.assertIsNotNone(field_sheet)
+        self.assertIn('id="documentBar"', field_sheet.group("body"))
+        self.assertLess(
+            field_sheet.group("body").index('id="documentBar"'),
+            field_sheet.group("body").index('id="fieldForm"'),
+        )
+
+    def test_current_document_filename_can_wrap_without_hiding_its_identity(self):
+        css = (UI_ROOT / "styles.css").read_text(encoding="utf-8")
+
+        rule = re.search(r"\.document-name strong\s*\{(?P<body>[^}]*)\}", css)
+        self.assertIsNotNone(rule)
+        self.assertIn("white-space: normal", rule.group("body"))
+        self.assertIn("overflow-wrap: anywhere", rule.group("body"))
+
+    def test_ocr_quality_is_a_bottom_caution_not_a_heading_badge(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+        field_sheet = re.search(
+            r'<article class="field-sheet">(?P<body>.*?)</article>', html, re.DOTALL
+        )
+        self.assertIsNotNone(field_sheet)
+        body = field_sheet.group("body")
+
+        heading = re.search(r'<div class="section-heading">(?P<body>.*?)</div>', body, re.DOTALL)
+        self.assertIsNotNone(heading)
+        self.assertNotIn('id="confidenceBadge"', heading.group("body"))
+        self.assertIn('id="ocrCaution"', body)
+        self.assertIn("OCR extraction is not perfect", body)
+        self.assertGreater(body.index('id="ocrCaution"'), body.index('id="fieldForm"'))
+
+    def test_aranyasetu_brand_uses_the_supplied_static_emblem(self):
+        mapping_html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+        login_html = (LOGIN_ROOT / "index.html").read_text(encoding="utf-8")
+        emblem_path = "/static/brand/aranyasetu-emblem.png"
+
+        for page, html in (("mapping", mapping_html), ("login", login_html)):
+            with self.subTest(page=page):
+                self.assertIn("AranyaSetu", html)
+                self.assertIn(f'src="{emblem_path}"', html)
+                self.assertNotIn("Parcel Ledger", html)
+        self.assertTrue((BRAND_ROOT / "aranyasetu-emblem.png").is_file())
+
+    def test_brand_name_precedes_the_cadastral_registry_subtitle(self):
+        for page, html_path in (
+            ("mapping", UI_ROOT / "index.html"),
+            ("login", LOGIN_ROOT / "index.html"),
+        ):
+            html = html_path.read_text(encoding="utf-8")
+            brand = re.search(r'<span class="brand-copy">(?P<body>.*?)</span>', html, re.DOTALL)
+            self.assertIsNotNone(brand)
+            with self.subTest(page=page):
+                body = brand.group("body")
+                self.assertIn("a central cadastral registry", body)
+                self.assertLess(body.index("AranyaSetu"), body.index("a central cadastral registry"))
+
+    def test_aranyasetu_pages_use_the_emblem_led_green_palette(self):
+        for page, css_path in (
+            ("mapping", UI_ROOT / "styles.css"),
+            ("login", LOGIN_ROOT / "styles.css"),
+        ):
+            css = css_path.read_text(encoding="utf-8")
+            with self.subTest(page=page):
+                self.assertIn("--paper-100: oklch(96.5% .012 155);", css)
+                self.assertIn("--green-800: oklch(35% .09 155);", css)
+                self.assertIn("--focus-600: oklch(52% .11 172);", css)
+                self.assertNotIn("--rust-", css)
+
+    def test_low_confidence_fields_use_warning_colours_not_a_decorative_accent(self):
+        css = (UI_ROOT / "styles.css").read_text(encoding="utf-8")
+
+        low_field_rule = re.search(r"\.field-grid label\.low input\s*\{(?P<body>[^}]*)\}", css)
+        self.assertIsNotNone(low_field_rule)
+        self.assertIn("var(--warning-700)", low_field_rule.group("body"))
+        self.assertIn("var(--warning-100)", low_field_rule.group("body"))
 
     def test_read_only_summary_values_expose_status_semantics(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")

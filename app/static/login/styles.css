@@ -1,14 +1,14 @@
 :root {
-  --paper-50: oklch(0.985 0.008 84);
-  --paper-100: oklch(0.955 0.014 84);
-  --ink-900: oklch(0.19 0.026 164);
-  --ink-700: oklch(0.34 0.025 164);
-  --ink-500: oklch(0.52 0.018 164);
-  --green-800: oklch(0.34 0.072 164);
-  --green-700: oklch(0.42 0.083 164);
-  --rust-700: oklch(0.48 0.11 42);
-  --rule: oklch(0.75 0.018 84);
-  --danger: oklch(0.46 0.14 28);
+  --paper-50: oklch(98.5% .008 155);
+  --paper-100: oklch(96.5% .012 155);
+  --ink-900: oklch(24% .032 155);
+  --ink-700: oklch(40% .026 155);
+  --ink-500: oklch(53% .018 155);
+  --green-800: oklch(35% .09 155);
+  --green-700: oklch(43% .1 155);
+  --focus-600: oklch(52% .11 172);
+  --rule: oklch(78% .022 155);
+  --danger: oklch(48% .15 29);
 }
 * { box-sizing: border-box; }
 html { min-width: 320px; }
@@ -17,8 +17,9 @@ body {
   color: var(--ink-900);
   background:
     linear-gradient(to bottom, transparent 31px, color-mix(in oklch, var(--green-800) 5%, transparent) 32px),
+    radial-gradient(circle at 78% 16%, color-mix(in oklch, var(--green-700) 9%, transparent), transparent 30%),
     var(--paper-100);
-  background-size: 100% 32px;
+  background-size: 100% 32px, auto, auto;
   font: 1rem/1.5 "Noto Sans", sans-serif;
 }
 .login-shell { min-height: 100vh; padding: 32px 20px; display: grid; place-items: center; }
@@ -33,11 +34,12 @@ body {
   box-shadow: 0 24px 64px color-mix(in oklch, var(--ink-900) 10%, transparent);
 }
 .login-brand { display: flex; align-items: center; gap: 12px; }
-.brand-mark { width: 44px; height: 44px; display: grid; place-items: center; color: var(--paper-50); background: var(--green-800); }
-.brand-mark svg { width: 28px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
-.login-brand > span:last-child { display: grid; }
-.login-brand small, .login-copy p { color: var(--rust-700); font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.brand-emblem { width: 52px; height: 52px; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--rule); background: var(--paper-50); }
+.brand-emblem img { width: 120px; max-width: none; display: block; transform: translate(-33px, -24px); mix-blend-mode: multiply; }
+.brand-copy { display: grid; gap: 2px; }
+.login-copy p { color: var(--green-700); font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .login-brand strong { font: 700 1.45rem/1.2 "Literata", serif; }
+.brand-subtitle { color: var(--ink-500); font-size: .68rem; letter-spacing: .035em; }
 .login-copy { display: grid; gap: 8px; }
 .login-copy p, .login-copy span { margin: 0; }
 .login-copy h1 { margin: 0; font: 700 2.8rem/1 "Literata", serif; letter-spacing: -.04em; }
@@ -68,7 +70,7 @@ button {
 }
 button:hover:not(:disabled) { background: var(--green-700); }
 button:disabled { opacity: .65; cursor: wait; }
-input:focus-visible, button:focus-visible { outline: 3px solid var(--rust-700); outline-offset: 3px; }
+input:focus-visible, button:focus-visible { outline: 3px solid var(--focus-600); outline-offset: 3px; }
 .login-status { min-height: 0; margin: 0; color: var(--danger); font-size: .8rem; }
 .login-status:empty { display: none; }
 footer { padding-top: 20px; color: var(--ink-500); border-top: 1px solid var(--rule); font-size: .7rem; }

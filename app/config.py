@@ -15,7 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # --- General ---
-    app_name: str = "OCR Microservice"
+    app_name: str = "AranyaSetu"
     log_level: str = "INFO"
     environment: str = "development"
 

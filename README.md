@@ -1,450 +1,520 @@
-# OCR Microservice
+# AranyaSetu
 
-A standalone OCR microservice built with **FastAPI** and **PaddleOCR**.
-It exposes a simple REST API for extracting text from
-images and PDFs, and is designed to be deployed independently of any
-main application, replaceable with a different OCR engine later without
-touching the API contract.
+Patta OCR, cadastral parcel matching, and exclusive land-claim registration for registry-office staff.
 
----
+AranyaSetu accepts Tamil and English patta scans, extracts the parcel reference, asks staff to verify the result, locates the corresponding cadastral polygon, and records the accepted document-to-parcel link. Registered polygons remain visible in a searchable map ledger, and authorized staff can reopen the original patta that created each claim.
 
-## Features
+The central rule is simple: **the same land cannot receive a second claim**. Exact parcel duplicates and material polygon overlaps are rejected before another claim is stored.
 
-- `POST /evaluate` compares OCR output with verified reference text
-- Critical-field review signals distinguish model confidence from accuracy
+> [!IMPORTANT]
+> This repository is a working demonstration, not a legal land-ownership system. A claim records a patta-to-parcel association; it does not create, transfer, or certify ownership. The included cadastral data is synthetic and must never be presented as authoritative.
 
-- `POST /ocr` — extract text from an image or PDF
-- `GET /health` — health check for uptime monitoring
-- Original-color image handling tuned for PaddleOCR document detection
-- Tamil/English recognition with configurable PaddleOCR model names
-- Multi-page PDF support via Python-native PDFium
-- Pluggable OCR engine interface (`OCRService`) — swap Tesseract for
-  PaddleOCR, EasyOCR, or SuryaOCR without changing routes
-- File validation: extension whitelist, size limit, MIME sniffing,
-  and path-traversal-safe filenames
-- Structured JSON responses and consistent error format
-- Docker-ready, deployable to Render or Railway
+## What the application does
 
----
+- Reads JPG, PNG, BMP, TIFF, and PDF documents with PaddleOCR.
+- Supports Tamil and English recognition, including common Tamil patta table layouts.
+- Extracts state, district, taluk, village, survey number, subdivision, and document area when evidence is present.
+- Shows OCR evidence and requires staff verification before registration.
+- Resolves parcels by the full administrative and survey key.
+- Displays real GeoJSON parcel boundaries, including irregular polygons.
+- Rejects an exact duplicate parcel or a materially overlapping claimed polygon.
+- Persists registered claims and polygons in the database.
+- Provides a searchable claimed-land index synchronized with the map.
+- Opens the privately stored original patta from a registered claim.
+- Records upload, correction, claim, rejection, and patta-view audit events.
+- Keeps the standalone OCR and optional land-enrichment APIs available separately.
 
-## Project Structure
+## Staff workflow
 
-```
-ocr-service/
-├── app/
-│   ├── api/
-│   │   └── routes.py            # /health and /ocr endpoints
-│   ├── services/
-│   │   ├── image_processor.py   # OpenCV preprocessing pipeline
-│   │   ├── pdf_processor.py     # PDF -> pages -> OCR -> merged text
-│   │   └── ocr_engine.py        # OCRService interface + TesseractOCR
-│   ├── models/
-│   │   └── response_models.py   # Pydantic request/response models
-│   ├── utils/
-│   │   └── file_validation.py   # Extension/size/MIME/path validation
-│   ├── config.py                # Environment-driven settings
-│   └── main.py                  # FastAPI app + exception handlers
-├── uploads/                      # Reserved for temp artifacts (unused by default)
-├── Dockerfile
-├── requirements.txt
-├── README.md
-└── .env
+```text
+Sign in
+  -> upload a patta
+  -> OCR and deterministic field extraction
+  -> verify or correct the extracted fields
+  -> resolve the official cadastral parcel
+  -> inspect the parcel polygon and area comparison
+  -> confirm the document-to-parcel match
+  -> pass the exclusive-land availability check
+  -> register and persist the claim
 ```
 
----
+After registration, the **Claimed land** view lists every stored claim on the left and all registered polygons on the right. Selecting a list item highlights and zooms to its polygon; selecting a polygon opens the corresponding list record. Clicking the active item or polygon again deselects it. Each selected record can open the original uploaded patta.
 
-## Local Installation
+## How duplicate claims are prevented
+
+AranyaSetu uses several layers of protection:
+
+1. A database unique constraint allows only one claim for a parcel ID.
+2. PostgreSQL uses a transaction-scoped advisory lock to serialize availability checks.
+3. PostGIS calculates the intersection area between the candidate parcel and every active claimed parcel.
+4. Configurable square-metre and percentage thresholds ignore insignificant geometry slivers.
+5. A competing request returns `409 Conflict`, records an audit event, and does not create another claim.
+
+SQLite uses Shapely for development-time overlap checks. PostgreSQL/PostGIS is required for production concurrency and spatial behavior.
+
+## Technology
+
+| Area | Implementation |
+|---|---|
+| Web application and API | FastAPI, Uvicorn |
+| OCR | PaddleOCR / PaddlePaddle |
+| Image and PDF processing | OpenCV, Pillow, PDFium |
+| Database | PostgreSQL 16 with PostGIS; SQLite for lightweight development |
+| Spatial processing | PostGIS, GeoAlchemy2, Shapely |
+| Persistence | SQLAlchemy and Alembic |
+| Private document storage | Local private volume or Amazon S3 |
+| Malware scanning | ClamAV INSTREAM |
+| Browser UI | Server-hosted HTML, CSS, JavaScript, and Leaflet |
+| Optional text enrichment | OpenAI-compatible API client |
+
+## Architecture
+
+```text
+Staff browser
+  -> FastAPI session and registry routes
+      -> private document storage
+      -> PaddleOCR and deterministic patta extraction
+      -> cadastral parcel resolver
+      -> exclusive-claim availability gate
+      -> SQLAlchemy -> PostgreSQL/PostGIS
+      -> append-only audit events
+
+Standalone API clients
+  -> OCR, evaluation, and optional enrichment routes
+```
+
+The browser UI never stores or displays its signed session token. Parcel responses expose registry geometry and provenance without claimant identifiers or private storage keys. Original pattas are streamed only through an authenticated, audited endpoint.
+
+## Repository layout
+
+```text
+app/
+  api/                    HTTP routes, authentication, and registry APIs
+  db/                     SQLAlchemy models and session management
+  models/                 API request and response models
+  services/               OCR, extraction, matching, claims, storage, and audit logic
+  static/login/           Demonstration staff sign-in page
+  static/land-mapping/    Upload, verification, registration, and claimed-land UI
+  utils/                  Upload validation helpers
+data/
+  administrative_aliases.json
+  synthetic_example_village.geojson
+docs/                     Operations, privacy, specifications, and implementation plans
+migrations/               Alembic database migrations
+scripts/                  Import, user, token, backup, and restore commands
+tests/                    Python and browser-logic test suites
+docker-compose.yml        API, PostGIS, and ClamAV development stack
+Dockerfile                Production-shaped API image
+```
+
+## Quick start with Docker Compose
 
 ### Prerequisites
 
-- Python 3.11+
-- Internet access on first run so PaddleOCR can download its English models
+- Docker Desktop or Docker Engine with Compose
+- At least several gigabytes of free disk space for OCR models and container images
+- Internet access during the first build and first OCR model download
 
-### Setup
+### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url> ocr-service
+git clone https://github.com/vTg2208/ocr-service.git
 cd ocr-service
-
-python3.11 -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-
-pip install -r requirements.txt
-cp .env .env.local             # optional: adjust values as needed
 ```
 
-### Running locally
+### 2. Create the environment file
 
 ```bash
+cp .env.example .env
+```
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Generate an authentication secret:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Place the generated value in `.env` as `AUTH_SECRET`. The sample Compose database uses the password `change-me`; if you change it, update both `DATABASE_URL` and the database service password in `docker-compose.yml`.
+
+### 3. Build and start the services
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+The API container waits for PostGIS and ClamAV, applies Alembic migrations, and then starts Uvicorn on port `8000`.
+
+### 4. Import development reference data
+
+```bash
+docker compose exec api python -m scripts.import_aliases data/administrative_aliases.json
+docker compose exec api python -m scripts.import_parcels data/synthetic_example_village.geojson
+```
+
+The GeoJSON file contains 52 synthetic parcels, including irregular shapes used to demonstrate realistic boundaries. Imports are idempotent and report inserted, updated, skipped, invalid, duplicate, and repaired records.
+
+### 5. Open the application
+
+- Staff login: <http://localhost:8000/login>
+- API documentation: <http://localhost:8000/docs>
+- Liveness: <http://localhost:8000/health>
+- Database readiness: <http://localhost:8000/health/ready>
+
+For the demonstration configuration, sign in with access code `1234` or the value assigned to `DEMO_ACCESS_CODE`.
+
+### Stop the stack
+
+```bash
+docker compose down
+```
+
+Named volumes preserve the database, private uploads, ClamAV definitions, and downloaded Paddle models. `docker compose down -v` also deletes those volumes and their data; use it only when a full reset is intended.
+
+## Local development without the full stack
+
+### Prerequisites
+
+- Python 3.11
+- A C/C++ runtime supported by PaddlePaddle
+- Node.js 18 or newer only for the browser-logic tests
+- PostgreSQL/PostGIS for production-like spatial testing, or SQLite for a lightweight demonstration
+
+Create and activate a virtual environment:
+
+```bash
+python -m venv venv
+source venv/bin/activate
+python -m pip install -r requirements-dev.txt
+```
+
+PowerShell activation:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
+```
+
+For a SQLite development run, create `.env` with at least:
+
+```dotenv
+ENVIRONMENT=development
+DATABASE_URL=sqlite+pysqlite:///./ocr_land.db
+AUTH_SECRET=replace-with-a-long-random-development-secret
+DEMO_AUTH_ENABLED=true
+DEMO_ACCESS_CODE=1234
+DEMO_SESSION_MINUTES=480
+SECURE_UPLOAD_DIR=private_uploads
+MALWARE_SCAN_REQUIRED=false
+CLAMAV_HOST=
+```
+
+Apply the schema, import the synthetic registry, and start the server:
+
+```bash
+alembic upgrade head
+python -m scripts.import_aliases data/administrative_aliases.json
+python -m scripts.import_parcels data/synthetic_example_village.geojson
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The service will be available at `http://localhost:8000`.
-Interactive API docs (Swagger UI) are auto-generated at
-`http://localhost:8000/docs`.
+The first OCR request can take longer because PaddleOCR may download and initialize its models.
 
----
+## Authentication
 
-## Docker Setup
+### Demonstration browser login
 
-### Build
+`POST /api/auth/demo-login` validates the configured four-digit access code, creates or updates the `registry-demo` database user, and returns an HttpOnly session cookie. The cookie is `SameSite=Strict` and becomes `Secure` when `ENVIRONMENT=production`.
 
-```bash
-docker build -t ocr-service .
-```
+The demonstration code is intentionally temporary. Before a real deployment:
 
-### Run
+- disable `DEMO_AUTH_ENABLED`;
+- replace the local HS256 adapter with the authority's OIDC verifier;
+- provision staff identities and roles from the trusted identity system;
+- rotate `AUTH_SECRET` and invalidate demonstration sessions.
 
-```bash
-docker run -p 8000:8000 --env-file .env ocr-service
-```
+### Bearer-token development access
 
-The container installs the Python OCR and PDF runtimes, then starts
-Uvicorn on port `8000`.
-
----
-
-## API Documentation
-
-### `GET /health`
-
-Health check endpoint.
-
-**Response — `200 OK`**
-
-```json
-{
-  "status": "healthy"
-}
-```
-
----
-
-### `POST /ocr`
-
-Extracts text from an uploaded image or PDF.
-
-- **Content-Type:** `multipart/form-data`
-- **Field:** `file`
-- **Supported formats:** jpg, jpeg, png, bmp, tif, tiff, pdf
-- **Max size:** 10 MB
-
-**Response — `200 OK`**
-
-```json
-{
-  "success": true,
-  "filename": "invoice.jpg",
-  "processing_time": 1.42,
-  "text": "...",
-  "confidence": 92.4,
-  "quality": {
-    "model_confidence": 92.4,
-    "confidence_is_text_accuracy": false,
-    "requires_human_review": true,
-    "review_reasons": [
-      "Critical numeric or survey fields were detected and are not source-verified."
-    ],
-    "dates": ["03.02.2024"],
-    "area_values": ["0.04.00"],
-    "survey_fields": [
-      {"identifier": "207/9", "value": "0.04.00", "source_verified": false}
-    ],
-    "mixed_script_tokens": []
-  }
-}
-```
-
-**Response — `400 Bad Request`** (unsupported type, empty file, file too
-large, or corrupted/unreadable file)
-
-```json
-{
-  "success": false,
-  "message": "Unsupported file type."
-}
-```
-
-**Response — `500 Internal Server Error`** (OCR engine failure)
-
-```json
-{
-  "success": false,
-  "message": "OCR processing failed."
-}
-```
-
----
-
-### `POST /evaluate`
-
-Submit `reference_text` and `ocr_text` as `multipart/form-data`. The
-response reports character error rate (CER), word error rate (WER), and
-exact-match accuracy for numeric fields, dates, survey numbers, and
-survey/area pairs.
-
-```json
-{
-  "character_error_rate": 0.08,
-  "word_error_rate": 0.2,
-  "numeric_field_accuracy": 60.0,
-  "date_accuracy": 100.0,
-  "survey_number_accuracy": 50.0,
-  "critical_field_exact_match_accuracy": 0.0
-}
-```
-
-`confidence` is average model confidence, not measured textual or factual
-accuracy. Values under `quality` are review candidates and are not
-automatically corrected or source-verified.
-
----
-
-## Example curl Requests
-
-### Structured land extraction
-
-The base `POST /ocr` endpoint remains standalone. It never invokes land
-enrichment and does not require an LLM API key.
-
-To enrich OCR text that was extracted earlier:
-
-```powershell
-curl.exe -X POST "http://localhost:8000/land/extract" `
-  -F "ocr_text=APK Minerals Pvt.Ltd 207/9 (0.04.00), 208/2B1 (0.08.50)"
-```
-
-To run OCR and optional enrichment in one request:
-
-```powershell
-curl.exe -X POST "http://localhost:8000/ocr/land" `
-  -F "file=@C:\path\to\document.png"
-```
-
-Land results contain separate parcel records with holder, survey number,
-area, explicit coordinates, administrative location, land type/use, document
-references, and other evidence-backed attributes when available. Coordinates
-are never estimated from place names or geocoded.
-
-Every populated field contains the supporting OCR text, extraction method,
-extractor confidence, and `source_verified: false`. Evidence proves only that
-the value is supported by OCR output; legal, numeric, ownership, and location
-values still require comparison with the source document.
-
-Without `LLM_API_KEY`, deterministic survey, area, coordinate, date, reference,
-and labeled location fields remain available. Holder and contextual inference
-are omitted and the response status is `not_configured`.
-
-**Health check:**
+Protected APIs also accept `Authorization: Bearer <JWT>`. The JWT subject must match a row in `users.external_id`; roles are read from the database and are not trusted from token claims.
 
 ```bash
-curl http://localhost:8000/health
+python -m scripts.create_user alice --display-name "Alice" --role user
+python -m scripts.mint_dev_token alice --minutes 60
 ```
 
-**OCR on an image:**
+These scripts are for local development, not production identity management.
+
+## API overview
+
+### Public OCR and enrichment routes
+
+| Method | Route | Purpose |
+|---|---|---|
+| `GET` | `/health` | Process liveness check |
+| `GET` | `/health/ready` | Database readiness check |
+| `POST` | `/ocr` | OCR for an image or PDF; optional prompt-based analysis |
+| `POST` | `/evaluate` | Compare OCR text with verified reference text |
+| `POST` | `/land/extract` | Extract evidence-backed land records from existing OCR text |
+| `POST` | `/ocr/land` | Run OCR and optional land-record enrichment together |
+
+The base `/ocr` route does not require an LLM key. It returns extracted text, average model confidence, and review signals for dates, areas, survey references, and mixed-script tokens. Model confidence is not measured textual or factual accuracy.
+
+### Browser and session routes
+
+| Method | Route | Purpose |
+|---|---|---|
+| `GET` | `/` | Redirect to staff login |
+| `GET` | `/login` | Demonstration sign-in page |
+| `GET` | `/land-mapping` | Staff claim application |
+| `POST` | `/api/auth/demo-login` | Start a demonstration staff session |
+| `GET` | `/api/auth/session` | Return the signed-in staff identity |
+| `POST` | `/api/auth/logout` | Clear the browser session |
+
+### Protected registry routes
+
+| Method | Route | Purpose |
+|---|---|---|
+| `POST` | `/api/pattas/process` | Validate, scan, privately store, OCR, extract, and attempt parcel resolution |
+| `POST` | `/api/parcels/resolve` | Resolve staff-corrected fields and persist valid candidate IDs |
+| `GET` | `/api/parcels/{parcel_id}` | Return privacy-safe parcel metadata and GeoJSON geometry |
+| `POST` | `/api/claims` | Register an available parcel or return `409` when land is already claimed |
+| `GET` | `/api/claims/registry` | Return persistent claimed polygons, summaries, and patta view URLs |
+| `GET` | `/api/claims/{claim_id}/patta` | Stream the authenticated claim's original patta |
+| `GET` | `/api/claims/mine` | Return the current user's claims |
+| `GET` | `/api/notifications/mine` | Return the current user's notifications |
+
+`POST /api/pattas/process` and `POST /api/claims` require an `Idempotency-Key` header. Repeating a successful request with the same user and key returns the existing result instead of creating a duplicate.
+
+### Legacy conflict-review routes
+
+| Method | Route | Access |
+|---|---|---|
+| `GET` | `/api/admin/conflicts` | Administrator |
+| `GET` | `/api/admin/conflicts/{conflict_id}` | Administrator |
+| `PATCH` | `/api/admin/conflicts/{conflict_id}` | Administrator |
+
+These routes support historical conflict records. New competing claims are rejected by the exclusive-claim gate instead of creating a second claim and conflict record.
+
+## API examples
+
+### Standalone OCR
 
 ```bash
 curl -X POST http://localhost:8000/ocr \
-  -F "file=@/path/to/invoice.jpg"
+  -F "file=@/path/to/patta.png"
 ```
 
-**OCR on a PDF:**
+Supported extensions are `jpg`, `jpeg`, `png`, `bmp`, `tif`, `tiff`, and `pdf`. The default upload limit is 10 MB.
+
+### OCR evaluation
 
 ```bash
-curl -X POST http://localhost:8000/ocr \
-  -F "file=@/path/to/document.pdf"
+curl -X POST http://localhost:8000/evaluate \
+  -F "reference_text=Survey No. 614/1B" \
+  -F "ocr_text=Survey No. 614/IB"
 ```
 
----
+The response reports character error rate, word error rate, and exact-match accuracy for critical numeric, date, survey, and survey-area fields.
 
-## Configuration
+### Authenticated browser-style request
 
-All settings are environment-driven (see `.env`):
+```bash
+curl -c cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{"access_code":"1234"}' \
+  http://localhost:8000/api/auth/demo-login
 
-| Variable             | Default                                          | Description                          |
-|----------------------|---------------------------------------------------|---------------------------------------|
-| `MAX_FILE_SIZE_MB`   | `10`                                              | Maximum upload size in MB             |
-| `ALLOWED_EXTENSIONS` | `["jpg","jpeg","png","bmp","tif","tiff","pdf"]`  | Accepted file extensions              |
-| `MIN_IMAGE_WIDTH`    | `1200`                                            | Images narrower than this are upscaled|
-| `PDF_DPI`            | `300`                                             | Rasterization DPI for PDF pages       |
-| `PADDLEOCR_DETECTION_MODEL_NAME` | `PP-OCRv5_mobile_det`                  | Lightweight text detector             |
-| `PADDLEOCR_RECOGNITION_MODEL_NAME` | `ta_PP-OCRv5_mobile_rec`             | Tamil/English recognition model       |
-| `PADDLEOCR_DET_MODEL_DIR` | unset                                      | Optional local detection model path   |
-| `PADDLEOCR_REC_MODEL_DIR` | unset                                      | Optional local recognition model path |
-| `LLM_BASE_URL`        | `https://api.groq.com/openai/v1`            | OpenAI-compatible LLM endpoint         |
-| `LLM_MODEL_NAME`      | `openai/gpt-oss-120b`                       | Groq production model for analysis     |
-
----
-
-## Replacing the OCR Engine
-
-The OCR engine is abstracted behind the `OCRService` interface in
-`app/services/ocr_engine.py`:
-
-```python
-class OCRService(ABC):
-    @abstractmethod
-    def extract_text(self, image: np.ndarray) -> Tuple[str, float]:
-        ...
+curl -b cookies.txt \
+  -H "Idempotency-Key: upload-example-1" \
+  -F "file=@/path/to/patta.png" \
+  http://localhost:8000/api/pattas/process
 ```
 
-To add a new engine (e.g. PaddleOCR), implement this interface in a new
-class and swap the instantiation in `app/api/routes.py`. No route or
-model changes are required.
+## OCR and parcel matching behavior
 
----
+### Extraction
 
-## Security Notes
+- Images narrower than `MIN_IMAGE_WIDTH` are enlarged before recognition.
+- PDFs are rasterized at `PDF_DPI` and processed page by page.
+- The default recognizer is the Tamil PP-OCRv5 mobile model.
+- Tamil table extraction recognizes survey/subdivision rows such as `614` and `1B`, plus hectare-are extents such as `0 - 5.00`.
+- `H.A.SqM`, hectares, acres, cents, and square metres are normalized to square metres.
+- Ambiguous characters such as `B/8` and `O/0` remain alternatives requiring human confirmation.
+- Every extracted field keeps its supporting OCR evidence when available.
 
-- Filenames are sanitized to remove path components and disallowed
-  characters before being echoed back in responses.
-- File content is sniffed (not just the extension) to confirm the real
-  file type before processing.
-- The standalone `/ocr` route processes uploads in memory. Authenticated
-  `/api/pattas/process` uploads are retained in private local or S3 storage
-  so their resulting claims remain auditable; they are never served publicly.
-- Extracted text is never written to logs — only metadata (filename,
-  size, type, timing, and errors) is logged.
+### Parcel lookup
 
----
-
-## Deployment on Render
-
-1. Push this repository to GitHub/GitLab.
-2. In the Render dashboard, choose **New +** → **Web Service** and
-   connect the repository.
-3. Set **Environment** to **Docker** (Render will detect the
-   `Dockerfile` automatically).
-4. Set the **Port** to `8000` (matches the `EXPOSE` in the Dockerfile).
-5. Add any environment variables from `.env` under the service's
-   **Environment** tab.
-6. Deploy. Render will build the image and expose a public URL you can
-   call `POST https://<your-service>.onrender.com/ocr` against.
-
----
-
-## Deployment on Railway
-
-1. Push this repository to GitHub.
-2. In Railway, choose **New Project** → **Deploy from GitHub repo**.
-3. Railway will detect the `Dockerfile` and build automatically.
-4. Under **Variables**, add any environment variables from `.env`.
-5. Under **Settings**, confirm the service listens on port `8000`
-   (Railway maps this to a public domain automatically).
-6. Deploy. Your endpoint will be available at the generated
-   `*.up.railway.app` domain.
-
----
-
-## Notes on Extensibility
-
-This service is intentionally decoupled from any main application: it
-only communicates via HTTP, and its OCR engine can be replaced without
-any changes to consumers of the `/ocr` endpoint. This makes it easy to
-run as a shared internal service across multiple applications.
-
----
-
-## Patta-to-parcel mapping and claims
-
-The service now includes a central cadastral registry workflow while preserving `/ocr` as an independent endpoint:
+A survey number is not globally unique. Exact lookup requires:
 
 ```text
-patta upload -> OCR -> deterministic parcel fields -> user confirmation
-             -> registry lookup -> polygon map -> availability gate -> claim
+state + district + taluk + village + survey number + subdivision number
 ```
 
-A parcel is a geographic registry boundary. A claim records the patta-to-parcel link used by registry staff; it does not change registered ownership. Once land is claimed, another claim for the same parcel or a materially overlapping polygon is rejected before a second record can be created.
+Verified administrative aliases are normalized before lookup. A close village spelling can be suggested, but it is never silently accepted. Area differences generate warnings and do not invent a parcel location.
 
-### Local PostGIS setup
+### Cadastral boundaries
 
-1. Copy `.env.example` to `.env`, replace the database password and `AUTH_SECRET`, and keep `.env` out of version control.
-2. Start PostgreSQL/PostGIS and ClamAV with `docker compose up -d db clamav`.
-3. Install development dependencies with `python -m pip install -r requirements-dev.txt`.
-4. Apply the schema with `alembic upgrade head`.
-5. Import development aliases and parcels:
+The importer accepts GeoJSON `Polygon` and `MultiPolygon` features, converts them to `MultiPolygon`, attempts safe repair of invalid polygonal geometry, and upserts on the full parcel key. Every authoritative record should retain `source`, `source_version`, and `source_record_id`.
 
-   ```text
-   python -m scripts.import_aliases data/administrative_aliases.json
-   python -m scripts.import_parcels data/synthetic_example_village.geojson
-   ```
+Run an import with:
 
-   The included 52-parcel dataset is synthetic, development-only, and explicitly non-authoritative. The acceptance parcel is Example Village survey `701`, subdivision `4B`.
-
-6. Start with `uvicorn app.main:app --reload`, open `http://localhost:8000/login`, and enter the demonstration access code `1234`.
-
-The browser receives an HttpOnly session cookie and never displays or stores the signed token. The demonstration login is temporary; replace it with the deployment's OIDC identity provider before real registry use.
-
-For a lightweight SQLite demonstration, set `DATABASE_URL=sqlite+pysqlite:///./ocr_land.db`, set `MALWARE_SCAN_REQUIRED=false`, and run the same migration/import commands. SQLite is not the production spatial database.
-
-### Land API
-
-All protected `/api` routes accept the signed browser session cookie. Existing integrations may continue to use `Authorization: Bearer <signed-JWT>`. Upload and claim writes also require `Idempotency-Key`.
-
-| Route | Purpose |
-|---|---|
-| `POST /api/pattas/process` | Securely store, OCR, normalize, and attempt resolution; does not create a claim |
-| `POST /api/parcels/resolve` | Resolve user-corrected fields and persist valid candidate IDs |
-| `GET /api/parcels/{id}` | Privacy-safe metadata and GeoJSON polygon |
-| `POST /api/claims` | Create an idempotent claim, or return `409` when the land is already claimed |
-| `GET /api/claims/registry` | Persistent privacy-safe claimed polygons and aggregate area |
-| `GET /api/claims/{id}/patta` | Open the private source patta for an authenticated registry user |
-| `GET /api/claims/mine` | Current user's claims only |
-| `GET /api/notifications/mine` | Generic current-user review notifications |
-| `GET /api/admin/conflicts` | Administrator conflict queue with evidence and boundaries |
-| `GET /api/admin/conflicts/{id}` | Administrator conflict detail |
-| `PATCH /api/admin/conflicts/{id}` | Record an audited review status, notes, and history |
-
-JWT subjects must match a central `users.external_id`. Roles are read from the database, not trusted from token claims. Replace the local symmetric-token arrangement with the deployment's OIDC issuer/verifier at the authentication adapter boundary when integrating an identity provider.
-
-### Cadastral imports
-
-`scripts/import_parcels.py` accepts a GeoJSON `FeatureCollection`. It converts Polygon to MultiPolygon, rejects empty/non-polygon geometry, safely repairs valid polygonal results, normalizes lookup fields, and upserts on:
-
-```text
-state + district + taluk + village + survey_number + subdivision_number
+```bash
+python -m scripts.import_parcels /path/to/parcels.geojson
 ```
 
-The report contains inserted, updated, skipped, invalid, duplicate, and repaired counts. Re-importing unchanged data is idempotent. Preserve `source`, `source_version`, and `source_record_id` for every authoritative update.
+## Configuration reference
 
-### Matching and exclusive claims
+Environment variables are loaded from `.env`. Environment values override application defaults.
 
-- Survey/subdivision normalization accepts `701/4b`, `701 / 4 B`, and `701-4B` without treating them as area.
-- Ambiguous OCR pairs such as `B/8` and `O/0` require confirmation; alternatives never silently replace evidence.
-- Areas support square metres, hectares, acres, cents, and `H.A.SqM` notation such as `0.12.00`.
-- Exact automatic matching requires the complete administrative and survey/subdivision key. Aliases are verified registry entries. Fuzzy spelling results are suggestions only.
-- PostGIS availability calculations use intersection geography area and compare overlap against the smaller parcel. Configurable square-metre and percentage thresholds suppress precision slivers.
-- Exact-parcel uniqueness, a transaction lock, and the spatial availability check prevent concurrent competing claims. A rejected attempt creates an audit event but no second claim.
-- Claimed-land responses contain polygons and source-document view URLs, but never claimant identifiers or private storage keys. Patta content is authenticated, non-cacheable, and each successful view is audited.
+### Core and OCR
 
-### Configuration
-
-In addition to the OCR settings above, land mapping uses:
-
-| Variable | Default | Purpose |
+| Variable | Application default | Purpose |
 |---|---:|---|
-| `DATABASE_URL` | local SQLite | Use PostgreSQL/PostGIS in production |
-| `AUTH_SECRET` | development placeholder | HS256 development token verifier secret |
-| `AUTH_ISSUER`, `AUTH_AUDIENCE` | local registry/API values | Required signed-token scope |
-| `DEMO_AUTH_ENABLED` | `true` | Enables the temporary four-digit registry login |
-| `DEMO_ACCESS_CODE` | `1234` | Demonstration-only staff code; replace with OIDC for production |
-| `DEMO_SESSION_MINUTES` | `480` | Browser session lifetime for the demonstration login |
-| `SECURE_UPLOAD_DIR` | `private_uploads` | Non-public local object root |
+| `APP_NAME` | `AranyaSetu` | FastAPI application name |
+| `ENVIRONMENT` | `development` | Enables production safeguards when set to `production` |
+| `LOG_LEVEL` | `INFO` | Application log level |
+| `MAX_FILE_SIZE_MB` | `10` | Maximum upload size |
+| `ALLOWED_EXTENSIONS` | JPG, PNG, BMP, TIFF, PDF | Accepted upload extensions |
+| `MIN_IMAGE_WIDTH` | `1200` | Width below which images are enlarged |
+| `PDF_DPI` | `300` | PDF rasterization resolution |
+| `PADDLEOCR_DETECTION_MODEL_NAME` | `PP-OCRv5_mobile_det` | Text detection model |
+| `PADDLEOCR_RECOGNITION_MODEL_NAME` | `ta_PP-OCRv5_mobile_rec` | Text recognition model |
+| `PADDLEOCR_DET_MODEL_DIR` | unset | Optional local detection model directory |
+| `PADDLEOCR_REC_MODEL_DIR` | unset | Optional local recognition model directory |
+
+### Registry, authentication, and storage
+
+| Variable | Application default | Purpose |
+|---|---:|---|
+| `DATABASE_URL` | SQLite database in the project directory | SQLAlchemy database URL |
+| `AUTH_SECRET` | insecure development placeholder | HS256 development/session signing secret |
+| `AUTH_ISSUER` | `ocr-land-registry` | Required token issuer |
+| `AUTH_AUDIENCE` | `ocr-land-api` | Required token audience |
+| `DEMO_AUTH_ENABLED` | `true` | Enable the temporary access-code login |
+| `DEMO_ACCESS_CODE` | `1234` | Temporary demonstration access code |
+| `DEMO_SESSION_MINUTES` | `480` | Demonstration session lifetime |
+| `SECURE_UPLOAD_DIR` | `private_uploads` | Local private document root |
 | `UPLOAD_STORAGE_BACKEND` | `local` | `local` or `s3` |
-| `S3_BUCKET`, `S3_PREFIX` | empty / `patta-documents` | Private encrypted object storage |
-| `CLAMAV_HOST`, `CLAMAV_PORT` | empty / `3310` | Malware scanning daemon |
-| `MALWARE_SCAN_REQUIRED` | `false` | Fail closed when scanning is unavailable |
-| `AREA_TOLERANCE_PERCENT` | `10` | Registry/document area warning threshold |
-| `OVERLAP_MIN_SQM` | `1` | Spatial sliver area threshold |
-| `OVERLAP_MIN_PERCENT` | `1` | Spatial sliver percentage threshold |
-| `AUTOMATIC_MATCH_CONFIDENCE` | `0.85` | Automatic match policy threshold |
-| `RATE_LIMIT_REQUESTS` | `60` | Protected writes per identity/window |
-| `RATE_LIMIT_WINDOW_SECONDS` | `60` | In-process limiter window |
+| `S3_BUCKET` | empty | Required for S3 storage |
+| `S3_PREFIX` | `patta-documents` | Private S3 object prefix |
+| `CLAMAV_HOST` | empty | ClamAV host; omitted scanning is allowed only outside fail-closed mode |
+| `CLAMAV_PORT` | `3310` | ClamAV daemon port |
+| `MALWARE_SCAN_REQUIRED` | `false` | Reject uploads if scanning is unavailable |
 
-Terminate TLS at a trusted ingress, encrypt database/storage/backups at rest, and use managed secrets in production. For multiple API replicas, replace the in-process rate-limit store with a shared gateway/Redis policy.
+### Matching, overlap, limits, and optional enrichment
 
-### Tests and operations
+| Variable | Application default | Purpose |
+|---|---:|---|
+| `AREA_TOLERANCE_PERCENT` | `10` | Warn when document and official area differ beyond this percentage |
+| `AUTOMATIC_MATCH_CONFIDENCE` | `0.85` | Minimum confidence for an automatic match |
+| `OVERLAP_MIN_SQM` | `1` | Minimum intersection area treated as a conflict |
+| `OVERLAP_MIN_PERCENT` | `1` | Minimum intersection percentage of the smaller parcel |
+| `RATE_LIMIT_REQUESTS` | `60` | Protected requests allowed per identity/window |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | In-process rate-limit window |
+| `LLM_API_KEY` | empty | Enables optional prompt and contextual enrichment |
+| `LLM_BASE_URL` | Groq OpenAI-compatible endpoint | OpenAI-compatible API base URL |
+| `LLM_MODEL_NAME` | `openai/gpt-oss-120b` | Provider model identifier |
 
-Run all tests with `python -m pytest -q`. The suite covers existing OCR behavior plus normalization, aliases, area conversion, migration, GeoJSON idempotency, exact/fuzzy resolution, transactional exact/spatial claim rejection, browser and bearer authentication, protected patta retrieval, UI delivery, and privacy-safe registry responses.
+When `ENVIRONMENT=production`, startup rejects a default/short `AUTH_SECRET`, SQLite, or disabled fail-closed malware scanning.
 
-See [operations](docs/OPERATIONS.md) for alerts and tested backup/restore procedures, and [privacy and retention](docs/PRIVACY_RETENTION.md) for the production policy baseline.
+## Testing
+
+Run the complete Python suite:
+
+```bash
+python -m pytest -q
+```
+
+Run the dependency-free browser-logic suite:
+
+```bash
+node --test tests/land_mapping_ui.test.js
+```
+
+Useful focused checks:
+
+```bash
+python -m pytest -q tests/test_patta_extraction.py tests/test_parcel_resolver.py
+python -m pytest -q tests/test_claim_eligibility.py tests/test_claim_service.py
+python -m pytest -q tests/test_land_api.py tests/test_land_mapping_ui.py
+python -m pytest -q tests/test_migrations.py tests/test_production_safeguards.py
+```
+
+## Security and privacy boundaries
+
+- Uploaded registry documents are stored outside the public static directory.
+- Local paths are resolved beneath the configured private root; S3 keys are constrained to the configured prefix.
+- Patta responses are authenticated, use `Cache-Control: private, no-store`, and are audited.
+- File extension, MIME signature, size, filename, and decodability are validated.
+- Production uploads fail closed when ClamAV is unavailable.
+- Registry responses exclude claimant IDs and private storage keys.
+- JWT issuer, audience, timestamps, signature, and database-backed subject are validated.
+- Database roles, not token role claims, determine administrator access.
+- Request IDs are returned and written to metadata-only access logs.
+- Raw OCR text, document content, access tokens, and signed storage URLs must not be logged.
+
+See [Privacy and retention](docs/PRIVACY_RETENTION.md) for the baseline data policy.
+
+## Production checklist
+
+Before using this system with real records:
+
+- Replace the demonstration access code with an approved OIDC identity provider.
+- Use PostgreSQL/PostGIS and apply all Alembic migrations.
+- Import licensed, authoritative cadastral boundaries with provenance.
+- Remove synthetic parcels from the user-facing database.
+- Enable fail-closed malware scanning.
+- Use managed secrets and rotate all demonstration credentials.
+- Terminate TLS at a trusted ingress.
+- Encrypt database, object storage, and backups at rest.
+- Use private S3 or an equivalently controlled document store.
+- Replace the in-process rate limiter when running multiple API replicas.
+- Establish the approved retention period, legal hold, access/export, and erasure processes.
+- Test backup restoration in an isolated environment.
+- Obtain security, privacy, accessibility, and legal review.
+
+See [Operations](docs/OPERATIONS.md) for monitoring, backup, restore, import, and incident-response guidance.
+
+## Troubleshooting
+
+### The API exits during startup
+
+With `ENVIRONMENT=production`, verify that `AUTH_SECRET` contains at least 32 non-default characters, `DATABASE_URL` points to PostgreSQL/PostGIS, and `MALWARE_SCAN_REQUIRED=true`.
+
+### OCR initialization fails or the first request is slow
+
+Confirm that PaddlePaddle is supported on the host and that the container can download the configured models. Docker Compose preserves downloads in the `paddle_models` volume. Local model directories can be supplied with `PADDLEOCR_DET_MODEL_DIR` and `PADDLEOCR_REC_MODEL_DIR`.
+
+### Extracted fields remain blank
+
+OCR confidence does not guarantee that the required parcel fields were recognized. Check image clarity and rotation, then use **Show OCR sources** and correct the fields manually. Parcel resolution still requires the full administrative and survey key.
+
+### The parcel is not found in the registry
+
+Confirm that reference data was imported and that state, district, taluk, village, survey number, and subdivision match the registry record. The application does not geocode a place name or invent a polygon when the cadastral record is absent.
+
+### Claim registration returns `409`
+
+This is expected when the parcel ID is already claimed or its polygon materially overlaps active claimed land. Inspect the existing parcel in the **Claimed land** view instead of creating another claim.
+
+### A stored patta cannot be opened
+
+Check that the private upload volume or S3 object still exists and that the current process uses the same `SECURE_UPLOAD_DIR` or S3 configuration used when the document was registered.
+
+## Additional documentation
+
+- [Operations guide](docs/OPERATIONS.md)
+- [Privacy and retention baseline](docs/PRIVACY_RETENTION.md)
+- [Exclusive land-claims design](docs/superpowers/specs/2026-08-26-exclusive-land-claims-design.md)
+- [Exclusive land-claims implementation plan](docs/superpowers/plans/2026-08-26-exclusive-land-claims.md)
+
+## License
+
+No license file is currently included. Treat the repository as all rights reserved until the project owner adds an explicit license.
