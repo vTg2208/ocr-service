@@ -4,6 +4,10 @@ const test = require('node:test');
 const FRAWorkspace = require('../app/static/fra/app.js');
 const FRAArchiveUI = require('../app/static/fra/archive.js');
 const FRAApi = require('../app/static/fra/api.js');
+const FRAAtlasUI = require('../app/static/fra/atlas.js');
+const FRAAssetsUI = require('../app/static/fra/assets.js');
+const FRAPlannerUI = require('../app/static/fra/planner.js');
+const FRAReportsUI = require('../app/static/fra/reports.js');
 
 test('workspace preserves Tamil Nadu context between sections', () => {
   const state = FRAWorkspace.reduce(FRAWorkspace.initialState(),
@@ -39,4 +43,21 @@ test('API helper unwraps application errors without leaking markup', async () =>
     })),
     (error) => error.message === '<script>bad</script>' && error.status === 422,
   );
+});
+
+test('atlas query uses the same filters for features and summary', () => {
+  const filters = { district: 'Thanjavur', right_type: 'IFR', status: 'granted' };
+  assert.equal(FRAAtlasUI.query(filters), 'district=Thanjavur&right_type=IFR&status=granted');
+});
+
+test('asset and DSS copy never presents automation as a decision', () => {
+  assert.match(FRAAssetsUI.legalRole(), /supporting evidence/i);
+  assert.match(FRAPlannerUI.disclaimer(), /does not approve or sanction/i);
+  assert.doesNotMatch(`${FRAAssetsUI.legalRole()} ${FRAPlannerUI.disclaimer()}`, /legally valid/i);
+});
+
+test('report URLs are constrained to known protected subjects', () => {
+  assert.equal(FRAReportsUI.reportUrl('villages', 'v-1'), '/api/fra/reports/villages/v-1');
+  assert.equal(FRAReportsUI.reportUrl('archive', 'r 1'), '/api/fra/reports/archive/r%201');
+  assert.equal(FRAReportsUI.reportUrl('unknown', 'x'), null);
 });

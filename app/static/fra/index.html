@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <link rel="stylesheet" href="/static/fra/styles.css?v=20260826.1">
+  <link rel="stylesheet" href="/static/fra/styles.css?v=20260826.2">
 </head>
 <body>
   <a class="skip-link" id="skipLink" href="#workspaceMain">Skip to workspace</a>
@@ -71,14 +71,64 @@
             </article>
           </div>
         </section>
-        <section class="workspace-panel" id="atlasPanel" data-panel="atlas" aria-labelledby="atlasTitle" hidden><header class="workspace-title"><div><h1 id="atlasTitle">FRA Atlas</h1><p>Explore Tamil Nadu village, right, title and supporting asset layers.</p></div></header><div class="workspace-placeholder" id="atlasWorkspace">Atlas workspace is loading.</div></section>
-        <section class="workspace-panel" id="assetsPanel" data-panel="assets" aria-labelledby="assetsTitle" hidden><header class="workspace-title"><div><h1 id="assetsTitle">Assets</h1><p>Run versioned observations and record human verification.</p></div></header><div class="workspace-placeholder" id="assetsWorkspace">Asset workspace is loading.</div></section>
-        <section class="workspace-panel" id="plannerPanel" data-panel="planner" aria-labelledby="plannerTitle" hidden><header class="workspace-title"><div><h1 id="plannerTitle">DSS Planner</h1><p>Inspect explainable recommendations and manage advisory referrals.</p></div></header><div class="workspace-placeholder" id="plannerWorkspace">Planner workspace is loading.</div></section>
-        <section class="workspace-panel" id="reportsPanel" data-panel="reports" aria-labelledby="reportsTitle" hidden><header class="workspace-title"><div><h1 id="reportsTitle">Reports</h1><p>Open privacy-safe printable case and village reports.</p></div></header><div class="workspace-placeholder" id="reportsWorkspace">Report workspace is loading.</div></section>
+        <section class="workspace-panel" id="atlasPanel" data-panel="atlas" aria-labelledby="atlasTitle" hidden>
+          <header class="workspace-title"><div><h1 id="atlasTitle">FRA Atlas</h1><p>Explore Tamil Nadu village, right, title and supporting asset layers.</p></div><span>Reference view</span></header>
+          <div class="map-workspace">
+            <aside class="tool-sheet">
+              <form id="atlasFilters" class="stacked-form">
+                <div class="section-bar"><h2>Atlas filters</h2><span>One shared query</span></div>
+                <label><span>Right type</span><select name="right_type"><option value="">All rights</option><option>IFR</option><option>CR</option><option>CFR</option></select></label>
+                <label><span>Claim status</span><select name="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="filed">Filed</option><option value="granted">Granted</option><option value="rejected">Rejected</option></select></label>
+                <label><span>Tribal group</span><input name="tribal_group" placeholder="Optional exact match"></label>
+                <label><span>Year</span><input name="year" inputmode="numeric" pattern="[0-9]{4}" placeholder="YYYY"></label>
+                <fieldset id="atlasLayers"><legend>Visible layers</legend><label><input type="checkbox" name="layers" value="village" checked>Villages</label><label><input type="checkbox" name="layers" value="claim" checked>Claims</label><label><input type="checkbox" name="layers" value="title" checked>Titles</label><label><input type="checkbox" name="layers" value="asset" checked>Assets</label></fieldset>
+                <button class="primary-action" type="submit">Apply to map and summary</button>
+              </form>
+              <section id="atlasSummary" class="summary-ledger" aria-live="polite"><p>Open the Atlas to load the Tamil Nadu summary.</p></section>
+            </aside>
+            <div class="map-sheet"><div id="atlasMap" class="map-canvas" role="img" aria-label="Filtered Tamil Nadu FRA features"></div><p class="map-note">Boundaries and observations shown in this demonstration are synthetic and not authoritative.</p></div>
+            <aside class="result-sheet"><div class="section-bar"><h2>Mapped records</h2><span id="atlasFeatureCount">0 features</span></div><ol id="atlasResults" class="result-list" aria-label="Filtered Atlas features"></ol></aside>
+          </div>
+        </section>
+        <section class="workspace-panel" id="assetsPanel" data-panel="assets" aria-labelledby="assetsTitle" hidden>
+          <header class="workspace-title"><div><h1 id="assetsTitle">Assets</h1><p>Run versioned observations and record human verification.</p></div><span>Human-in-the-loop</span></header>
+          <p class="legal-warning">Every model observation is supporting evidence and requires human verification; it does not determine legal validity.</p>
+          <div class="asset-workspace">
+            <aside class="tool-sheet">
+              <form id="assetInferenceForm" class="stacked-form">
+                <div class="section-bar"><h2>New observation</h2><span>Queued job</span></div>
+                <label><span>Active model</span><select id="assetModel" required><option value="">No active model attached</option></select></label>
+                <label><span>Village</span><select id="assetVillage"><option value="">Choose a village</option></select></label>
+                <label><span>Scene reference</span><input id="assetScene" required value="synthetic-tn-scene-001"></label>
+                <label><span>Asset class</span><select id="assetClass"><option value="water_body">Water body</option><option value="agricultural_cover">Agricultural cover</option><option value="forest_cover">Forest cover</option><option value="homestead">Homestead</option></select></label>
+                <button class="primary-action" type="submit">Queue inference</button>
+                <p id="assetJobStatus" class="inline-status" aria-live="polite"></p>
+              </form>
+            </aside>
+            <div class="map-sheet"><div id="assetMap" class="map-canvas" role="img" aria-label="Supporting asset observations"></div><p class="map-note">Confidence is displayed as model provenance, never as an entitlement decision.</p></div>
+            <aside class="result-sheet"><div class="section-bar"><h2>Observation register</h2><button id="refreshAssets" class="text-action" type="button">Refresh</button></div><ol id="assetList" class="result-list" aria-label="Asset observations"></ol></aside>
+          </div>
+        </section>
+        <section class="workspace-panel" id="plannerPanel" data-panel="planner" aria-labelledby="plannerTitle" hidden>
+          <header class="workspace-title"><div><h1 id="plannerTitle">DSS Planner</h1><p>Inspect explainable recommendations and manage advisory referrals.</p></div><span>Advisory only</span></header>
+          <p class="legal-warning">This decision-support workspace does not approve or sanction benefits. A responsible department must independently review every referral.</p>
+          <div class="planner-layout">
+            <aside class="tool-sheet"><form id="recommendationFilters" class="stacked-form"><div class="section-bar"><h2>Recommendation filters</h2><span>Explainable rules</span></div><label><span>Outcome</span><select name="outcome"><option value="">All outcomes</option><option value="eligible">Eligible</option><option value="potentially_eligible">Potentially eligible</option><option value="not_eligible">Not eligible</option><option value="insufficient_data">Insufficient data</option></select></label><label><span>Scheme code</span><input name="scheme_code" placeholder="Optional exact code"></label><label><span>Referral department</span><input id="referralDepartment" value="District Rural Development Agency" required></label><button class="primary-action" type="submit">Load recommendations</button></form></aside>
+            <section class="recommendation-sheet"><div class="section-bar"><h2>Advisory recommendations</h2><span id="recommendationCount">0 records</span></div><ol id="recommendationList" class="recommendation-list" aria-live="polite"></ol></section>
+          </div>
+        </section>
+        <section class="workspace-panel" id="reportsPanel" data-panel="reports" aria-labelledby="reportsTitle" hidden>
+          <header class="workspace-title"><div><h1 id="reportsTitle">Reports</h1><p>Open privacy-safe printable case and village reports.</p></div><span>Protected output</span></header>
+          <div class="report-grid">
+            <section class="report-sheet"><span class="report-kicker">Village profile</span><h2>Context report</h2><p>Summarizes reference attributes, FRA counts and provenance for one Tamil Nadu village.</p><label><span>Village</span><select id="reportVillage"><option value="">Choose a village</option></select></label><button id="openVillageReport" class="primary-action" type="button">Open village report</button></section>
+            <section class="report-sheet"><span class="report-kicker">Archive evidence</span><h2>Reviewer case sheet</h2><p>Shows source, extraction, reviewed fields and audit-safe provenance. Reviewer access is required.</p><label><span>Archive record ID</span><input id="reportArchive" placeholder="UUID from Archive"></label><button id="openArchiveReport" class="secondary-action" type="button">Open archive report</button></section>
+            <aside class="print-guidance"><strong>Print / Save as PDF</strong><p>Reports open in a protected, no-store view. Use the browser print dialog only for an approved case purpose.</p><p>Personal fields are minimized by role and report type.</p></aside>
+          </div>
+        </section>
       </main>
     </div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="/static/fra/api.js?v=20260826.1"></script><script src="/static/fra/archive.js?v=20260826.1"></script><script src="/static/fra/app.js?v=20260826.1"></script>
+  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260826.2"></script><script src="/static/fra/atlas.js?v=20260826.2"></script><script src="/static/fra/assets.js?v=20260826.2"></script><script src="/static/fra/planner.js?v=20260826.2"></script><script src="/static/fra/reports.js?v=20260826.2"></script><script src="/static/fra/app.js?v=20260826.2"></script>
 </body>
 </html>

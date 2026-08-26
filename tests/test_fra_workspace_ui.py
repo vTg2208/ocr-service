@@ -51,9 +51,24 @@ class FRAWorkspaceUITests(unittest.TestCase):
 
     def test_workspace_uses_modular_scripts_and_leaflet(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
-        for script in ("api.js", "app.js", "archive.js"):
+        for script in (
+            "api.js", "app.js", "archive.js", "atlas.js", "assets.js", "planner.js", "reports.js"
+        ):
             self.assertIn(f"/static/fra/{script}", html)
         self.assertIn("leaflet", html.casefold())
+
+    def test_remaining_workspaces_have_real_controls_maps_lists_and_warnings(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+        parser = WorkspaceParser(); parser.feed(html)
+        self.assertTrue({
+            "atlasFilters", "atlasMap", "atlasSummary", "atlasResults", "atlasLayers",
+            "assetInferenceForm", "assetModel", "assetVillage", "assetList", "assetMap",
+            "recommendationFilters", "recommendationList", "referralDepartment",
+            "reportVillage", "reportArchive", "openVillageReport", "openArchiveReport",
+        }.issubset(parser.ids))
+        self.assertIn("supporting evidence and requires human verification", html)
+        self.assertIn("does not approve or sanction benefits", html)
+        self.assertIn("Print / Save as PDF", html)
 
     def test_styles_have_existing_palette_visible_focus_and_mobile_layout(self):
         css = (UI_ROOT / "styles.css").read_text(encoding="utf-8")
