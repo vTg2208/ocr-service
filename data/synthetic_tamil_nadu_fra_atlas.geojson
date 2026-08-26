@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "state_code": "TN",
+    "state_name": "Tamil Nadu",
+    "synthetic": true,
+    "source": "Synthetic final-year project boundary pack; not authoritative",
+    "version": "tn-demo-v1"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[79.10, 10.70], [79.12, 10.70], [79.12, 10.72], [79.10, 10.72], [79.10, 10.70]]]},
+      "properties": {"district_code": "TN-13", "district_name": "Thanjavur", "block_code": "TN-13-01", "block_name": "Kumbakonam", "village_code": "TN-13-01-001", "village_name": "Kottur Demo", "tribal_groups": ["Synthetic Irular community"], "socioeconomic": {"water_access": "demo_unknown"}}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[78.64, 11.48], [78.66, 11.48], [78.66, 11.50], [78.64, 11.50], [78.64, 11.48]]]},
+      "properties": {"district_code": "TN-07", "district_name": "Salem", "block_code": "TN-07-02", "block_name": "Yercaud", "village_code": "TN-07-02-001", "village_name": "Aranya Malai Demo", "tribal_groups": ["Synthetic Malayali community"], "socioeconomic": {"forest_access": "demo_present"}}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[76.73, 11.42], [76.75, 11.42], [76.75, 11.44], [76.73, 11.44], [76.73, 11.42]]]},
+      "properties": {"district_code": "TN-11", "district_name": "The Nilgiris", "block_code": "TN-11-03", "block_name": "Kotagiri", "village_code": "TN-11-03-001", "village_name": "Solai Demo", "tribal_groups": ["Synthetic Kurumba community"], "socioeconomic": {"housing_fact": "demo_missing"}}
+    }
+  ]
+}
