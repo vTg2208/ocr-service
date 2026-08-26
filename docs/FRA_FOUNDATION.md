@@ -118,4 +118,4 @@ docker compose config --quiet
 git diff --check
 ```
 
-The expected Alembic head is `20260826_0003`. Passing local tests demonstrates software behavior with synthetic data; it does not validate remote-sensing accuracy, legal sufficiency, scheme authority, or production integrations.
+The expected Alembic head is `20260826_0004`. Passing local tests demonstrates software behavior with synthetic data; it does not validate remote-sensing accuracy, legal sufficiency, scheme authority, or production integrations.
