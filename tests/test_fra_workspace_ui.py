@@ -58,6 +58,15 @@ class FRAWorkspaceUITests(unittest.TestCase):
             self.assertIn(f"/static/fra/{script}", html)
         self.assertIn("leaflet", html.casefold())
 
+    def test_workspace_navigation_uses_supplied_section_icons(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+        icon_names = ("archieve.png", "atlas.png", "assets.png", "planner.png", "reports.png")
+        for icon_name in icon_names:
+            with self.subTest(icon=icon_name):
+                self.assertIn(f'/static/fra/icons/{icon_name}', html)
+                self.assertTrue((UI_ROOT / "icons" / icon_name).is_file())
+        self.assertEqual(html.count('class="rail-icon"'), 5)
+
     def test_remaining_workspaces_have_real_controls_maps_lists_and_warnings(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         parser = WorkspaceParser(); parser.feed(html)

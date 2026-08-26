@@ -23,8 +23,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .rail-brand strong { display: block; font: 700 1.6rem/1.1 "Literata", serif; letter-spacing: -.03em; }
 .rail-brand small { display: block; margin-top: 4px; color: color-mix(in oklch, white 78%, transparent); font-size: .65rem; }
 #workspaceNav { padding: var(--space-5) var(--space-3); display: grid; gap: var(--space-2); }
-.rail-link { width: 100%; min-height: 50px; padding: 10px 12px; display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: center; color: color-mix(in oklch, white 86%, transparent); text-align: left; border: 1px solid transparent; border-radius: 2px; background: transparent; }
-.rail-link span { width: 26px; height: 26px; display: grid; place-items: center; color: var(--green-900); background: var(--paper-50); font: 700 .68rem "Literata", serif; }
+.rail-link { width: 100%; min-height: 56px; padding: 9px 10px; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; color: color-mix(in oklch, white 86%, transparent); text-align: left; border: 1px solid transparent; border-radius: 2px; background: transparent; }
+.rail-icon { width: 32px; height: 32px; padding: 2px; display: block; flex: 0 0 auto; object-fit: contain; border: 1px solid color-mix(in oklch, white 32%, transparent); border-radius: 7px; background: var(--paper-50); }
 .rail-link:hover, .rail-link.active { color: white; background: color-mix(in oklch, white 13%, transparent); }
 .rail-link.active { border-color: color-mix(in oklch, white 18%, transparent); }
 .rail-secondary { margin: auto var(--space-4) var(--space-5); padding-top: var(--space-4); color: color-mix(in oklch, white 78%, transparent); border-top: 1px solid color-mix(in oklch, white 28%, transparent); font-size: .72rem; text-decoration: none; }
@@ -152,7 +152,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .rail-brand { min-height: 76px; padding: 10px 14px; display: flex; justify-content: start; text-align: left; }
   .brand-emblem { width: 48px; height: 48px; }.brand-emblem img { width: 110px; transform: translate(-30px, -22px); }
   #workspaceNav { padding: 8px; display: flex; gap: 4px; overflow-x: auto; }
-  .rail-link { min-width: max-content; min-height: 44px; display: flex; padding: 8px 10px; }.rail-link span { display: none; }.rail-secondary { display: none; }
+  .rail-link { min-width: max-content; min-height: 44px; display: flex; padding: 7px 9px; }.rail-icon { width: 26px; height: 26px; padding: 1px; border-radius: 6px; }.rail-secondary { display: none; }
   .context-bar { grid-template-columns: 1fr 1fr; }.context-bar label { border-bottom: 1px solid var(--rule); }
   .session-account { grid-column: 1 / -1; grid-row: auto; justify-content: space-between; }
   .warning-strip { margin: 12px; display: grid; justify-content: stretch; text-align: left; }
