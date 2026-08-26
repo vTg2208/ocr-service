@@ -22,6 +22,12 @@ class LocalPrivateStorage:
         if self.root in target.parents:
             target.unlink(missing_ok=True)
 
+    def read(self, key: str) -> bytes:
+        target = (self.root / key).resolve()
+        if self.root not in target.parents:
+            raise ValueError("Invalid storage path.")
+        return target.read_bytes()
+
 
 class S3PrivateStorage:
     def __init__(self, bucket: str, prefix: str):
@@ -41,6 +47,11 @@ class S3PrivateStorage:
 
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=key)
+
+    def read(self, key: str) -> bytes:
+        if not key.startswith(f"{self.prefix}/"):
+            raise ValueError("Invalid storage key.")
+        return self.client.get_object(Bucket=self.bucket, Key=key)["Body"].read()
 
 
 def create_storage(settings):

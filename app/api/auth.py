@@ -1,9 +1,10 @@
 """Minimal bearer identity adapter; replace with an OIDC verifier in production."""
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import Depends, Header, HTTPException
+from fastapi import Cookie, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,7 @@ from app.db.session import get_db
 from app.config import get_settings
 
 settings = get_settings()
+SESSION_COOKIE = "parcel_registry_session"
 
 
 @dataclass(frozen=True)
@@ -22,12 +24,34 @@ class AuthenticatedUser:
     display_name: str | None
 
 
+def create_access_token(external_id: str, *, minutes: int) -> str:
+    now = datetime.now(timezone.utc)
+    return jwt.encode(
+        {
+            "sub": external_id,
+            "iat": now,
+            "exp": now + timedelta(minutes=minutes),
+            "iss": settings.auth_issuer,
+            "aud": settings.auth_audience,
+        },
+        settings.auth_secret,
+        algorithm="HS256",
+    )
+
+
 def get_current_user(
-    authorization: str | None = Header(None), db: Session = Depends(get_db),
+    authorization: str | None = Header(None),
+    session_token: str | None = Cookie(None, alias=SESSION_COOKIE),
+    db: Session = Depends(get_db),
 ) -> AuthenticatedUser:
-    if not authorization or not authorization.startswith("Bearer "):
+    if authorization:
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Authentication required.")
+        token = authorization[7:].strip()
+    else:
+        token = session_token
+    if not token:
         raise HTTPException(status_code=401, detail="Authentication required.")
-    token = authorization[7:].strip()
     try:
         claims = jwt.decode(
             token, settings.auth_secret, algorithms=["HS256"],

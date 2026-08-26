@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     auth_secret: str = "change-me-in-production"
     auth_issuer: str = "ocr-land-registry"
     auth_audience: str = "ocr-land-api"
+    demo_auth_enabled: bool = True
+    demo_access_code: str = "1234"
+    demo_session_minutes: int = 480
     upload_storage_backend: str = "local"
     s3_bucket: str = ""
     s3_prefix: str = "patta-documents"

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff sign in — Parcel Ledger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/login/styles.css?v=20260826.1">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-card" aria-labelledby="loginTitle">
+      <header class="login-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40"><path d="M7 30 18 8l15 22zM12 25h16M16 17h8"/></svg>
+        </span>
+        <span><small>Central cadastral registry</small><strong>Parcel Ledger</strong></span>
+      </header>
+      <div class="login-copy">
+        <p>Registry staff</p>
+        <h1 id="loginTitle">Sign in</h1>
+        <span>Enter your four-digit access code.</span>
+      </div>
+      <form id="loginForm" novalidate>
+        <label for="accessCode">Access code</label>
+        <input id="accessCode" name="access_code" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" required autofocus>
+        <button id="loginButton" type="submit">Continue</button>
+        <p id="loginStatus" class="login-status" role="status" aria-live="polite"></p>
+      </form>
+      <footer>Demonstration access for authorized registry staff.</footer>
+    </section>
+  </main>
+  <script src="/static/login/app.js?v=20260826.1"></script>
+</body>
+</html>

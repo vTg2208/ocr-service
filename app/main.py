@@ -11,12 +11,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.api.land_routes import router as land_router
 from app.api.patta_routes import router as patta_router
+from app.api.session_routes import router as session_router
+from app.api.claim_registry_routes import router as claim_registry_router
 from app.config import get_settings
 from app.middleware import RequestContextMiddleware
 
@@ -56,9 +58,21 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(land_router)
 app.include_router(patta_router)
+app.include_router(session_router)
+app.include_router(claim_registry_router)
 
 static_root = Path(__file__).parent / "static"
 app.mount("/static", RevalidatingStaticFiles(directory=static_root), name="static")
+
+
+@app.get("/", include_in_schema=False)
+async def root_redirect() -> RedirectResponse:
+    return RedirectResponse("/login")
+
+
+@app.get("/login", include_in_schema=False)
+async def login_ui() -> FileResponse:
+    return FileResponse(static_root / "login" / "index.html")
 
 
 @app.get("/land-mapping", include_in_schema=False)
