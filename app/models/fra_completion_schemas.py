@@ -64,3 +64,18 @@ class AssetReviewCreate(StrictModel):
     reasons: list[str] = Field(default_factory=list)
     corrected_value: dict[str, Any] | None = None
     corrected_geometry: dict[str, Any] | None = None
+
+
+class DSSReferralCreate(StrictModel):
+    department: str = Field(min_length=1, max_length=255)
+    priority: Literal["low", "normal", "high", "urgent"] = "normal"
+    idempotency_key: str = Field(min_length=1, max_length=255)
+    assigned_to: str | None = Field(default=None, max_length=255)
+    notes: str | None = None
+
+
+class DSSReferralUpdate(StrictModel):
+    status: Literal["referred", "under_review", "closed", "withdrawn"]
+    expected_revision: int = Field(ge=0)
+    assigned_to: str | None = Field(default=None, max_length=255)
+    notes: str | None = None

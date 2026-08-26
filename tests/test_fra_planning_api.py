@@ -1,0 +1,115 @@
+import unittest
+import uuid
+from datetime import datetime, timedelta, timezone
+
+import jwt
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.api.auth import settings
+from app.db.base import Base
+from app.db.fra_completion_models import FRAVillageProfile
+from app.db.fra_models import DSSRecommendation, FRAClaim, RightsHolder, SchemeRuleSet
+from app.db.models import User
+from app.db.session import get_db
+from app.main import app
+from tests.test_fra_reports import BOUNDARY
+
+
+class FRAPlanningAPITests(unittest.TestCase):
+    def setUp(self):
+        self.engine = create_engine(
+            "sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(self.engine)
+        self.factory = sessionmaker(bind=self.engine, expire_on_commit=False)
+
+        def db_override():
+            with self.factory() as session:
+                yield session
+
+        app.dependency_overrides[get_db] = db_override
+        with self.factory() as session:
+            staff = User(external_id="planning-staff", display_name="Staff", role="user")
+            reviewer = User(external_id="planning-reviewer", display_name="Reviewer", role="reviewer")
+            session.add_all([staff, reviewer]); session.flush()
+            holder = RightsHolder(display_name="Synthetic holder", holder_type="individual")
+            claim = FRAClaim(
+                claim_number="TN-PLAN-1", right_type="IFR", status="granted",
+                rights_holder=holder, submitted_by=reviewer.id, provenance_json={"synthetic": True},
+            )
+            rule = SchemeRuleSet(
+                scheme_code="DEMO-WATER", display_name="Demo Water", version="demo-v1",
+                required_facts_json=[], condition_json={"present": {"fact": "x"}},
+                recommendation_text="Refer for review", source_reference="demo://rule",
+                created_by=reviewer.id,
+            )
+            village = FRAVillageProfile(
+                state_code="TN", state_name="Tamil Nadu", district_code="TN-13",
+                district_name="Thanjavur", block_code="TN-13-01", block_name="Kumbakonam",
+                village_code="TN-13-01-001", village_name="Kottur Demo", boundary=BOUNDARY,
+                tribal_groups_json=[], socioeconomic_json={}, provenance_json={"synthetic": True},
+                reference_version="demo-v1", synthetic=True,
+            )
+            session.add_all([claim, rule, village]); session.flush()
+            recommendation = DSSRecommendation(
+                claim=claim, rule_set=rule, rule_version=rule.version, actor_id=reviewer.id,
+                idempotency_key="plan-eval", outcome="recommended", input_json={"facts": {}},
+                output_json={"reasons": ["Demo reason"], "missing_inputs": [], "advisory_only": True},
+            )
+            session.add(recommendation); session.commit()
+            self.recommendation_id = str(recommendation.id)
+            self.village_id = str(village.id)
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        self.client.close(); app.dependency_overrides.clear(); self.engine.dispose()
+
+    @staticmethod
+    def headers(external_id="planning-staff"):
+        now = datetime.now(timezone.utc)
+        token = jwt.encode(
+            {"sub": external_id, "iat": now, "exp": now + timedelta(minutes=5),
+             "iss": settings.auth_issuer, "aud": settings.auth_audience},
+            settings.auth_secret, algorithm="HS256",
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+    def test_recommendations_are_advisory_and_referrals_require_reviewer(self):
+        listed = self.client.get("/api/fra/dss/recommendations", headers=self.headers())
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertTrue(listed.json()["items"][0]["advisory_only"])
+        payload = {"department": "Rural Development", "priority": "high", "idempotency_key": "api-ref-1"}
+        denied = self.client.post(
+            f"/api/fra/dss/recommendations/{self.recommendation_id}/referrals",
+            headers=self.headers(), json=payload,
+        )
+        self.assertEqual(denied.status_code, 403)
+        created = self.client.post(
+            f"/api/fra/dss/recommendations/{self.recommendation_id}/referrals",
+            headers=self.headers("planning-reviewer"), json=payload,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        self.assertTrue(created.json()["advisory_only"])
+        updated = self.client.patch(
+            f"/api/fra/dss/referrals/{created.json()['id']}",
+            headers=self.headers("planning-reviewer"),
+            json={"status": "under_review", "notes": "Assigned", "expected_revision": 0},
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+
+    def test_printable_village_report_is_private_and_no_store(self):
+        response = self.client.get(
+            f"/api/fra/reports/villages/{self.village_id}", headers=self.headers()
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/html", response.headers["content-type"])
+        self.assertEqual(response.headers["cache-control"], "private, no-store")
+        self.assertIn("advisory and do not approve or sanction", response.text)
+
+
+if __name__ == "__main__":
+    unittest.main()
