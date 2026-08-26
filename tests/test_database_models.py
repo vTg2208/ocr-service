@@ -36,6 +36,16 @@ class DatabaseModelTests(unittest.TestCase):
                 "satellite_observations",
                 "scheme_rule_sets",
                 "dss_recommendations",
+                "fra_import_batches",
+                "fra_archive_records",
+                "fra_extraction_runs",
+                "processing_jobs",
+                "model_versions",
+                "inference_runs",
+                "fra_village_profiles",
+                "asset_features",
+                "dss_referrals",
+                "report_artifacts",
             },
         )
 
