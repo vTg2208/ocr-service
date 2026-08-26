@@ -6,7 +6,7 @@
     "authoritative": false,
     "warning": "Development-only synthetic cadastral boundaries. Never present as authoritative land data.",
     "source_version": "synthetic-2026-01",
-    "feature_count": 50
+    "feature_count": 52
   },
   "features": [
     {
@@ -2205,6 +2205,75 @@
               79.3908,
               10.9648
             ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-751-Z",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "Thanjavur",
+        "taluk": "Kumbakonam",
+        "village": "Example Village",
+        "survey_number": "751",
+        "subdivision_number": "Z",
+        "official_area_sqm": 8700,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-751-Z",
+        "boundary_quality": "synthetic-irregular-demo"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.3936, 10.96],
+            [79.39395, 10.9599],
+            [79.39435, 10.96005],
+            [79.39465, 10.96022],
+            [79.39475, 10.96055],
+            [79.3945, 10.96078],
+            [79.3942, 10.96068],
+            [79.39408, 10.96045],
+            [79.3939, 10.96072],
+            [79.39358, 10.9606],
+            [79.39342, 10.9603],
+            [79.3936, 10.96]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "synthetic-614-1B-coimbatore",
+      "properties": {
+        "state": "Tamil Nadu",
+        "district": "விழுப்புரம்",
+        "taluk": "விழுப்புரம்",
+        "village": "அற்பிசம்பாளையம்",
+        "survey_number": "614",
+        "subdivision_number": "1B",
+        "official_area_sqm": 500,
+        "source": "SYNTHETIC DEVELOPMENT DATA — NOT AUTHORITATIVE",
+        "source_version": "synthetic-2026-01",
+        "source_record_id": "synthetic-614-1B-coimbatore",
+        "boundary_quality": "synthetic-irregular-demo"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.10488468, 11.09492454],
+            [77.10496156, 11.09489625],
+            [77.10507688, 11.09490568],
+            [77.10512493, 11.09497170],
+            [77.10510571, 11.09506603],
+            [77.10502883, 11.09510375],
+            [77.10492312, 11.09508489],
+            [77.10487507, 11.09502830],
+            [77.10488468, 11.09492454]
           ]
         ]
       }

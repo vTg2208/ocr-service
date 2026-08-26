@@ -1,9 +1,11 @@
 import unittest
 import json
+import math
 from pathlib import Path
 
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
+from shapely.geometry import shape
 
 from app.db.base import Base
 from app.db.models import Parcel
@@ -80,8 +82,10 @@ class ParcelImporterTests(unittest.TestCase):
         self.assertEqual(report.inserted, 1)
         self.assertEqual(report.repaired, 1)
 
-    def test_committed_development_seed_contains_and_imports_fifty_synthetic_parcels(self):
-        payload = json.loads(Path("data/synthetic_example_village.geojson").read_text())
+    def test_committed_development_seed_includes_irregular_synthetic_demo_parcels(self):
+        payload = json.loads(
+            Path("data/synthetic_example_village.geojson").read_text(encoding="utf-8")
+        )
         with Session(self.engine) as session:
             report = import_geojson(payload, session)
             session.commit()
@@ -89,9 +93,31 @@ class ParcelImporterTests(unittest.TestCase):
                 Parcel.village == "Example Village", Parcel.survey_number == "701",
                 Parcel.subdivision_number == "4B",
             ))
-        self.assertEqual((len(payload["features"]), report.inserted), (50, 50))
+            irregular = session.scalar(select(Parcel).where(
+                Parcel.village == "Example Village", Parcel.survey_number == "751",
+                Parcel.subdivision_number == "Z",
+            ))
+            coimbatore_demo = session.scalar(select(Parcel).where(
+                Parcel.district == "விழுப்புரம்", Parcel.village == "அற்பிசம்பாளையம்",
+                Parcel.survey_number == "614", Parcel.subdivision_number == "1B",
+            ))
+        self.assertEqual((payload["metadata"]["feature_count"], len(payload["features"]), report.inserted), (52, 52, 52))
         self.assertFalse(payload["metadata"]["authoritative"])
         self.assertIn("SYNTHETIC", acceptance.source)
+        self.assertIsNotNone(irregular)
+        boundary = shape(irregular.geometry)
+        self.assertGreater(len(boundary.geoms[0].exterior.coords), 10)
+        self.assertLess(boundary.area, boundary.convex_hull.area)
+        self.assertIsNotNone(coimbatore_demo)
+        self.assertEqual(float(coimbatore_demo.official_area_sqm), 500)
+        coimbatore_boundary = shape(coimbatore_demo.geometry)
+        self.assertAlmostEqual(coimbatore_boundary.centroid.x, 77.105, places=3)
+        self.assertAlmostEqual(coimbatore_boundary.centroid.y, 11.095, places=3)
+        metres_per_degree_longitude = 111_320 * math.cos(math.radians(11.095))
+        approximate_area_sqm = (
+            coimbatore_boundary.area * metres_per_degree_longitude * 111_320
+        )
+        self.assertAlmostEqual(approximate_area_sqm, 500, delta=25)
 
 
 if __name__ == "__main__":
