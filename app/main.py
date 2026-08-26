@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -25,8 +25,11 @@ from app.api.fra_operations_routes import router as fra_operations_router
 from app.api.fra_atlas_routes import router as fra_atlas_router
 from app.api.fra_asset_routes import router as fra_asset_router
 from app.api.fra_planning_routes import router as fra_planning_router
+from app.api.auth import SESSION_COOKIE, get_current_user
 from app.config import get_settings
+from app.db.session import get_db
 from app.middleware import RequestContextMiddleware
+from sqlalchemy.orm import Session
 
 settings = get_settings()
 
@@ -90,6 +93,19 @@ async def login_ui() -> FileResponse:
 @app.get("/land-mapping", include_in_schema=False)
 async def land_mapping_ui() -> FileResponse:
     return FileResponse(static_root / "land-mapping" / "index.html")
+
+
+@app.get("/fra", include_in_schema=False)
+async def fra_workspace(request: Request, db: Session = Depends(get_db)):
+    try:
+        get_current_user(
+            authorization=request.headers.get("Authorization"),
+            session_token=request.cookies.get(SESSION_COOKIE),
+            db=db,
+        )
+    except HTTPException:
+        return RedirectResponse("/login")
+    return FileResponse(static_root / "fra" / "index.html")
 
 
 @app.exception_handler(HTTPException)
