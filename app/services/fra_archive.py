@@ -195,12 +195,12 @@ def process_archive_extraction(
             processing_time_ms if processing_time_ms is not None else result.processing_time_ms
         ),
     )
+    session.add(run)
     record.review_state = "needs_review"
     if first_run:
         record.batch.processed_count += 1
     if record.batch.processed_count >= record.batch.record_count:
         record.batch.status = "needs_review"
-    session.add(run)
     session.flush()
     record_audit(
         session,

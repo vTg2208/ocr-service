@@ -125,6 +125,22 @@ def fail_job(
     return job
 
 
+def retry_job(session, job: ProcessingJob) -> ProcessingJob:
+    if job.state not in {"failed", "quarantined"}:
+        raise JobStateError("Only a failed or quarantined job can be retried.")
+    job.state = "queued"
+    job.attempts = 0
+    job.worker_id = None
+    job.started_at = None
+    job.completed_at = None
+    job.error_code = None
+    job.error_message = None
+    job.result_json = {}
+    job.available_at = datetime.now(timezone.utc)
+    session.flush()
+    return job
+
+
 def run_one_job(session, *, worker_id: str, handlers: dict | None = None) -> ProcessingJob | None:
     """Claim and run one job, rolling back every partial domain mutation on failure."""
 
