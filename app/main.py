@@ -19,6 +19,7 @@ from app.api.land_routes import router as land_router
 from app.api.patta_routes import router as patta_router
 from app.api.session_routes import router as session_router
 from app.api.claim_registry_routes import router as claim_registry_router
+from app.api.fra_routes import router as fra_router
 from app.config import get_settings
 from app.middleware import RequestContextMiddleware
 
@@ -60,6 +61,7 @@ app.include_router(land_router)
 app.include_router(patta_router)
 app.include_router(session_router)
 app.include_router(claim_registry_router)
+app.include_router(fra_router)
 
 static_root = Path(__file__).parent / "static"
 app.mount("/static", RevalidatingStaticFiles(directory=static_root), name="static")

@@ -71,3 +71,9 @@ def require_admin(user: AuthenticatedUser = Depends(get_current_user)) -> Authen
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Administrator role required.")
     return user
+
+
+def require_reviewer(user: AuthenticatedUser = Depends(get_current_user)) -> AuthenticatedUser:
+    if user.role not in {"reviewer", "admin"}:
+        raise HTTPException(status_code=403, detail="Reviewer or administrator role required.")
+    return user
