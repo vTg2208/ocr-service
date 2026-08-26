@@ -82,11 +82,11 @@ The satellite endpoint accepts only an explicit synthetic/local scene manifest. 
 
 Submit it to `POST /api/fra/claims/{claim_id}/satellite-observations` after the claim has a geometry version. Every observation creates linked evidence with `legal_role: supporting`, `verification_state: unverified`, and `source_verified: false`. Source URIs are persisted as private provenance and omitted from API responses. Missing manifests return `503` without partial records. Automated fields such as `valid`, `approved`, or `eligibility` are rejected.
 
-Real imagery providers and scientifically validated analysers must be implemented, reviewed, licensed, and calibrated outside this demo adapter before any operational use.
+Real imagery providers and scientifically validated analysers must be implemented, reviewed, licensed, and calibrated outside this sample adapter before any operational use.
 
-## Demo DSS rules
+## Sample DSS rules
 
-[`data/demo_dss_rules.json`](../data/demo_dss_rules.json) contains visibly synthetic water, housing, and livelihood rules. Post each object to `POST /api/fra/dss/rule-sets` with an administrator token. The API validates the constrained `all`, `any`, `eq`, `gte`, `lte`, `present`, and `absent` operators before persistence.
+[`data/demo_dss_rules.json`](../data/demo_dss_rules.json) contains visibly synthetic water, housing, and livelihood sample rules. Post each object to `POST /api/fra/dss/rule-sets` with an administrator token. The API validates the constrained `all`, `any`, `eq`, `gte`, `lte`, `present`, and `absent` operators before persistence.
 
 Evaluate active rules with an `Idempotency-Key` header:
 

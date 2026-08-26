@@ -7,7 +7,7 @@ AranyaSetu accepts Tamil and English patta scans, extracts the parcel reference,
 The legacy registry keeps its exclusive-land rule: exact parcel duplicates and material polygon overlaps are rejected before another legacy claim is stored. Native FRA claims use a separate right-aware policy because IFR, CR, and CFR rights can have different exclusivity and layering rules.
 
 > [!IMPORTANT]
-> This repository is a working demonstration, not a legal land-ownership system. A claim records a patta-to-parcel association; it does not create, transfer, or certify ownership. The included cadastral data is synthetic and must never be presented as authoritative.
+> This repository is a research prototype, not a legal land-ownership system. A claim records a patta-to-parcel association; it does not create, transfer, or certify ownership. The included cadastral data is synthetic and must never be presented as authoritative.
 
 ## What the application does
 
@@ -103,7 +103,7 @@ app/
   db/                     SQLAlchemy models and session management
   models/                 API request and response models
   services/               OCR, extraction, matching, claims, storage, and audit logic
-  static/login/           Demonstration staff sign-in page
+  static/login/           Temporary staff sign-in page
   static/land-mapping/    Upload, verification, registration, and claimed-land UI
   utils/                  Upload validation helpers
 data/
@@ -181,7 +181,7 @@ The GeoJSON file contains 52 synthetic parcels, including irregular shapes used 
 - Liveness: <http://localhost:8000/health>
 - Database readiness: <http://localhost:8000/health/ready>
 
-For the demonstration configuration, sign in with access code `1234` or the value assigned to `DEMO_ACCESS_CODE`.
+For the local sample configuration, sign in with access code `1234` or the value assigned to `DEMO_ACCESS_CODE`.
 
 Seed the complete invented Tamil Nadu FRA story after migrations:
 
@@ -207,7 +207,7 @@ Named volumes preserve the database, private uploads, ClamAV definitions, and do
 - Python 3.11
 - A C/C++ runtime supported by PaddlePaddle
 - Node.js 18 or newer only for the browser-logic tests
-- PostgreSQL/PostGIS for production-like spatial testing, or SQLite for a lightweight demonstration
+- PostgreSQL/PostGIS for production-like spatial testing, or SQLite for lightweight local testing
 
 Create and activate a virtual environment:
 
@@ -252,16 +252,16 @@ The first OCR request can take longer because PaddleOCR may download and initial
 
 ## Authentication
 
-### Demonstration browser login
+### Temporary browser login
 
 `POST /api/auth/demo-login` validates the configured four-digit access code, creates or updates the `registry-demo` database user, and returns an HttpOnly session cookie. The cookie is `SameSite=Strict` and becomes `Secure` when `ENVIRONMENT=production`.
 
-The demonstration code is intentionally temporary. Before a real deployment:
+The access-code authentication is intentionally temporary. Before a real deployment:
 
 - disable `DEMO_AUTH_ENABLED`;
 - replace the local HS256 adapter with the authority's OIDC verifier;
 - provision staff identities and roles from the trusted identity system;
-- rotate `AUTH_SECRET` and invalidate demonstration sessions.
+- rotate `AUTH_SECRET` and invalidate temporary sessions.
 
 ### Bearer-token development access
 
@@ -294,9 +294,9 @@ The base `/ocr` route does not require an LLM key. It returns extracted text, av
 | Method | Route | Purpose |
 |---|---|---|
 | `GET` | `/` | Redirect to staff login |
-| `GET` | `/login` | Demonstration sign-in page |
+| `GET` | `/login` | Temporary staff sign-in page |
 | `GET` | `/land-mapping` | Staff claim application |
-| `POST` | `/api/auth/demo-login` | Start a demonstration staff session |
+| `POST` | `/api/auth/demo-login` | Start a temporary staff session |
 | `GET` | `/api/auth/session` | Return the signed-in staff identity |
 | `POST` | `/api/auth/logout` | Clear the browser session |
 
@@ -329,7 +329,7 @@ These routes support historical conflict records. New competing claims are rejec
 
 The `/api/fra/*` domain covers rights holders, Gram Sabhas, IFR/CR/CFR claims, versioned geometry and evidence, reviewer-controlled transitions and titles, legacy promotion, right-aware spatial evaluation, supporting satellite observations, and explainable DSS recommendations. It is backward-compatible with the legacy routes above.
 
-Satellite observations are supporting evidence and do not determine legal validity. DSS recommendations are advisory and do not approve or sanction benefits. See the [FRA foundation guide](docs/FRA_FOUNDATION.md) for routes, roles, local manifests, demo rules, and limitations.
+Satellite observations are supporting evidence and do not determine legal validity. DSS recommendations are advisory and do not approve or sanction benefits. See the [FRA foundation guide](docs/FRA_FOUNDATION.md) for routes, roles, local manifests, sample rules, and limitations.
 
 ## API examples
 
@@ -427,8 +427,8 @@ Environment variables are loaded from `.env`. Environment values override applic
 | `AUTH_ISSUER` | `ocr-land-registry` | Required token issuer |
 | `AUTH_AUDIENCE` | `ocr-land-api` | Required token audience |
 | `DEMO_AUTH_ENABLED` | `true` | Enable the temporary access-code login |
-| `DEMO_ACCESS_CODE` | `1234` | Temporary demonstration access code |
-| `DEMO_SESSION_MINUTES` | `480` | Demonstration session lifetime |
+| `DEMO_ACCESS_CODE` | `1234` | Temporary local access code |
+| `DEMO_SESSION_MINUTES` | `480` | Temporary session lifetime |
 | `SECURE_UPLOAD_DIR` | `private_uploads` | Local private document root |
 | `UPLOAD_STORAGE_BACKEND` | `local` | `local` or `s3` |
 | `S3_BUCKET` | empty | Required for S3 storage |
@@ -495,12 +495,12 @@ See [Privacy and retention](docs/PRIVACY_RETENTION.md) for the baseline data pol
 
 Before using this system with real records:
 
-- Replace the demonstration access code with an approved OIDC identity provider.
+- Replace the temporary access code with an approved OIDC identity provider.
 - Use PostgreSQL/PostGIS and apply all Alembic migrations.
 - Import licensed, authoritative cadastral boundaries with provenance.
 - Remove synthetic parcels from the user-facing database.
 - Enable fail-closed malware scanning.
-- Use managed secrets and rotate all demonstration credentials.
+- Use managed secrets and rotate all temporary credentials.
 - Terminate TLS at a trusted ingress.
 - Encrypt database, object storage, and backups at rest.
 - Use private S3 or an equivalently controlled document store.
