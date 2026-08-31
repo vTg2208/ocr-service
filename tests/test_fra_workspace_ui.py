@@ -52,8 +52,8 @@ class FRAWorkspaceUITests(unittest.TestCase):
             "saveReviewButton", "promoteButton", "workspaceStatus",
         }.issubset(parser.ids))
         self.assertTrue({"nav", "main", "header", "aside"}.issubset(parser.landmarks))
-        self.assertIn("Synthetic sample data — not authoritative", html)
-        self.assertIn("Supporting observations do not determine legal validity", html)
+        self.assertNotIn('class="warning-strip"', html)
+        self.assertNotIn("Synthetic sample data — not authoritative", html)
         self.assertNotIn("demonstration", html.casefold())
         self.assertNotIn("approved benefit", html.casefold())
 

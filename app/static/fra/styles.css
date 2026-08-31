@@ -40,8 +40,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .session-account { padding: 10px var(--space-4); display: flex; gap: var(--space-4); align-items: center; }
 .session-account span { display: grid; }
 .session-account button, .text-action { min-height: 36px; padding: 6px 10px; color: var(--green-800); border: 1px solid var(--rule); background: transparent; }
-.warning-strip { min-height: 48px; margin: var(--space-4) var(--space-5) 0; padding: 10px 14px; display: flex; gap: var(--space-4); align-items: center; justify-content: center; color: var(--warning-700); border: 1px solid color-mix(in oklch, var(--warning-700) 45%, var(--rule)); background: var(--warning-100); font-size: .72rem; }
-.warning-strip strong { padding-right: var(--space-4); border-right: 1px solid color-mix(in oklch, var(--warning-700) 38%, transparent); }
 main { padding: var(--space-5); }
 .workspace-status { min-height: 0; margin: 0; }
 .workspace-status:not(:empty) { margin-bottom: var(--space-3); padding: 10px 12px; border-left: 3px solid var(--green-700); background: var(--green-100); }
@@ -160,8 +158,6 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .rail-secondary { min-height: 46px; margin: 0 8px 8px; padding: 7px 10px; justify-content: center; }.rail-secondary-icon { width: 27px; height: 27px; }
   .context-bar { margin: 0; grid-template-columns: 1fr 1fr; border-right: 0; border-left: 0; border-radius: 0; }.context-bar label { border-bottom: 1px solid var(--rule); }
   .session-account { grid-column: 1 / -1; grid-row: auto; justify-content: space-between; }
-  .warning-strip { margin: 12px; display: grid; justify-content: stretch; text-align: left; }
-  .warning-strip strong { padding: 0 0 8px; border-right: 0; border-bottom: 1px solid color-mix(in oklch, var(--warning-700) 38%, transparent); }
   main { padding: var(--space-4); }.workspace-title { align-items: start; }.workspace-title > span { display: none; }
   .archive-layout { display: block; }.queue-sheet { min-height: 420px; margin-bottom: var(--space-3); }.evidence-review-grid { padding: var(--space-2); }
   .review-actions { position: sticky; bottom: 0; background: var(--paper-50); }

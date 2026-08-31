@@ -9,6 +9,40 @@ The legacy registry keeps its exclusive-land rule: exact parcel duplicates and m
 > [!IMPORTANT]
 > This repository is a research prototype, not a legal land-ownership system. A claim records a patta-to-parcel association; it does not create, transfer, or certify ownership. The included cadastral data is synthetic and must never be presented as authoritative.
 
+## Product tour
+
+AranyaSetu provides a protected staff experience for both patta-to-parcel registration and Tamil Nadu-first FRA casework. The screenshots below use the repository's bundled synthetic demo data; they do not show authoritative land or claimant records.
+
+### Secure staff access
+
+The temporary development sign-in keeps the registry and FRA workspaces behind an authenticated staff session. Production deployments must replace this access-code flow with an approved identity provider.
+
+![AranyaSetu staff sign-in screen](docs/images/aranyasetu-login.png)
+
+### Patta claim workflow
+
+Staff upload a patta, review the OCR-derived fields and parcel match, and then confirm registration. The separate **Claimed land** tab provides the searchable map ledger for accepted claims.
+
+![AranyaSetu patta upload and claim workflow](docs/images/aranyasetu-patta-workflow.png)
+
+### FRA archive review
+
+The Archive workspace brings the source record, extraction provenance, standardized fields, and reviewer-controlled promotion into one evidence review screen.
+
+![AranyaSetu FRA archive review workspace](docs/images/aranyasetu-fra-archive.png)
+
+### FRA Atlas
+
+The Atlas synchronizes administrative and rights filters with synthetic village, claim, title, and supporting-asset layers, plus a readable list of the mapped records.
+
+![AranyaSetu FRA Atlas with mapped records](docs/images/aranyasetu-fra-atlas.png)
+
+### Explainable DSS planner
+
+The advisory planner shows the rule outcome, reasons, missing inputs, and model provenance before a staff member can create a departmental referral. Recommendations never approve or sanction benefits.
+
+![AranyaSetu explainable DSS planner](docs/images/aranyasetu-dss-planner.png)
+
 ## What the application does
 
 - Reads JPG, PNG, BMP, TIFF, and PDF documents with PaddleOCR.
