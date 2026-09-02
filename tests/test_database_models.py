@@ -46,6 +46,13 @@ class DatabaseModelTests(unittest.TestCase):
                 "asset_features",
                 "dss_referrals",
                 "report_artifacts",
+                "fra_intake_items",
+                "spatial_import_batches",
+                "spatial_reference_features",
+                "imagery_scenes",
+                "imagery_artifacts",
+                "dss_fact_snapshots",
+                "scheme_catalog_entries",
             },
         )
 

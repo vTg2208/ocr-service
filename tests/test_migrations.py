@@ -34,12 +34,17 @@ class MigrationTests(unittest.TestCase):
             "fra_village_profiles", "asset_features", "dss_referrals",
             "report_artifacts",
         } <= tables)
+        self.assertTrue({
+            "fra_intake_items", "spatial_import_batches", "spatial_reference_features",
+            "imagery_scenes", "imagery_artifacts", "dss_fact_snapshots",
+            "scheme_catalog_entries",
+        } <= tables)
         self.assertIn("uq_claim_parcel_exclusive", claim_constraints)
 
     def test_completion_migration_is_the_only_head(self):
         config = Config("alembic.ini")
 
-        self.assertEqual(ScriptDirectory.from_config(config).get_heads(), ["20260826_0004"])
+        self.assertEqual(ScriptDirectory.from_config(config).get_heads(), ["20260902_0005"])
 
 
 if __name__ == "__main__":
