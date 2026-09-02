@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from app.db.fra_completion_models import AssetFeature, DSSReferral, FRAArchiveRecord, FRAVillageProfile
 from app.db.fra_models import DSSRecommendation, FRAClaim, FRATitle, GramSabha, RightsHolder, SchemeRuleSet
 from app.db.models import Document, User
+from app.db.fra_operational_models import SchemeCatalogEntry
 from app.db.session import get_session_factory
 from app.services.dss_engine import evaluate_rules, recommendation_for_outcome
 from app.services.dss_referrals import create_referral
@@ -21,12 +22,14 @@ from app.services.fra_atlas import import_village_profiles
 from app.services.fra_claims import add_geometry_version, create_claim
 from app.services.fra_workflow import issue_title, transition_claim
 from app.services.model_gateway import ManifestFRAEntityExtractor
+from app.services.scheme_catalog import create_catalog_entry
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ARCHIVE_PATH = ROOT / "data" / "synthetic_tamil_nadu_fra_archive.json"
 ATLAS_PATH = ROOT / "data" / "synthetic_tamil_nadu_fra_atlas.geojson"
 RULES_PATH = ROOT / "data" / "demo_dss_rules.json"
+CATALOG_PATH = ROOT / "data" / "tn_scheme_catalog.sample.json"
 
 ARCHIVE_REFERENCE_RENAMES = {
     "TN-DEMO-IFR-001": "TN-FRA-IFR-001",
@@ -55,7 +58,7 @@ class SeedReport:
     recommendations: int
 
 
-COUNTED_MODELS = (FRAVillageProfile, FRAArchiveRecord, FRAClaim, FRATitle, AssetFeature, SchemeRuleSet, DSSRecommendation)
+COUNTED_MODELS = (FRAVillageProfile, FRAArchiveRecord, FRAClaim, FRATitle, AssetFeature, SchemeRuleSet, DSSRecommendation, SchemeCatalogEntry)
 
 
 def _count(session) -> int:
@@ -526,6 +529,13 @@ def _seed_assets(session, villages, actor_id) -> None:
 
 
 def _seed_planning(session, claims, actor_id) -> None:
+    for item in _load(CATALOG_PATH):
+        existing_catalog = session.scalar(select(SchemeCatalogEntry).where(
+            SchemeCatalogEntry.scheme_code == item["scheme_code"],
+            SchemeCatalogEntry.version == item["version"],
+        ))
+        if existing_catalog is None:
+            create_catalog_entry(session, item, actor_id=actor_id, request_id="tn-sample-seed")
     seeded_rules = []
     for item in _load(RULES_PATH):
         rule = session.scalar(

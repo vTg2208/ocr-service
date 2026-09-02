@@ -13,6 +13,7 @@ from app.db.fra_models import (
     SchemeRuleSet,
 )
 from app.db.models import User
+from app.db.fra_operational_models import SchemeCatalogEntry
 from app.services.fra_archive import create_archive_record, create_import_batch
 from scripts.seed_tamil_nadu_fra_demo import _document, seed_demo
 
@@ -48,6 +49,8 @@ class TamilNaduSampleDataTests(unittest.TestCase):
             self.assertEqual(water.village.village_name, "Kottur")
             self.assertEqual(agriculture.village.village_name, "Kottur")
             self.assertGreaterEqual(session.scalar(select(func.count()).select_from(DSSRecommendation)), 1)
+            self.assertEqual(session.scalar(select(func.count()).select_from(SchemeCatalogEntry)), 5)
+            self.assertTrue(all(not row.authoritative and not row.active for row in session.scalars(select(SchemeCatalogEntry))))
             visible_archive_values = [
                 value
                 for row in records

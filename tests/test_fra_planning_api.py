@@ -36,7 +36,8 @@ class FRAPlanningAPITests(unittest.TestCase):
         with self.factory() as session:
             staff = User(external_id="planning-staff", display_name="Staff", role="user")
             reviewer = User(external_id="planning-reviewer", display_name="Reviewer", role="reviewer")
-            session.add_all([staff, reviewer]); session.flush()
+            admin = User(external_id="planning-admin", display_name="Admin", role="admin")
+            session.add_all([staff, reviewer, admin]); session.flush()
             holder = RightsHolder(display_name="Synthetic holder", holder_type="individual")
             claim = FRAClaim(
                 claim_number="TN-PLAN-1", right_type="IFR", status="granted",
@@ -129,6 +130,28 @@ class FRAPlanningAPITests(unittest.TestCase):
         self.assertEqual(response.headers["cache-control"], "private, no-store")
         self.assertNotIn("private/evidence.json", response.text)
         self.assertIn("supporting evidence", response.text)
+
+    def test_derive_and_evaluate_uses_a_versioned_fact_snapshot(self):
+        response = self.client.post(
+            "/api/fra/dss/derive-and-evaluate",
+            headers={**self.headers("planning-reviewer"), "Idempotency-Key": "derive-api-1"},
+            json={"claim_id": self.claim_id, "derivation_version": "tn-facts-v1"},
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        self.assertEqual(response.json()["fact_snapshot"]["derivation_version"], "tn-facts-v1")
+        self.assertIn("has_active_title", response.json()["fact_snapshot"]["facts"])
+        self.assertTrue(response.json()["recommendations"][0]["advisory_only"])
+
+    def test_scheme_catalog_requires_admin_and_retains_approval_provenance(self):
+        payload = {"scheme_code": "JJM", "display_name": "Jal Jeevan Mission", "version": "tn-2026", "department": "Rural Development", "description": "Approved planning reference", "effective_from": "2026-08-01", "approving_authority": "Tamil Nadu competent authority", "source_reference": "https://example.gov.in/jjm", "definition": {"reviewed_on": "2026-08-01"}, "authoritative": True, "active": True}
+        denied = self.client.post("/api/fra/dss/scheme-catalog", headers=self.headers("planning-reviewer"), json=payload)
+        self.assertEqual(denied.status_code, 403)
+        created = self.client.post("/api/fra/dss/scheme-catalog", headers=self.headers("planning-admin"), json=payload)
+        self.assertEqual(created.status_code, 201, created.text)
+        self.assertEqual(created.json()["approving_authority"], "Tamil Nadu competent authority")
+        listed = self.client.get("/api/fra/dss/scheme-catalog", headers=self.headers())
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["items"][0]["scheme_code"], "JJM")
 
 
 if __name__ == "__main__":

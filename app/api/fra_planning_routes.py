@@ -2,15 +2,21 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.auth import AuthenticatedUser, get_current_user, require_reviewer
+from app.api.auth import AuthenticatedUser, get_current_user, require_admin, require_reviewer
 from app.db.fra_completion_models import DSSReferral
+from app.db.fra_models import FRAClaim
+from app.db.fra_operational_models import SchemeCatalogEntry
 from app.db.session import get_db
 from app.models.fra_completion_schemas import DSSReferralCreate, DSSReferralUpdate
+from app.models.fra_dss_schemas import DerivedDSSEvaluationCreate, SchemeCatalogCreate
+from app.services.dss_engine import InvalidRuleError, evaluate_rules
+from app.services.dss_facts import derive_facts, fact_values
 from app.services.dss_referrals import (
     ReferralConflictError,
     ReferralValidationError,
@@ -26,6 +32,7 @@ from app.services.fra_reports import (
     render_historical_evidence_report,
     render_village_report,
 )
+from app.services.scheme_catalog import CatalogValidationError, create_catalog_entry
 
 
 router = APIRouter(prefix="/api/fra", tags=["FRA planning and reports"])
@@ -75,6 +82,89 @@ def _referral_dict(referral: DSSReferral) -> dict:
         "revision": referral.revision,
         "warning": ADVISORY_WARNING,
     }
+
+
+def _catalog_dict(entry: SchemeCatalogEntry) -> dict:
+    return {
+        "id": str(entry.id), "scheme_code": entry.scheme_code,
+        "display_name": entry.display_name, "version": entry.version,
+        "department": entry.department, "description": entry.description,
+        "effective_from": entry.effective_from, "effective_to": entry.effective_to,
+        "approving_authority": entry.approving_authority,
+        "source_reference": entry.source_reference,
+        "definition": dict(entry.definition_json or {}),
+        "authoritative": entry.authoritative, "active": entry.active,
+    }
+
+
+@router.post("/dss/derive-and-evaluate", status_code=201)
+def derive_and_evaluate(
+    payload: DerivedDSSEvaluationCreate,
+    request: Request,
+    idempotency_key: str = Header(..., alias="Idempotency-Key", min_length=1, max_length=255),
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    claim = db.get(FRAClaim, payload.claim_id)
+    if claim is None or (user.role not in {"reviewer", "admin"} and claim.submitted_by != user.id):
+        raise HTTPException(status_code=404, detail="FRA claim not found.")
+    try:
+        snapshot = derive_facts(
+            db, claim, payload.derivation_version, user.id, f"{idempotency_key}:facts",
+            request_id=_request_id(request),
+        )
+        recommendations = evaluate_rules(
+            db, claim_id=claim.id, facts=fact_values(snapshot), actor_id=user.id,
+            idempotency_key=f"{claim.id}:{idempotency_key}:evaluation", request_id=_request_id(request),
+            rule_set_ids=payload.rule_set_ids, fact_snapshot_id=snapshot.id,
+            fact_sources=snapshot.sources_json,
+        )
+    except (InvalidRuleError, ValueError) as error:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    _commit(db, "The derived DSS evaluation conflicts with an existing request.")
+    return {
+        "fact_snapshot": {
+            "id": str(snapshot.id), "derivation_version": snapshot.derivation_version,
+            "facts": dict(snapshot.facts_json or {}), "sources": dict(snapshot.sources_json or {}),
+        },
+        "recommendations": [_recommendation_dict(item) for item in recommendations],
+        "warning": ADVISORY_WARNING,
+    }
+
+
+@router.post("/dss/scheme-catalog", status_code=201)
+def add_scheme_catalog_entry(
+    payload: SchemeCatalogCreate,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        entry = create_catalog_entry(
+            db, payload.model_dump(), actor_id=user.id, request_id=_request_id(request)
+        )
+    except CatalogValidationError as error:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    _commit(db, "That scheme catalogue code and version already exist.")
+    return _catalog_dict(entry)
+
+
+@router.get("/dss/scheme-catalog")
+def get_scheme_catalog(
+    scheme_code: str | None = None,
+    active: bool | None = None,
+    _user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    statement = select(SchemeCatalogEntry)
+    if scheme_code:
+        statement = statement.where(SchemeCatalogEntry.scheme_code == scheme_code.strip().upper())
+    if active is not None:
+        statement = statement.where(SchemeCatalogEntry.active.is_(active))
+    entries = db.scalars(statement.order_by(SchemeCatalogEntry.scheme_code, SchemeCatalogEntry.version)).all()
+    return {"items": [_catalog_dict(entry) for entry in entries]}
 
 
 @router.get("/dss/recommendations")

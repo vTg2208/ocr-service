@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.fra_models import DSSRecommendation, FRAClaim, RightsHolder, SchemeRuleSet
 from app.db.models import User
-from app.services.dss_engine import InvalidRuleError, evaluate_rules, validate_rule_definition
+from app.services.dss_engine import InvalidRuleError, evaluate_condition, evaluate_rules, validate_rule_definition
 
 
 class DSSEngineTests(unittest.TestCase):
@@ -153,6 +153,11 @@ class DSSEngineTests(unittest.TestCase):
             ]
         }
         self.assertEqual(validate_rule_definition(condition), condition)
+
+    def test_presence_operator_does_not_treat_a_missing_row_as_absence(self):
+        result = evaluate_condition({"absent": {"fact": "water_source_present"}}, {})
+        self.assertIsNone(result.value)
+        self.assertEqual(result.missing_inputs, {"water_source_present"})
 
     def test_seed_rules_are_explicitly_non_authoritative(self):
         rules = json.loads(Path("data/demo_dss_rules.json").read_text(encoding="utf-8"))

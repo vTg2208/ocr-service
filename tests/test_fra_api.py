@@ -392,13 +392,20 @@ class FRAAPITests(unittest.TestCase):
         )
         self.assertEqual(created.status_code, 201)
         evaluation = {"claim_id": claim_id, "facts": {"has_water": False}}
+        self.assertEqual(
+            self.client.post(
+                "/api/fra/dss/evaluate",
+                headers=self.headers(idempotency_key="dss-denied"), json=evaluation,
+            ).status_code,
+            403,
+        )
         first = self.client.post(
             "/api/fra/dss/evaluate",
-            headers=self.headers(idempotency_key="dss-1"), json=evaluation,
+            headers=self.headers("admin", idempotency_key="dss-1"), json=evaluation,
         )
         second = self.client.post(
             "/api/fra/dss/evaluate",
-            headers=self.headers(idempotency_key="dss-1"), json=evaluation,
+            headers=self.headers("admin", idempotency_key="dss-1"), json=evaluation,
         )
         self.assertEqual(first.status_code, 201)
         self.assertTrue(first.json()[0]["advisory_only"])

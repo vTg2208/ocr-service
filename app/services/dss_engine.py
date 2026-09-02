@@ -70,6 +70,8 @@ def validate_rule_definition(condition: dict) -> dict:
 def _leaf_result(operator: str, payload: dict, facts: dict[str, Any]) -> ConditionResult:
     fact = payload["fact"]
     is_present = fact in facts and facts[fact] is not None
+    if operator in PRESENCE_OPERATORS and not is_present:
+        return ConditionResult(None, [f"Missing fact: {fact}."], {fact})
     if operator == "present":
         return ConditionResult(
             is_present,
@@ -141,6 +143,8 @@ def evaluate_rules(
     idempotency_key: str,
     request_id: str | None = None,
     rule_set_ids=None,
+    fact_snapshot_id=None,
+    fact_sources: dict | None = None,
 ) -> list[DSSRecommendation]:
     claim = session.get(FRAClaim, claim_id)
     if claim is None:
@@ -202,7 +206,11 @@ def evaluate_rules(
             actor_id=actor_id,
             idempotency_key=normalized_key,
             outcome=outcome,
-            input_json={"facts": dict(facts)},
+            input_json={
+                "facts": dict(facts),
+                "fact_snapshot_id": str(fact_snapshot_id) if fact_snapshot_id else None,
+                "fact_sources": dict(fact_sources or {}),
+            },
             output_json=output,
         )
         session.add(recommendation)

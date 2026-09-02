@@ -528,7 +528,7 @@ def evaluate_dss(
     payload: DSSEvaluationCreate,
     request: Request,
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     if not idempotency_key or not idempotency_key.strip():

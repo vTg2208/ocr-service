@@ -110,6 +110,13 @@ test('asset and DSS copy never presents automation as a decision', () => {
   assert.doesNotMatch(`${FRAAssetsUI.legalRole()} ${FRAPlannerUI.disclaimer()}`, /legally valid/i);
 });
 
+test('planner derives versioned facts for an explicit native claim', () => {
+  assert.deepEqual(FRAPlannerUI.derivePayload('claim-1'), {
+    claim_id: 'claim-1', derivation_version: 'tn-facts-v1',
+  });
+  assert.throws(() => FRAPlannerUI.derivePayload(''), /Select a native FRA claim/);
+});
+
 test('asset visuals map Tamil Nadu asset classes to the contact-sheet sprite', () => {
   const forest = FRAAssetsUI.visualFor('forest_cover');
   const pipeline = FRAAssetsUI.visualFor('pipeline');
