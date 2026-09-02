@@ -160,6 +160,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .report-kicker { color: var(--green-700); font-size: .66rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .print-guidance { color: white; background: var(--green-900); border-color: var(--green-900); }
 .print-guidance strong { font: 700 1.2rem "Literata", serif; }.print-guidance p { margin-top: var(--space-4); color: color-mix(in oklch, white 78%, transparent); }
+.dashboard-section { margin-top: var(--space-3); border: 1px solid var(--rule); background: var(--paper-50); }
+.dashboard-metrics { padding: var(--space-3); display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: var(--space-2); }
+.dashboard-metrics article { min-height: 86px; padding: var(--space-3); display: grid; align-content: center; gap: 5px; border: 1px solid var(--rule); border-left: 3px solid var(--green-700); background: white; }
+.dashboard-metrics strong { color: var(--green-900); font: 700 1.45rem "Literata", serif; }.dashboard-metrics span { color: var(--ink-500); font-size: .68rem; }
+.dashboard-table { overflow-x: auto; border-top: 1px solid var(--rule); }.dashboard-table table { width: 100%; border-collapse: collapse; }.dashboard-table th, .dashboard-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--rule); font-size: .72rem; }.dashboard-table thead th { color: var(--ink-500); background: var(--paper-100); }
+.dashboard-groups { padding: var(--space-3); display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--space-3); }.dashboard-groups section { padding: var(--space-3); border: 1px solid var(--rule); }.dashboard-groups h3 { margin: 0 0 10px; color: var(--green-900); font: 700 1rem "Literata", serif; }.dashboard-groups dl { margin: 0; }.dashboard-groups dl div { padding: 7px 0; display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--rule); }.dashboard-groups dt, .dashboard-groups dd { margin: 0; font-size: .72rem; }.dashboard-groups dd { font-weight: 700; }
 .case-message { margin-bottom: var(--space-2); }
 .case-mode-tabs { margin-bottom: var(--space-3); display: flex; gap: var(--space-2); border-bottom: 1px solid var(--rule); }
 .case-mode-tabs button { padding: 8px 14px; color: var(--ink-500); border: 0; border-bottom: 3px solid transparent; background: transparent; }

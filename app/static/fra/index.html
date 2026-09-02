@@ -19,6 +19,7 @@
         <span><strong>AranyaSetu</strong><small>Tamil Nadu FRA Platform</small></span>
       </a>
       <nav id="workspaceNav" aria-label="FRA workspaces">
+        <button class="rail-link" type="button" data-section="dashboard"><img class="rail-icon" src="/static/fra/icons/planner.png" alt="" aria-hidden="true">Dashboard</button>
         <button class="rail-link active" type="button" data-section="archive" aria-current="page"><img class="rail-icon" src="/static/fra/icons/archieve.png" alt="" aria-hidden="true">Archive</button>
         <button class="rail-link" type="button" data-section="cases"><img class="rail-icon" src="/static/fra/icons/archieve.png" alt="" aria-hidden="true">Cases</button>
         <button class="rail-link" type="button" data-section="atlas"><img class="rail-icon" src="/static/fra/icons/atlas.png" alt="" aria-hidden="true">FRA Atlas</button>
@@ -41,6 +42,12 @@
       </header>
       <main id="workspaceMain" tabindex="-1">
         <p class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"></p>
+        <section class="workspace-panel" id="dashboardPanel" data-panel="dashboard" aria-labelledby="dashboardTitle" hidden>
+          <header class="workspace-title"><div><h1 id="dashboardTitle">Operations dashboard</h1><p>Review Tamil Nadu work queues and privacy-minimized planning summaries.</p></div><button id="refreshDashboard" class="text-action" type="button">Refresh</button></header>
+          <p class="legal-warning">Operational summaries support human verification and planning; they do not determine legal validity or approve benefits.</p><p id="dashboardStatus" class="inline-status" role="status" aria-live="polite">Open the dashboard to load current records.</p>
+          <section id="verifierDashboard" class="dashboard-section"><div class="section-bar"><h2>Verifier work queues</h2><span>Reviewer access</span></div><div id="verifierDashboardMetrics" class="dashboard-metrics"></div><div class="dashboard-table"><table><thead><tr><th>Reference</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead><tbody id="verifierDashboardQueue"></tbody></table></div></section>
+          <section class="dashboard-section"><div class="section-bar"><h2>Planner summary</h2><span>Aggregated records</span></div><div id="plannerDashboardMetrics" class="dashboard-metrics"></div><div id="plannerDashboardGroups" class="dashboard-groups"></div></section>
+        </section>
         <section class="workspace-panel active" id="archivePanel" data-panel="archive" aria-labelledby="archiveTitle">
           <header class="workspace-title"><div><h1 id="archiveTitle">Archive</h1><p>Review digitized IFR, CR and CFR source records before promotion.</p></div><span id="archiveCount">Loading records</span></header>
           <section class="archive-upload-sheet" aria-labelledby="archiveUploadTitle">
@@ -177,6 +184,6 @@
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260902.1"></script><script src="/static/fra/cases.js?v=20260902.3"></script><script src="/static/fra/assets.js?v=20260902.2"></script><script src="/static/fra/atlas.js?v=20260902.2"></script><script src="/static/fra/planner.js?v=20260902.3"></script><script src="/static/fra/reports.js?v=20260902.3"></script><script src="/static/fra/app.js?v=20260902.2"></script>
+  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260902.1"></script><script src="/static/fra/cases.js?v=20260902.3"></script><script src="/static/fra/assets.js?v=20260902.2"></script><script src="/static/fra/atlas.js?v=20260902.2"></script><script src="/static/fra/planner.js?v=20260902.3"></script><script src="/static/fra/reports.js?v=20260902.3"></script><script src="/static/fra/dashboard.js?v=20260902.1"></script><script src="/static/fra/app.js?v=20260902.3"></script>
 </body>
 </html>

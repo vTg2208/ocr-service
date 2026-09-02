@@ -67,6 +67,11 @@ test('atlas query uses the same filters for features and summary', () => {
   assert.equal(FRAAtlasUI.query(filters), 'district=Thanjavur&right_type=IFR&status=granted');
 });
 
+test('workspace includes the operational dashboard without changing the Atlas', () => {
+  assert.equal(FRAWorkspace.SECTIONS.includes('dashboard'), true);
+  assert.equal(FRAWorkspace.SECTIONS.includes('satellite'), false);
+});
+
 test('archive batch upload requires source context and reports mixed outcomes precisely', () => {
   assert.equal(FRAArchiveUI.canUploadBatch({ fileCount: 2, sourceOffice: 'DTWO', district: 'Salem' }), true);
   assert.equal(FRAArchiveUI.canUploadBatch({ fileCount: 0, sourceOffice: 'DTWO', district: 'Salem' }), false);

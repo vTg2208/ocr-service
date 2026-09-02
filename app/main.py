@@ -29,6 +29,7 @@ from app.api.fra_intake_routes import router as fra_intake_router
 from app.api.fra_case_routes import router as fra_case_router
 from app.api.fra_geospatial_routes import router as fra_geospatial_router
 from app.api.fra_evidence_routes import router as fra_evidence_router
+from app.api.fra_dashboard_routes import router as fra_dashboard_router
 from app.api.auth import SESSION_COOKIE, get_current_user
 from app.config import get_settings
 from app.db.session import get_db
@@ -83,6 +84,7 @@ app.include_router(fra_intake_router)
 app.include_router(fra_case_router)
 app.include_router(fra_geospatial_router)
 app.include_router(fra_evidence_router)
+app.include_router(fra_dashboard_router)
 
 static_root = Path(__file__).parent / "static"
 app.mount("/static", RevalidatingStaticFiles(directory=static_root), name="static")

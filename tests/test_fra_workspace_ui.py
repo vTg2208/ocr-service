@@ -40,11 +40,11 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn('class="rail-secondary-icon"', html)
         self.assertIn("Back to Patta Registry", html)
 
-    def test_workspace_has_six_sections_shared_context_and_archive_review_regions(self):
+    def test_workspace_has_seven_sections_shared_context_and_archive_review_regions(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         parser = WorkspaceParser(); parser.feed(html)
 
-        self.assertEqual(parser.nav_sections, ["archive", "cases", "atlas", "assets", "planner", "reports"])
+        self.assertEqual(parser.nav_sections, ["dashboard", "archive", "cases", "atlas", "assets", "planner", "reports"])
         self.assertTrue({
             "skipLink", "workspaceNav", "contextDistrict", "contextBlock", "contextVillage",
             "staffName", "logoutButton", "archiveSearch", "archiveList", "archiveEmpty",
@@ -52,6 +52,8 @@ class FRAWorkspaceUITests(unittest.TestCase):
             "saveReviewButton", "promoteButton", "workspaceStatus",
             "archiveUploadForm", "archiveSourceOffice", "archiveUploadDistrict",
             "archiveFiles", "archiveUploadButton", "archiveUploadResults",
+            "dashboardPanel", "verifierDashboardMetrics", "verifierDashboardQueue",
+            "plannerDashboardMetrics", "plannerDashboardGroups",
         }.issubset(parser.ids))
         self.assertTrue({"nav", "main", "header", "aside"}.issubset(parser.landmarks))
         self.assertNotIn('class="warning-strip"', html)
@@ -62,7 +64,7 @@ class FRAWorkspaceUITests(unittest.TestCase):
     def test_workspace_uses_modular_scripts_and_leaflet(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         for script in (
-            "api.js", "app.js", "archive.js", "cases.js", "atlas.js", "assets.js", "planner.js", "reports.js"
+            "api.js", "app.js", "archive.js", "cases.js", "atlas.js", "assets.js", "planner.js", "reports.js", "dashboard.js"
         ):
             self.assertIn(f"/static/fra/{script}", html)
         self.assertIn("leaflet", html.casefold())
@@ -74,7 +76,7 @@ class FRAWorkspaceUITests(unittest.TestCase):
             with self.subTest(icon=icon_name):
                 self.assertIn(f'/static/fra/icons/{icon_name}', html)
                 self.assertTrue((UI_ROOT / "icons" / icon_name).is_file())
-        self.assertEqual(html.count('class="rail-icon"'), 6)
+        self.assertEqual(html.count('class="rail-icon"'), 7)
 
     def test_cases_workspace_exposes_intake_case_and_versioned_casework_controls(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
