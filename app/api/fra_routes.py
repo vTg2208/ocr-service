@@ -47,6 +47,7 @@ from app.services.fra_claims import (
     promote_legacy_claim,
 )
 from app.services.fra_spatial_policy import evaluate_spatial_compatibility
+from app.services.fra_reference_spatial import evaluate_reference_intersections
 from app.services.fra_workflow import (
     InvalidTransitionError,
     TitleIssuanceError,
@@ -386,23 +387,55 @@ def spatial_evaluation(
         db, claim, payload.geometry, min_sqm=payload.min_sqm,
         min_percent=payload.min_percent, policy_version=payload.policy_version,
     )
+    reference_findings = evaluate_reference_intersections(
+        db, payload.geometry, set(payload.reference_kinds), payload.reference_policy_version
+    )
     privileged = user.role in {"reviewer", "admin"}
+    claim_findings = [
+        {
+            **({"related_claim_id": str(item.related_claim_id)} if privileged else {}),
+            "existing_right_type": item.existing_right_type,
+            "outcome": item.outcome,
+            "reason": item.reason,
+            "overlap_area_sqm": item.overlap_area_sqm,
+            "overlap_percent": item.overlap_percent,
+        }
+        for item in result.findings
+    ]
+    serialized_reference_findings = [
+        {
+            **({
+                "reference_feature_id": str(item.reference_feature_id),
+                "reference_source_authority": item.reference_source_authority,
+                "reference_source_version": item.reference_source_version,
+                "source_record_id": item.source_record_id,
+            } if privileged else {}),
+            "dataset_kind": item.dataset_kind,
+            "outcome": item.outcome,
+            "reason": item.reason,
+            "overlap_area_sqm": item.overlap_area_sqm,
+            "overlap_percent": item.overlap_percent,
+            "policy_version": item.policy_version,
+        }
+        for item in reference_findings
+    ]
+    combined_outcome = (
+        "blocked" if result.outcome == "blocked"
+        else "review_required"
+        if result.outcome == "review_required" or any(
+            item.outcome == "review_required" for item in reference_findings
+        )
+        else "allowed"
+    )
     body = {
-        "outcome": result.outcome,
+        "outcome": combined_outcome,
         "policy_version": result.policy_version,
-        "findings": [
-            {
-                **({"related_claim_id": str(item.related_claim_id)} if privileged else {}),
-                "existing_right_type": item.existing_right_type,
-                "outcome": item.outcome,
-                "reason": item.reason,
-                "overlap_area_sqm": item.overlap_area_sqm,
-                "overlap_percent": item.overlap_percent,
-            }
-            for item in result.findings
-        ],
+        "reference_policy_version": payload.reference_policy_version,
+        "findings": claim_findings,
+        "claim_findings": claim_findings,
+        "reference_findings": serialized_reference_findings,
     }
-    return JSONResponse(status_code=409 if result.outcome == "blocked" else 200, content=body)
+    return JSONResponse(status_code=409 if combined_outcome == "blocked" else 200, content=body)
 
 
 @router.post("/claims/{claim_id}/satellite-observations", status_code=201)

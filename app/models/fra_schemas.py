@@ -157,6 +157,16 @@ class SpatialEvaluationCreate(StrictModel):
     min_sqm: float = Field(default=1.0, ge=0)
     min_percent: float = Field(default=0.1, ge=0, le=100)
     policy_version: str = Field(default="fra-spatial-v1", min_length=1, max_length=100)
+    reference_policy_version: str = Field(
+        default="fra-reference-v1", min_length=1, max_length=100
+    )
+    reference_kinds: list[Literal[
+        "administrative_boundary", "protected_area", "forest_compartment",
+        "water_body", "cadastral_parcel",
+    ]] = Field(default_factory=lambda: [
+        "administrative_boundary", "protected_area", "forest_compartment",
+        "water_body", "cadastral_parcel",
+    ])
 
     @field_validator("geometry")
     @classmethod

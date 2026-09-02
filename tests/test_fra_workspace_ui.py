@@ -85,6 +85,7 @@ class FRAWorkspaceUITests(unittest.TestCase):
             "caseDetail", "caseGeometryForm", "caseEvidenceForm", "caseTransitionForm",
             "caseTitleForm", "caseAuditTimeline",
             "caseGeometryMap", "caseGeometryUpload",
+            "caseSpatialEvaluate", "caseSpatialFindings", "caseSpatialDispositionForm",
         }
         self.assertTrue(required <= parser.ids)
         self.assertIn('data-section="cases"', html)

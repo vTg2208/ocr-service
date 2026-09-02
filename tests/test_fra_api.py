@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.auth import settings
 from app.db.base import Base
 from app.db.fra_models import DSSRecommendation, FRAEvidenceItem, SatelliteObservation
+from app.db.fra_operational_models import SpatialImportBatch, SpatialReferenceFeature
 from app.db.models import AuditEvent, Claim, Document, Parcel, User
 from app.db.session import get_db
 from app.main import app
@@ -302,6 +303,40 @@ class FRAAPITests(unittest.TestCase):
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json()["outcome"], "review_required")
         self.assertEqual(result.json()["findings"][0]["related_claim_id"], existing_id)
+
+    def test_spatial_evaluation_adds_non_blocking_published_reference_findings(self):
+        claim_id = self.create_claim("IFR-REFERENCE-1").json()["id"]
+        with self.factory() as session:
+            reviewer = session.scalar(select(User).where(User.external_id == "reviewer"))
+            batch = SpatialImportBatch(
+                dataset_kind="protected_area", source_authority="TN Forest Department",
+                source_version="tn-forest-2026", state="published",
+                declared_crs="EPSG:4326", detected_crs="EPSG:4326",
+                record_count=1, valid_count=1, synthetic=False, created_by=reviewer.id,
+                idempotency_key="api-reference", provenance_json={"classification": "published_authoritative_reference"},
+            )
+            session.add(SpatialReferenceFeature(
+                import_batch=batch, dataset_kind="protected_area",
+                source_authority="TN Forest Department", source_version="tn-forest-2026",
+                source_record_id="pa-1", geometry=MULTIPOLYGON,
+                properties_json={"private_note": "do not expose"}, provenance_json={},
+                published=True, synthetic=False,
+            )); session.commit()
+        normal = self.client.post(
+            f"/api/fra/claims/{claim_id}/spatial-evaluation",
+            headers=self.headers(), json={"geometry": POLYGON},
+        )
+        self.assertEqual(normal.status_code, 200, normal.text)
+        self.assertEqual(normal.json()["claim_findings"], [])
+        self.assertEqual(normal.json()["reference_findings"][0]["reason"], "intersects_protected_area")
+        self.assertNotIn("private_note", normal.text)
+        self.assertNotIn("reference_feature_id", normal.text)
+        reviewer = self.client.post(
+            f"/api/fra/claims/{claim_id}/spatial-evaluation",
+            headers=self.headers("reviewer"), json={"geometry": POLYGON},
+        )
+        self.assertEqual(reviewer.json()["reference_findings"][0]["reference_source_version"], "tn-forest-2026")
+        self.assertIn("reference_feature_id", reviewer.text)
 
     def test_missing_fra_resources_return_not_found(self):
         response = self.client.get(

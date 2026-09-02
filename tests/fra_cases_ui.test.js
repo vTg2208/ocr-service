@@ -68,3 +68,18 @@ test('claim boundary upload normalizes polygon features and rejects non-polygon 
     /Polygon or MultiPolygon/,
   );
 });
+
+test('spatial findings remain supporting review signals with explicit provenance', () => {
+  assert.deepEqual(
+    FRACasesUI.spatialFindingPresentation({
+      dataset_kind: 'protected_area', reason: 'intersects_protected_area',
+      outcome: 'review_required', overlap_area_sqm: 1250.4,
+      reference_source_version: 'tn-forest-2026',
+    }),
+    {
+      layer: 'Protected area', finding: 'Intersects protected area',
+      outcome: 'review required', overlap: '1,250 m²', source: 'tn-forest-2026',
+    },
+  );
+  assert.match(FRACasesUI.spatialDisclaimer(), /does not determine legal validity/i);
+});

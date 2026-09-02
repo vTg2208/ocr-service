@@ -185,6 +185,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .case-timeline li { padding: 9px 12px; display: grid; gap: 3px; border-bottom: 1px solid var(--rule); }
 .case-timeline small { color: var(--ink-500); }
 .case-geometry-map { min-height: 280px; border-bottom: 1px solid var(--rule); background: var(--paper-200); }.compact-case-form small { color: var(--ink-500); font-size: .67rem; font-weight: 400; }
+.spatial-review-note { margin: 0; padding: 10px 12px; color: var(--ink-700); border-bottom: 1px solid var(--rule); font-size: .72rem; }.spatial-evaluate-action { margin: var(--space-3); }.spatial-findings-table { overflow-x: auto; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }.spatial-findings-table table { width: 100%; border-collapse: collapse; font-size: .68rem; }.spatial-findings-table th, .spatial-findings-table td { padding: 8px; text-align: left; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }.spatial-findings-table th { color: var(--ink-700); background: var(--paper-100); }
 .compact-case-form { padding: var(--space-3); display: grid; gap: var(--space-2); background: var(--paper-100); }
 .compact-case-form button { justify-self: start; }
 @media (max-width: 1120px) {
