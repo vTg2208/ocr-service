@@ -33,6 +33,26 @@ class FRAArchiveReview(StrictModel):
     reviewed_fields: dict[str, Any]
 
 
+class FRAArchiveBatchFileResult(StrictModel):
+    filename: str
+    status: Literal["accepted", "rejected"]
+    legacy_reference: str | None = None
+    record_id: UUID | None = None
+    document_id: UUID | None = None
+    processing_job_id: UUID | None = None
+    error_code: str | None = None
+    message: str | None = None
+
+
+class FRAArchiveBatchUploadResponse(StrictModel):
+    batch_id: UUID
+    batch_status: str
+    accepted: int = Field(ge=0)
+    rejected: int = Field(ge=0)
+    replayed: bool
+    files: list[FRAArchiveBatchFileResult]
+
+
 class ModelVersionCreate(StrictModel):
     task: str = Field(min_length=1, max_length=64)
     name: str = Field(min_length=1, max_length=255)

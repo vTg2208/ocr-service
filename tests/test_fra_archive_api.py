@@ -1,6 +1,7 @@
 import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 import jwt
 from fastapi.testclient import TestClient
@@ -113,6 +114,36 @@ class FRAArchiveAPITests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["message"]["code"], "unsupported_state")
+
+    def test_batch_upload_accepts_multipart_files_and_is_idempotent(self):
+        class Storage:
+            def __init__(self):
+                self.items = {}; self.calls = 0
+
+            def put(self, content, suffix):
+                self.calls += 1; key = f"private/api-{self.calls}{suffix}"
+                self.items[key] = content; return key
+
+            def delete(self, key):
+                self.items.pop(key, None)
+
+        storage = Storage()
+        request = {
+            "headers": {**self.headers(), "Idempotency-Key": "tn-batch-upload-1"},
+            "data": {
+                "source_office": "District Tribal Welfare Office",
+                "district": "Salem",
+            },
+            "files": [("files", ("TN-IFR-12.pdf", b"%PDF-1.4\n%%EOF", "application/pdf"))],
+        }
+        with patch("app.api.fra_archive_routes.create_storage", return_value=storage):
+            first = self.client.post("/api/fra/archive/batch-upload", **request)
+            second = self.client.post("/api/fra/archive/batch-upload", **request)
+        self.assertEqual(first.status_code, 202, first.text)
+        self.assertEqual(first.json()["accepted"], 1)
+        self.assertEqual(first.json()["files"][0]["legacy_reference"], "TN-IFR-12")
+        self.assertTrue(second.json()["replayed"])
+        self.assertEqual(storage.calls, 1)
 
     def test_archive_list_is_privacy_safe_and_detail_is_role_aware(self):
         batch = self.create_batch()

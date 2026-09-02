@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     # --- File validation ---
     max_file_size_mb: int = 10
+    fra_archive_max_batch_files: int = 20
+    fra_archive_max_batch_total_mb: int = 100
     allowed_extensions: List[str] = ["jpg", "jpeg", "png", "bmp", "tif", "tiff", "pdf"]
 
     # --- OCR engine ---

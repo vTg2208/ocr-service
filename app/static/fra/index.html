@@ -42,6 +42,16 @@
         <p class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"></p>
         <section class="workspace-panel active" id="archivePanel" data-panel="archive" aria-labelledby="archiveTitle">
           <header class="workspace-title"><div><h1 id="archiveTitle">Archive</h1><p>Review digitized IFR, CR and CFR source records before promotion.</p></div><span id="archiveCount">Loading records</span></header>
+          <section class="archive-upload-sheet" aria-labelledby="archiveUploadTitle">
+            <div class="archive-upload-intro"><span class="section-kicker">Secure intake</span><h2 id="archiveUploadTitle">Import source records</h2><p>Upload scanned Tamil Nadu FRA records. Each accepted file enters the review queue; extraction does not decide legal validity.</p></div>
+            <form id="archiveUploadForm" class="archive-upload-form">
+              <label><span>Source office</span><input id="archiveSourceOffice" name="source_office" value="District Tribal Welfare Office" maxlength="255" required></label>
+              <label><span>District</span><input id="archiveUploadDistrict" name="district" value="Salem" maxlength="255" required></label>
+              <label class="archive-file-field"><span>Source files</span><input id="archiveFiles" name="files" type="file" accept=".pdf,.jpg,.jpeg,.png,.bmp,.tif,.tiff" multiple required><small>Up to 20 files; 10 MB per file. PDF or supported scan images.</small></label>
+              <button id="archiveUploadButton" class="primary-action" type="submit">Validate and queue files</button>
+            </form>
+            <div class="archive-upload-feedback"><p id="archiveUploadSummary" class="inline-status" role="status" aria-live="polite">Choose source files to begin.</p><ol id="archiveUploadResults" class="upload-results" aria-label="Archive upload results"></ol></div>
+          </section>
           <div class="archive-layout">
             <aside class="queue-sheet" aria-labelledby="queueTitle">
               <header class="sheet-heading"><div><h2 id="queueTitle">Review queue</h2><p>Search reviewed fields and legacy references.</p></div><button id="refreshArchive" class="text-action" type="button">Refresh</button></header>
@@ -162,6 +172,6 @@
     </div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260826.2"></script><script src="/static/fra/cases.js?v=20260902.1"></script><script src="/static/fra/assets.js?v=20260902.2"></script><script src="/static/fra/atlas.js?v=20260902.2"></script><script src="/static/fra/planner.js?v=20260826.2"></script><script src="/static/fra/reports.js?v=20260826.2"></script><script src="/static/fra/app.js?v=20260902.1"></script>
+  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260902.1"></script><script src="/static/fra/cases.js?v=20260902.1"></script><script src="/static/fra/assets.js?v=20260902.2"></script><script src="/static/fra/atlas.js?v=20260902.2"></script><script src="/static/fra/planner.js?v=20260826.2"></script><script src="/static/fra/reports.js?v=20260826.2"></script><script src="/static/fra/app.js?v=20260902.2"></script>
 </body>
 </html>

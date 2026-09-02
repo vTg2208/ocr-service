@@ -50,6 +50,8 @@ class FRAWorkspaceUITests(unittest.TestCase):
             "staffName", "logoutButton", "archiveSearch", "archiveList", "archiveEmpty",
             "archiveDetail", "sourceEvidence", "reviewForm", "reviewedFields",
             "saveReviewButton", "promoteButton", "workspaceStatus",
+            "archiveUploadForm", "archiveSourceOffice", "archiveUploadDistrict",
+            "archiveFiles", "archiveUploadButton", "archiveUploadResults",
         }.issubset(parser.ids))
         self.assertTrue({"nav", "main", "header", "aside"}.issubset(parser.landmarks))
         self.assertNotIn('class="warning-strip"', html)

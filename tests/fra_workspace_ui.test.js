@@ -67,6 +67,20 @@ test('atlas query uses the same filters for features and summary', () => {
   assert.equal(FRAAtlasUI.query(filters), 'district=Thanjavur&right_type=IFR&status=granted');
 });
 
+test('archive batch upload requires source context and reports mixed outcomes precisely', () => {
+  assert.equal(FRAArchiveUI.canUploadBatch({ fileCount: 2, sourceOffice: 'DTWO', district: 'Salem' }), true);
+  assert.equal(FRAArchiveUI.canUploadBatch({ fileCount: 0, sourceOffice: 'DTWO', district: 'Salem' }), false);
+  assert.equal(FRAArchiveUI.canUploadBatch({ fileCount: 1, sourceOffice: '', district: 'Salem' }), false);
+  assert.equal(
+    FRAArchiveUI.batchSummary({ accepted: 2, rejected: 1, replayed: false }),
+    '2 files queued; 1 file rejected.',
+  );
+  assert.equal(
+    FRAArchiveUI.batchSummary({ accepted: 2, rejected: 0, replayed: true }),
+    'Existing batch restored: 2 files already queued.',
+  );
+});
+
 test('atlas presents asset features with their class-specific visual', () => {
   const presentation = FRAAtlasUI.featurePresentation(
     { kind: 'asset', asset_class: 'forest_cover', verification_state: 'verified' },

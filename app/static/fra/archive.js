@@ -27,6 +27,23 @@ const FRAArchiveUI = (() => {
     REVIEW_FIELDS.forEach((key) => { const row = element(doc, 'div', 'field-row'); const label = element(doc, 'label', '', key.replaceAll('_', ' ')); const input = doc.createElement('input'); input.name = key; input.value = values?.[key] ?? ''; if (key === 'claim_year') input.type = 'number'; row.append(label, input); container.appendChild(row); });
   }
   function formValues(form) { const values = Object.fromEntries(new FormData(form).entries()); if (values.claim_year) values.claim_year = Number(values.claim_year); return values; }
-  return { REVIEW_FIELDS, emptyState, formValues, query, renderFields, renderRecords };
+  function canUploadBatch({ fileCount = 0, sourceOffice = '', district = '', uploading = false } = {}) {
+    return !uploading && Number(fileCount) > 0 && Boolean(String(sourceOffice).trim()) && Boolean(String(district).trim());
+  }
+  function batchSummary(result = {}) {
+    const accepted = Number(result.accepted || 0); const rejected = Number(result.rejected || 0);
+    if (result.replayed) return `Existing batch restored: ${accepted} ${accepted === 1 ? 'file' : 'files'} already queued.`;
+    const queued = `${accepted} ${accepted === 1 ? 'file' : 'files'} queued`;
+    return rejected ? `${queued}; ${rejected} ${rejected === 1 ? 'file' : 'files'} rejected.` : `${queued}.`;
+  }
+  function renderBatchFiles(container, files, doc = document) {
+    container.replaceChildren();
+    (files || []).forEach((file) => {
+      const item = element(doc, 'li', `upload-result ${file.status || 'ready'}`);
+      const copy = element(doc, 'span'); copy.append(element(doc, 'strong', '', file.filename), element(doc, 'small', '', file.message || file.legacy_reference || 'Ready to upload'));
+      item.append(copy, element(doc, 'span', 'record-state', file.status || 'ready')); container.appendChild(item);
+    });
+  }
+  return { REVIEW_FIELDS, batchSummary, canUploadBatch, emptyState, formValues, query, renderBatchFiles, renderFields, renderRecords };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = FRAArchiveUI;

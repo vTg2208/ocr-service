@@ -17,7 +17,7 @@ const FRAWorkspace = (() => {
 if (typeof module !== 'undefined' && module.exports) module.exports = FRAWorkspace;
 
 if (typeof document !== 'undefined') (() => {
-  let state = FRAWorkspace.initialState(); const $ = (selector) => document.querySelector(selector); const status = $('#workspaceStatus');
+  let state = FRAWorkspace.initialState(); let archiveBatchKey = crypto.randomUUID(); const $ = (selector) => document.querySelector(selector); const status = $('#workspaceStatus');
   function setStatus(message, type = '') { status.textContent = message || ''; status.dataset.type = type; }
   function showSection(section) {
     state = FRAWorkspace.reduce(state, { type: 'section', value: section });
@@ -63,9 +63,28 @@ if (typeof document !== 'undefined') (() => {
     try { setStatus('Saving reviewer corrections…'); const record = await FRAApi.request(`/api/fra/archive/records/${state.archive.selected.id}/review`, FRAApi.json('POST', { expected_revision: state.archive.selected.revision, reviewed_fields: FRAArchiveUI.formValues(event.currentTarget) })); setStatus('Review saved.', 'success'); await loadArchive(); await loadRecord(record); } catch (error) { setStatus(error.message, 'error'); }
   }
   async function promote() { if (!state.archive.selected) return; try { setStatus('Promoting the reviewed source record…'); const result = await FRAApi.request(`/api/fra/archive/records/${state.archive.selected.id}/promote`, { method: 'POST' }); setStatus(`Promoted to FRA claim ${result.claim_number}.`, 'success'); await loadArchive(); await loadRecord(state.archive.selected); } catch (error) { setStatus(error.message, 'error'); } }
+  function selectedArchiveFiles() { return Array.from($('#archiveFiles').files || []); }
+  function previewArchiveFiles() {
+    const files = selectedArchiveFiles(); FRAArchiveUI.renderBatchFiles($('#archiveUploadResults'), files.map((file) => ({ filename: file.name, status: 'ready' })));
+    $('#archiveUploadSummary').textContent = files.length ? `${files.length} ${files.length === 1 ? 'file' : 'files'} selected for validation.` : 'Choose source files to begin.';
+  }
+  async function uploadArchiveBatch(event) {
+    event.preventDefault(); const files = selectedArchiveFiles(); const sourceOffice = $('#archiveSourceOffice').value; const district = $('#archiveUploadDistrict').value; const button = $('#archiveUploadButton');
+    if (!FRAArchiveUI.canUploadBatch({ fileCount: files.length, sourceOffice, district })) { $('#archiveUploadSummary').textContent = 'Add source office, district, and at least one file.'; return; }
+    const body = new FormData(); files.forEach((file) => body.append('files', file)); body.append('source_office', sourceOffice.trim()); body.append('district', district.trim());
+    button.disabled = true; button.textContent = 'Validating and queueing...'; $('#archiveUploadSummary').textContent = 'Checking file types, malware status, and duplicates...';
+    try {
+      const result = await FRAApi.request('/api/fra/archive/batch-upload', { method: 'POST', headers: { 'Idempotency-Key': archiveBatchKey }, body });
+      FRAArchiveUI.renderBatchFiles($('#archiveUploadResults'), result.files); $('#archiveUploadSummary').textContent = FRAArchiveUI.batchSummary(result);
+      if (!result.replayed) archiveBatchKey = crypto.randomUUID();
+      if (result.accepted) { $('#archiveFiles').value = ''; await loadArchive(); }
+    } catch (error) { $('#archiveUploadSummary').textContent = error.message; }
+    finally { button.disabled = false; button.textContent = 'Validate and queue files'; }
+  }
   async function loadVillageOptions() { try { const result = await FRAApi.request('/api/fra/villages'); const districts = [...new Set(result.items.map((item) => item.district_name))].sort(); districts.forEach((name) => $('#contextDistrict').add(new Option(name, name))); state.villages = result.items; } catch (error) { setStatus(error.message, 'error'); } }
   function publishContext() { document.dispatchEvent(new CustomEvent('fra:context', { detail: { ...state.context } })); }
   function updateDependentContext() { const district = $('#contextDistrict').value; const blocks = [...new Set((state.villages || []).filter((item) => !district || item.district_name === district).map((item) => item.block_name))].sort(); $('#contextBlock').replaceChildren(new Option('All blocks/taluks', '')); blocks.forEach((name) => $('#contextBlock').add(new Option(name, name))); $('#contextVillage').replaceChildren(new Option('All villages', '')); (state.villages || []).filter((item) => !district || item.district_name === district).forEach((item) => $('#contextVillage').add(new Option(item.village_name, item.village_name))); state = FRAWorkspace.reduce(state, { type: 'context', value: { district, block: '', village: '' } }); publishContext(); loadArchive(); }
+  $('#archiveUploadForm').addEventListener('submit', uploadArchiveBatch); $('#archiveFiles').addEventListener('change', previewArchiveFiles);
   document.querySelectorAll('[data-section]').forEach((button) => button.addEventListener('click', () => showSection(button.dataset.section))); $('#archiveFilters').addEventListener('submit', (event) => { event.preventDefault(); loadArchive(); }); $('#refreshArchive').addEventListener('click', loadArchive); $('#reviewForm').addEventListener('submit', saveReview); $('#promoteButton').addEventListener('click', promote); $('#contextDistrict').addEventListener('change', updateDependentContext); $('#contextBlock').addEventListener('change', () => { state = FRAWorkspace.reduce(state, { type: 'context', value: { block: $('#contextBlock').value } }); publishContext(); loadArchive(); }); $('#contextVillage').addEventListener('change', () => { state = FRAWorkspace.reduce(state, { type: 'context', value: { village: $('#contextVillage').value } }); publishContext(); loadArchive(); }); $('#logoutButton').addEventListener('click', async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.assign('/login'); });
   FRAWorkspace.ensureBrowserSession(fetch, (url) => window.location.assign(url)).then(async (user) => { if (!user) return; $('#staffName').textContent = user.display_name || 'Registry staff'; const requested = location.hash.slice(1); showSection(FRAWorkspace.SECTIONS.includes(requested) ? requested : 'archive'); await loadVillageOptions(); await loadArchive(); });
 })();

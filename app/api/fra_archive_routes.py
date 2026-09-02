@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Request, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -10,11 +10,16 @@ from app.api.auth import AuthenticatedUser, get_current_user, require_reviewer
 from app.db.fra_completion_models import FRAArchiveRecord, FRAImportBatch
 from app.db.models import Document
 from app.db.session import get_db
+from app.config import get_settings
 from app.models.fra_completion_schemas import (
+    FRAArchiveBatchUploadResponse,
     FRAArchiveRecordCreate,
     FRAArchiveReview,
     FRAImportBatchCreate,
 )
+from app.services.fra_document_intake import ArchiveUpload, ingest_archive_batch
+from app.services.malware import ClamAVScanner
+from app.services.storage import create_storage
 from app.services.fra_archive import (
     ArchiveConflictError,
     ArchiveValidationError,
@@ -29,6 +34,7 @@ from app.services.state_profiles import UnsupportedStateError
 
 
 router = APIRouter(prefix="/api/fra/archive", tags=["FRA archive"])
+settings = get_settings()
 
 
 def _request_id(request: Request) -> str | None:
@@ -78,6 +84,56 @@ def _record_summary(record: FRAArchiveRecord) -> dict:
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat(),
     }
+
+
+@router.post(
+    "/batch-upload",
+    status_code=202,
+    response_model=FRAArchiveBatchUploadResponse,
+)
+async def upload_batch(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    source_office: str = Form(..., min_length=1, max_length=255),
+    district: str = Form(..., min_length=1, max_length=255),
+    idempotency_key: str = Header(..., alias="Idempotency-Key", max_length=255),
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if len(files) > settings.fra_archive_max_batch_files:
+        raise HTTPException(
+            status_code=413,
+            detail=f"A batch can contain at most {settings.fra_archive_max_batch_files} files.",
+        )
+    uploads = []
+    total_bytes = 0
+    read_limit = settings.max_file_size_bytes + 1
+    for upload in files:
+        content = await upload.read(read_limit)
+        total_bytes += len(content)
+        uploads.append(ArchiveUpload(upload.filename or "upload", upload.content_type, content))
+    if total_bytes > settings.fra_archive_max_batch_total_mb * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="The archive batch is too large.")
+    try:
+        result = ingest_archive_batch(
+            db,
+            files=uploads,
+            source_office=source_office,
+            district=district,
+            actor_id=user.id,
+            idempotency_key=idempotency_key,
+            storage=create_storage(settings),
+            scanner=ClamAVScanner(
+                settings.clamav_host,
+                settings.clamav_port,
+                required=settings.malware_scan_required,
+            ),
+            request_id=_request_id(request),
+        )
+    except ArchiveValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    _commit(db, "The archive batch conflicts with an existing upload.")
+    return result
 
 
 @router.post("/batches", status_code=201)
