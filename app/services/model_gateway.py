@@ -47,6 +47,7 @@ class EntityExtractionResult:
     model_version: str
     processing_time_ms: int
     provenance: dict = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

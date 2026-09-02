@@ -174,6 +174,7 @@ def process_archive_extraction(
     actor_id,
     raw_text: str = "",
     ocr_model_version: str | None = None,
+    entity_model_version_id=None,
     processing_time_ms: int | None = None,
     request_id: str | None = None,
 ) -> FRAExtractionRun:
@@ -184,12 +185,16 @@ def process_archive_extraction(
     first_run = not record.extraction_runs
     run = FRAExtractionRun(
         archive_record=record,
+        entity_model_version_id=entity_model_version_id,
         ocr_model_version=ocr_model_version,
         entity_model_version=result.model_version,
         raw_text=str(raw_text),
         standardized_json=dict(result.fields),
         field_evidence_json=dict(result.field_evidence),
-        provenance_json=dict(result.provenance),
+        provenance_json={
+            **dict(result.provenance),
+            **({"warnings": list(result.warnings)} if result.warnings else {}),
+        },
         overall_confidence=result.confidence,
         processing_time_ms=(
             processing_time_ms if processing_time_ms is not None else result.processing_time_ms
