@@ -67,10 +67,72 @@ test('atlas query uses the same filters for features and summary', () => {
   assert.equal(FRAAtlasUI.query(filters), 'district=Thanjavur&right_type=IFR&status=granted');
 });
 
+test('atlas presents asset features with their class-specific visual', () => {
+  const presentation = FRAAtlasUI.featurePresentation(
+    { kind: 'asset', asset_class: 'forest_cover', verification_state: 'verified' },
+    FRAAssetsUI.visualFor,
+  );
+
+  assert.equal(presentation.name, 'Forest cover');
+  assert.equal(presentation.spritePosition, '-25px -41px');
+  assert.equal(presentation.color, '#2f6b3c');
+  assert.equal(presentation.meta, 'verified');
+});
+
+test('atlas keeps non-asset feature presentation unchanged', () => {
+  const presentation = FRAAtlasUI.featurePresentation(
+    { kind: 'claim', claim_number: 'TN-IFR-001', right_type: 'IFR', status: 'submitted' },
+    FRAAssetsUI.visualFor,
+  );
+
+  assert.equal(presentation.name, 'TN-IFR-001');
+  assert.equal(presentation.spritePosition, null);
+  assert.equal(presentation.meta, 'IFR · submitted');
+});
+
 test('asset and DSS copy never presents automation as a decision', () => {
   assert.match(FRAAssetsUI.legalRole(), /supporting evidence/i);
   assert.match(FRAPlannerUI.disclaimer(), /does not approve or sanction/i);
   assert.doesNotMatch(`${FRAAssetsUI.legalRole()} ${FRAPlannerUI.disclaimer()}`, /legally valid/i);
+});
+
+test('asset visuals map Tamil Nadu asset classes to the contact-sheet sprite', () => {
+  const forest = FRAAssetsUI.visualFor('forest_cover');
+  const pipeline = FRAAssetsUI.visualFor('pipeline');
+
+  assert.equal(forest.label, 'Forest cover');
+  assert.equal(pipeline.label, 'Pipeline');
+  assert.match(forest.spritePosition, /^-[0-9]+px -[0-9]+px$/);
+  assert.match(pipeline.spritePosition, /^-[0-9]+px -[0-9]+px$/);
+  assert.notEqual(forest.spritePosition, pipeline.spritePosition);
+});
+
+test('asset visuals provide aliases and a readable fallback', () => {
+  assert.equal(FRAAssetsUI.visualFor('well').key, 'open_well');
+  assert.equal(FRAAssetsUI.visualFor('agricultural_land').key, 'agricultural_cover');
+  assert.deepEqual(
+    FRAAssetsUI.visualFor('future_asset'),
+    {
+      key: 'default_asset',
+      label: 'Future asset',
+      color: '#4f6258',
+      spritePosition: '-394px -422px',
+    },
+  );
+});
+
+test('asset taxonomy and legend cover all supplied icon classes without duplicates', () => {
+  const options = FRAAssetsUI.assetOptions();
+  assert.equal(options.length, 33);
+  assert.equal(new Set(options.map((item) => item.value)).size, options.length);
+  assert.deepEqual(
+    FRAAssetsUI.legendClasses([
+      { asset_class: 'pipeline' },
+      { asset_class: 'forest_cover' },
+      { asset_class: 'pipeline' },
+    ]),
+    ['forest_cover', 'pipeline'],
+  );
 });
 
 test('report URLs are constrained to known protected subjects', () => {

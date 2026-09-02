@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <link rel="stylesheet" href="/static/fra/styles.css?v=20260826.5">
+  <link rel="stylesheet" href="/static/fra/styles.css?v=20260902.2">
 </head>
 <body>
   <a class="skip-link" id="skipLink" href="#workspaceMain">Skip to workspace</a>
@@ -102,12 +102,12 @@
                 <label><span>Active model</span><select id="assetModel" required><option value="">Awaiting trained model</option></select></label>
                 <label><span>Village</span><select id="assetVillage"><option value="">Loading Tamil Nadu villages</option></select></label>
                 <label><span>Scene reference</span><input id="assetScene" required value="synthetic-tn-scene-001"></label>
-                <label><span>Asset class</span><select id="assetClass"><option value="water_body">Water body</option><option value="agricultural_cover">Agricultural cover</option><option value="forest_cover">Forest cover</option><option value="homestead">Homestead</option></select></label>
+                <label><span>Asset class</span><select id="assetClass"><option value="water_body">Water body</option></select></label>
                 <button class="primary-action" type="submit">Queue inference</button>
                 <p id="assetJobStatus" class="inline-status" aria-live="polite"></p>
               </form>
             </aside>
-            <div class="map-sheet"><div id="assetMap" class="map-canvas" role="img" aria-label="Supporting asset observations"></div><p class="map-note">Confidence is displayed as model provenance, never as an entitlement decision.</p></div>
+            <div class="map-sheet"><div id="assetMap" class="map-canvas" role="img" aria-label="Supporting asset observations"></div><aside class="asset-map-legend" aria-label="Asset map legend" hidden><strong>Visible assets</strong><ul id="assetLegend"></ul></aside><p class="map-note">Confidence is displayed as model provenance, never as an entitlement decision.</p></div>
             <aside class="result-sheet"><div class="section-bar"><h2>Observation register</h2><button id="refreshAssets" class="text-action" type="button">Refresh</button></div><ol id="assetList" class="result-list" aria-label="Asset observations"></ol></aside>
           </div>
         </section>
@@ -131,6 +131,6 @@
     </div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260826.2"></script><script src="/static/fra/atlas.js?v=20260826.2"></script><script src="/static/fra/assets.js?v=20260826.2"></script><script src="/static/fra/planner.js?v=20260826.2"></script><script src="/static/fra/reports.js?v=20260826.2"></script><script src="/static/fra/app.js?v=20260826.2"></script>
+  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260826.2"></script><script src="/static/fra/assets.js?v=20260902.2"></script><script src="/static/fra/atlas.js?v=20260902.2"></script><script src="/static/fra/planner.js?v=20260826.2"></script><script src="/static/fra/reports.js?v=20260826.2"></script><script src="/static/fra/app.js?v=20260826.2"></script>
 </body>
 </html>

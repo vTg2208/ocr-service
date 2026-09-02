@@ -12,7 +12,41 @@ from app.db.fra_models import FRAEvidenceItem, SatelliteObservation
 from app.services.audit import record_audit
 
 
-ASSET_CLASSES = {"agricultural_cover", "forest_cover", "water_body", "homestead"}
+ASSET_CLASSES = {
+    "agricultural_cover",
+    "anganwadi",
+    "barren_land",
+    "borewell",
+    "bridge",
+    "check_dam",
+    "community_centre",
+    "electricity_grid",
+    "fisheries",
+    "forest_cover",
+    "forest_nursery",
+    "grazing_land",
+    "health_centre",
+    "homestead",
+    "irrigation_canal",
+    "livestock",
+    "market",
+    "minor_forest_produce",
+    "open_well",
+    "pipeline",
+    "plantation_orchard",
+    "pond",
+    "rainwater_harvesting",
+    "river_stream",
+    "road",
+    "sanitation_toilet",
+    "school",
+    "scrubland",
+    "solar_power",
+    "storage_warehouse",
+    "tap_water",
+    "water_body",
+    "water_tank",
+}
 BANNED_CONCLUSION_KEYS = {"valid", "invalid", "approved", "rejected", "eligibility"}
 
 

@@ -108,6 +108,25 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .summary-ledger div { display: flex; justify-content: space-between; gap: 12px; padding-top: 7px; border-top: 1px solid var(--rule); font-size: .72rem; }
 .map-sheet { min-height: 540px; display: flex; flex-direction: column; }
 .map-canvas { min-height: 480px; flex: 1; background: var(--paper-200); }
+.asset-icon-frame { display: block; flex: 0 0 auto; overflow: hidden; background: white; }
+.asset-sprite-icon { width: 44px; height: 44px; display: block; flex: 0 0 auto; background: white url('/static/fra/icons/assets-sprite.png') no-repeat; background-size: 768px 512px; }
+.asset-record { grid-template-columns: 32px minmax(0, 1fr) auto !important; align-items: center; gap: 8px 10px !important; }
+.asset-record > div { min-width: 0; display: grid; gap: 3px; }
+.asset-record > div small { grid-column: auto; }
+.asset-record-glyph { width: 32px; height: 32px; border: 1px solid var(--rule); border-radius: 7px; }
+.asset-record-glyph > .asset-sprite-icon { transform: scale(.7273); transform-origin: top left; }
+.asset-map-marker { width: 34px !important; height: 34px !important; margin: 0 !important; border: 0; background: transparent; }
+.asset-marker-glyph { width: 34px; height: 34px; border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 8px color-mix(in oklch, var(--ink-900) 28%, transparent); }
+.asset-marker-glyph > .asset-sprite-icon { transform: scale(.7728); transform-origin: top left; }
+.asset-map-legend { padding: 9px 12px; border-top: 1px solid var(--rule); background: var(--paper-50); }
+.asset-map-legend > strong { display: block; margin-bottom: 7px; color: var(--ink-700); font-size: .65rem; letter-spacing: .06em; text-transform: uppercase; }
+.asset-map-legend ul { margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; list-style: none; }
+.asset-map-legend li { display: flex; align-items: center; gap: 6px; color: var(--ink-700); font-size: .68rem; }
+.asset-legend-glyph { width: 24px; height: 24px; border: 1px solid var(--rule); border-radius: 5px; }
+.asset-legend-glyph > .asset-sprite-icon { transform: scale(.5455); transform-origin: top left; }
+.atlas-asset-glyph { width: 28px; height: 28px; align-self: start; border: 1px solid var(--rule); border-radius: 6px; }
+.atlas-asset-glyph > .asset-sprite-icon { transform: scale(.6364); transform-origin: top left; }
+.atlas-asset-record { grid-template-columns: 28px minmax(0, 1fr); }
 .map-note { margin: 0; padding: 9px 12px; color: var(--ink-500); border-top: 1px solid var(--rule); font-size: .68rem; }
 .result-sheet { min-height: 540px; display: flex; flex-direction: column; }
 .result-list, .recommendation-list { min-height: 0; margin: 0; padding: 0; overflow: auto; list-style: none; }

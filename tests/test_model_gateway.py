@@ -67,6 +67,26 @@ class ModelGatewayTests(unittest.TestCase):
         self.assertEqual(result.model_version, "tn-assets-v1")
         self.assertTrue(result.provenance["synthetic"])
 
+    def test_manifest_asset_adapter_accepts_tamil_nadu_infrastructure_classes(self):
+        detector = ManifestAssetDetector("tn-assets-v1")
+        result = detector.detect(
+            "tn-pipeline-scene",
+            {"type": "MultiPolygon", "coordinates": []},
+            {
+                "synthetic": True,
+                "features": [
+                    {
+                        "asset_class": "pipeline",
+                        "geometry": {"type": "Point", "coordinates": [78.65, 11.49]},
+                        "value": {"present": True},
+                        "confidence": 0.81,
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(result.features[0]["asset_class"], "pipeline")
+
     def test_register_and_activate_model_keeps_one_active_version_per_task(self):
         with Session(self.engine) as session:
             admin = User(external_id="model-admin", display_name="Admin", role="admin")

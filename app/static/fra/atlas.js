@@ -19,7 +19,16 @@ const FRAAtlasUI = (() => {
       layers,
     };
   }
-  return { contextFilters, query };
+  function featurePresentation(properties = {}, assetVisualFor = () => null) {
+    const visual = properties.kind === 'asset' ? assetVisualFor(properties.asset_class) : null;
+    return {
+      name: visual?.label || properties.village || properties.claim_number || properties.title_number || properties.asset_class || 'Mapped feature',
+      meta: [properties.district, properties.right_type, properties.status || properties.verification_state].filter(Boolean).join(' · '),
+      spritePosition: visual?.spritePosition || null,
+      color: visual?.color || null,
+    };
+  }
+  return { contextFilters, featurePresentation, query };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = FRAAtlasUI;
 
@@ -28,13 +37,17 @@ if (typeof document !== 'undefined') (() => {
   const results = document.querySelector('#atlasResults'); const summaryNode = document.querySelector('#atlasSummary');
   const featureCount = document.querySelector('#atlasFeatureCount'); let map; let featureLayer; let loaded = false;
   const colors = { village: '#486b4b', claim: '#bf6d2c', title: '#146b67', asset: '#6c4d8e' };
+  function presentation(properties) { return FRAAtlasUI.featurePresentation(properties, FRAAssetsUI.visualFor); }
+  function assetMarkerHtml(properties) { const item = presentation(properties); return `<span class="asset-icon-frame asset-marker-glyph" aria-hidden="true"><span class="asset-sprite-icon" style="background-position:${item.spritePosition}" aria-hidden="true"></span></span>`; }
+  function assetIcon(properties, className) { const item = presentation(properties); const frame = document.createElement('span'); const glyph = document.createElement('span'); frame.className = `asset-icon-frame ${className}`; frame.setAttribute('aria-label', item.name); glyph.className = 'asset-sprite-icon'; glyph.style.backgroundPosition = item.spritePosition; glyph.setAttribute('aria-hidden', 'true'); frame.appendChild(glyph); return frame; }
   function ensureMap() {
     if (map || typeof L === 'undefined') return;
     map = L.map('atlasMap', { zoomControl: true }).setView([11.1, 78.65], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
     featureLayer = L.geoJSON([], {
-      style: (feature) => ({ color: colors[feature.properties.kind] || '#315a3a', weight: 2, fillOpacity: feature.properties.kind === 'village' ? 0.08 : 0.22 }),
-      pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 7, color: colors[feature.properties.kind] || '#315a3a', fillOpacity: 0.75 }),
+      style: (feature) => { const props = feature.properties || {}; const color = presentation(props).color || colors[props.kind] || '#315a3a'; return { color, fillColor: color, weight: 2, fillOpacity: props.kind === 'village' ? 0.08 : 0.22 }; },
+      pointToLayer: (feature, latlng) => { const props = feature.properties || {}; if (props.kind === 'asset') return L.marker(latlng, { icon: L.divIcon({ className: 'asset-map-marker', html: assetMarkerHtml(props), iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18] }) }); return L.circleMarker(latlng, { radius: 7, color: colors[props.kind] || '#315a3a', fillOpacity: 0.75 }); },
+      onEachFeature: (feature, layer) => { const item = presentation(feature.properties || {}); layer.bindTooltip(item.name, { direction: 'top' }); },
     }).addTo(map);
   }
   function renderSummary(data) {
@@ -46,7 +59,7 @@ if (typeof document !== 'undefined') (() => {
   }
   function renderFeatures(collection) {
     results.replaceChildren(); const features = collection.features || []; featureCount.textContent = `${features.length} ${features.length === 1 ? 'feature' : 'features'}`;
-    features.forEach((feature) => { const props = feature.properties || {}; const row = document.createElement('li'); const kind = document.createElement('span'); const name = document.createElement('strong'); const meta = document.createElement('small'); kind.className = `kind-mark kind-${props.kind}`; kind.textContent = props.kind; name.textContent = props.village || props.claim_number || props.title_number || props.asset_class || 'Mapped feature'; meta.textContent = [props.district, props.right_type, props.status || props.verification_state].filter(Boolean).join(' · '); row.append(kind, name, meta); results.appendChild(row); });
+    features.forEach((feature) => { const props = feature.properties || {}; const item = presentation(props); const row = document.createElement('li'); const kind = props.kind === 'asset' ? assetIcon(props, 'atlas-asset-glyph') : document.createElement('span'); const name = document.createElement('strong'); const meta = document.createElement('small'); if (props.kind !== 'asset') { kind.className = `kind-mark kind-${props.kind}`; kind.textContent = props.kind; } else { row.classList.add('atlas-asset-record'); } name.textContent = item.name; meta.textContent = item.meta; row.append(kind, name, meta); results.appendChild(row); });
     if (!features.length) { const empty = document.createElement('li'); empty.className = 'empty-row'; empty.textContent = 'No features match these Tamil Nadu filters.'; results.appendChild(empty); }
     ensureMap(); if (!featureLayer) return; featureLayer.clearLayers(); featureLayer.addData(collection);
     try { const bounds = featureLayer.getBounds(); if (bounds.isValid()) map.fitBounds(bounds, { padding: [22, 22], maxZoom: 13 }); else map.setView([11.1, 78.65], 7); } catch (_) { map.setView([11.1, 78.65], 7); }

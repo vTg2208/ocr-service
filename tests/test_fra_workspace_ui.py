@@ -74,6 +74,23 @@ class FRAWorkspaceUITests(unittest.TestCase):
                 self.assertTrue((UI_ROOT / "icons" / icon_name).is_file())
         self.assertEqual(html.count('class="rail-icon"'), 5)
 
+    def test_asset_workspace_uses_the_supplied_contact_sheet_and_accessible_legend(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+        css = (UI_ROOT / "styles.css").read_text(encoding="utf-8")
+        parser = WorkspaceParser(); parser.feed(html)
+
+        self.assertIn("assetLegend", parser.ids)
+        self.assertIn('aria-label="Asset map legend"', html)
+        self.assertIn("/static/fra/icons/assets-sprite.png", css)
+        self.assertTrue((UI_ROOT / "icons" / "assets-sprite.png").is_file())
+        self.assertIn(".asset-map-marker", css)
+        self.assertIn(".asset-record-glyph", css)
+        self.assertIn(".asset-record-glyph { width: 32px", css)
+        self.assertIn(".asset-map-marker { width: 34px", css)
+        self.assertIn(".asset-legend-glyph { width: 24px", css)
+        self.assertIn(".atlas-asset-glyph { width: 28px", css)
+        self.assertLess(html.index("/static/fra/assets.js"), html.index("/static/fra/atlas.js"))
+
     def test_remaining_workspaces_have_real_controls_maps_lists_and_warnings(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         parser = WorkspaceParser(); parser.feed(html)
