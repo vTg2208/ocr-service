@@ -62,6 +62,15 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 60
     rate_limit_window_seconds: int = 60
 
+    # --- Historical imagery discovery (supporting evidence only) ---
+    stac_endpoint: str = "https://planetarycomputer.microsoft.com/api/stac/v1/search"
+    stac_allowed_hosts: List[str] = ["planetarycomputer.microsoft.com"]
+    stac_allowed_collections: List[str] = ["landsat-c2-l2"]
+    stac_timeout_seconds: float = 20
+    stac_max_pages: int = 5
+    stac_max_results: int = 100
+    stac_max_cloud: float = 40
+
 
     model_config = SettingsConfigDict(
         env_file=".env",

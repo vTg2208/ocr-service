@@ -172,5 +172,49 @@ def _asset_inference(session, job):
     return {"asset_ids": [str(asset.id) for asset in assets]}
 
 
+def _historical_evidence(session, job):
+    from app.services.historical_evidence import (
+        HistoricalEvidenceError,
+        create_historical_processor,
+        process_historical_evidence_job,
+    )
+    from app.services.model_gateway import ModelRegistrationError
+    from app.services.stac_imagery import STACClient, STACConfigurationError
+    from app.services.storage import create_storage
+
+    model = session.scalar(
+        select(ModelVersion)
+        .where(ModelVersion.task == "historical_evidence", ModelVersion.status == "active")
+        .order_by(ModelVersion.activated_at.desc(), ModelVersion.registered_at.desc())
+        .limit(1)
+    )
+    processor = None
+    if model is not None:
+        try:
+            processor = create_historical_processor(model)
+        except ModelRegistrationError as error:
+            raise JobExecutionError("model_configuration_invalid", str(error), retriable=False) from error
+    settings = get_settings()
+    try:
+        stac_client = STACClient(
+            settings.stac_endpoint,
+            allowed_hosts=set(settings.stac_allowed_hosts),
+            allowed_collections=set(settings.stac_allowed_collections),
+            timeout_seconds=settings.stac_timeout_seconds,
+            max_pages=settings.stac_max_pages,
+            max_results=settings.stac_max_results,
+        )
+    except STACConfigurationError as error:
+        raise JobExecutionError("stac_configuration_invalid", str(error), retriable=False) from error
+    try:
+        return process_historical_evidence_job(
+            session, job, stac_client=stac_client, processor=processor,
+            storage=create_storage(settings), model=model,
+        )
+    except HistoricalEvidenceError as error:
+        raise JobExecutionError("historical_evidence_error", str(error), retriable=error.retriable) from error
+
+
 register_job_handler("archive_extract", _archive_extract)
 register_job_handler("asset_inference", _asset_inference)
+register_job_handler("historical_evidence", _historical_evidence)
