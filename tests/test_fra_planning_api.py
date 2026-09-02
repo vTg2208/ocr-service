@@ -11,7 +11,8 @@ from sqlalchemy.pool import StaticPool
 from app.api.auth import settings
 from app.db.base import Base
 from app.db.fra_completion_models import FRAVillageProfile
-from app.db.fra_models import DSSRecommendation, FRAClaim, RightsHolder, SchemeRuleSet
+from app.db.fra_models import DSSRecommendation, FRAClaim, FRAGeometryVersion, RightsHolder, SchemeRuleSet
+from app.db.fra_operational_models import ImageryArtifact
 from app.db.models import User
 from app.db.session import get_db
 from app.main import app
@@ -55,6 +56,9 @@ class FRAPlanningAPITests(unittest.TestCase):
                 reference_version="demo-v1", synthetic=True,
             )
             session.add_all([claim, rule, village]); session.flush()
+            geometry = FRAGeometryVersion(claim=claim, version=1, geometry=BOUNDARY, source="survey", boundary_quality="surveyed", created_by=reviewer.id)
+            session.add(geometry); session.flush()
+            session.add(ImageryArtifact(claim_id=claim.id, geometry_version_id=geometry.id, artifact_type="historical_land_observation:2005", target_year=2005, storage_key="private/evidence.json", content_sha256="a" * 64, processor_version="history-v1", parameters_json={}, statistics_json={"forest_index": .5}, quality_flags_json=["supporting_observation"], provenance_json={"legal_role": "supporting_observation"}, state="completed", verification_state="unverified"))
             recommendation = DSSRecommendation(
                 claim=claim, rule_set=rule, rule_version=rule.version, actor_id=reviewer.id,
                 idempotency_key="plan-eval", outcome="recommended", input_json={"facts": {}},
@@ -63,6 +67,7 @@ class FRAPlanningAPITests(unittest.TestCase):
             session.add(recommendation); session.commit()
             self.recommendation_id = str(recommendation.id)
             self.village_id = str(village.id)
+            self.claim_id = str(claim.id)
         self.client = TestClient(app)
 
     def tearDown(self):
@@ -109,6 +114,21 @@ class FRAPlanningAPITests(unittest.TestCase):
         self.assertIn("text/html", response.headers["content-type"])
         self.assertEqual(response.headers["cache-control"], "private, no-store")
         self.assertIn("advisory and do not approve or sanction", response.text)
+
+    def test_historical_report_is_claim_scoped_private_and_no_store(self):
+        denied = self.client.get(
+            f"/api/fra/reports/claims/{self.claim_id}/historical-evidence",
+            headers=self.headers("planning-staff"),
+        )
+        self.assertEqual(denied.status_code, 404)
+        response = self.client.get(
+            f"/api/fra/reports/claims/{self.claim_id}/historical-evidence",
+            headers=self.headers("planning-reviewer"),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers["cache-control"], "private, no-store")
+        self.assertNotIn("private/evidence.json", response.text)
+        self.assertIn("supporting evidence", response.text)
 
 
 if __name__ == "__main__":

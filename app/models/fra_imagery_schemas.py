@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -19,4 +21,11 @@ class HistoricalEvidenceRequest(BaseModel):
         return sorted(set(years))
 
 
-__all__ = ["HistoricalEvidenceRequest"]
+class HistoricalEvidenceReview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verification_state: Literal["verified", "rejected", "needs_field_verification"]
+    notes: str = Field(min_length=1, max_length=2000)
+
+
+__all__ = ["HistoricalEvidenceRequest", "HistoricalEvidenceReview"]

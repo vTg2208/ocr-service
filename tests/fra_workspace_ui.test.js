@@ -153,4 +153,5 @@ test('report URLs are constrained to known protected subjects', () => {
   assert.equal(FRAReportsUI.reportUrl('villages', 'v-1'), '/api/fra/reports/villages/v-1');
   assert.equal(FRAReportsUI.reportUrl('archive', 'r 1'), '/api/fra/reports/archive/r%201');
   assert.equal(FRAReportsUI.reportUrl('unknown', 'x'), null);
+  assert.equal(FRAReportsUI.historicalEvidenceUrl('c 1'), '/api/fra/reports/claims/c%201/historical-evidence');
 });

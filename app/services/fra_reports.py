@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.db.fra_completion_models import AssetFeature, FRAArchiveRecord, FRAVillageProfile
 from app.db.fra_models import DSSRecommendation, FRAClaim
+from app.db.fra_operational_models import ImageryArtifact
 from app.db.models import User
 
 
@@ -103,6 +104,63 @@ def render_claim_report(session, claim_id, *, actor_id) -> str:
     return _page(
         f"FRA case report · {claim.claim_number}",
         body,
+        synthetic=bool(claim.provenance_json.get("synthetic")),
+    )
+
+
+def _metric_rows(statistics: dict) -> str:
+    return "".join(
+        f"<tr><th>{_safe(str(key).replace('_', ' ').title())}</th><td>{_safe(value)}</td></tr>"
+        for key, value in sorted((statistics or {}).items())
+    ) or "<tr><td colspan='2'>No derived metrics are available.</td></tr>"
+
+
+def render_historical_evidence_report(session, claim_id, *, actor_id) -> str:
+    actor = _actor(session, actor_id)
+    claim = session.get(FRAClaim, claim_id)
+    if claim is None:
+        raise ReportNotFoundError("FRA claim not found.")
+    if actor.role not in {"reviewer", "admin"} and claim.submitted_by != actor.id:
+        raise PermissionError("Historical evidence report is not available.")
+    artifacts = session.scalars(
+        select(ImageryArtifact)
+        .where(ImageryArtifact.claim_id == claim.id)
+        .order_by(ImageryArtifact.target_year, ImageryArtifact.created_at)
+    ).all()
+    sections = []
+    for artifact in artifacts:
+        scene = artifact.imagery_scene
+        geometry = artifact.geometry_version
+        acquired = (
+            f"{scene.acquired_at.day} {scene.acquired_at.strftime('%B %Y')}"
+            if scene is not None else "Not recorded"
+        )
+        flags = ", ".join(str(flag).replace("_", " ") for flag in artifact.quality_flags_json) or "None recorded"
+        model_version = artifact.model_version.version if artifact.model_version else "Not attached"
+        reviewed = artifact.reviewer.display_name if artifact.reviewer else "Not yet reviewed"
+        sections.append(
+            "<section class='evidence-card'>"
+            f"<h2>Target year {_safe(artifact.target_year or 'Not recorded')}</h2>"
+            f"<p><strong>Actual acquisition date:</strong> {_safe(acquired)}</p>"
+            f"<p><strong>Provider and collection:</strong> {_safe(scene.provider if scene else 'Not recorded')} Â· {_safe(scene.collection if scene else 'Not recorded')}</p>"
+            f"<p><strong>Cloud cover:</strong> {_safe(float(scene.cloud_cover) if scene and scene.cloud_cover is not None else 'Not recorded')}</p>"
+            f"<p><strong>Quality flags:</strong> {_safe(flags)}</p>"
+            f"<p><strong>Geometry version {geometry.version}:</strong> {_safe(geometry.source)} Â· {_safe(geometry.boundary_quality)}</p>"
+            f"<p><strong>Geometry provenance:</strong> {_safe(geometry.provenance_json or 'Not recorded')}</p>"
+            f"<p><strong>Processing/model version:</strong> {_safe(artifact.processor_version)} Â· {_safe(model_version)}</p>"
+            f"<p><strong>Reviewer disposition:</strong> {_safe(artifact.verification_state.replace('_', ' '))} Â· {_safe(reviewed)}</p>"
+            f"<p><strong>Source licence:</strong> {_safe(scene.license_reference if scene else 'Not recorded')}</p>"
+            f"<table><caption>Derived metrics</caption><tbody>{_metric_rows(artifact.statistics_json)}</tbody></table>"
+            "<p class='meta'>This observation is supporting evidence only. It does not prove tenure or determine the claim outcome.</p>"
+            "</section>"
+        )
+    body = (
+        f"<section><h2>Case context</h2><p>Claim number: {_safe(claim.claim_number)} Â· Right type: {_safe(claim.right_type)}</p>"
+        "<p>Observations are compared with the recorded claim boundary and require human review.</p></section>"
+        + ("".join(sections) or "<section><h2>No historical observations</h2><p>No completed historical evidence artifacts are recorded for this claim.</p></section>")
+    )
+    return _page(
+        f"Historical evidence report Â· {claim.claim_number}", body,
         synthetic=bool(claim.provenance_json.get("synthetic")),
     )
 

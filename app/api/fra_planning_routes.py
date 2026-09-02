@@ -23,6 +23,7 @@ from app.services.fra_reports import (
     ReportNotFoundError,
     render_archive_report,
     render_claim_report,
+    render_historical_evidence_report,
     render_village_report,
 )
 
@@ -182,6 +183,18 @@ def claim_report(
         return _html_response(render_claim_report(db, claim_id, actor_id=user.id))
     except ReportNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get("/reports/claims/{claim_id}/historical-evidence", response_class=HTMLResponse)
+def historical_evidence_report(
+    claim_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return _html_response(render_historical_evidence_report(db, claim_id, actor_id=user.id))
+    except (ReportNotFoundError, PermissionError) as error:
+        raise HTTPException(status_code=404, detail="Historical evidence report not found.") from error
 
 
 @router.get("/reports/villages/{village_id}", response_class=HTMLResponse)

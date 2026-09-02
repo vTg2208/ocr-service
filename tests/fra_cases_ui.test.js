@@ -83,3 +83,15 @@ test('spatial findings remain supporting review signals with explicit provenance
   );
   assert.match(FRACasesUI.spatialDisclaimer(), /does not determine legal validity/i);
 });
+
+test('historical evidence controls remain claim scoped and neutral', () => {
+  assert.equal(
+    FRACasesUI.historicalReportUrl('claim 1'),
+    '/api/fra/reports/claims/claim%201/historical-evidence',
+  );
+  assert.equal(FRACasesUI.historicalReportUrl(''), null);
+  assert.deepEqual(
+    FRACasesUI.historicalPresentation({ target_year: 2005, state: 'completed', verification_state: 'unverified', provider: 'stac.example', cloud_cover: 7.5 }),
+    { title: '2005 observation', status: 'completed · unverified', meta: 'stac.example · 7.5% cloud · supporting evidence only' },
+  );
+});

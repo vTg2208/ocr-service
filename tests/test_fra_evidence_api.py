@@ -43,7 +43,9 @@ class FRAEvidenceAPITests(unittest.TestCase):
             model = ModelVersion(task="historical_evidence", adapter_type="rest", name="history", version="v1", status="active", configuration_json={"ready": True}, label_map_json={}, metrics_json={}, registered_by=reviewer.id)
             session.add_all([scene, model]); session.flush()
             session.add(ImageryArtifact(claim_id=claim.id, geometry_version_id=geometry.id, imagery_scene_id=scene.id, artifact_type="historical_land_observation:2005", target_year=2005, storage_key="private/artifact.json", content_sha256="a"*64, processor_version="v1", model_version_id=model.id, parameters_json={}, statistics_json={"forest_index": .62}, quality_flags_json=["supporting_observation"], provenance_json={"legal_role": "supporting_observation"}, state="completed", verification_state="unverified"))
-            session.commit(); self.claim_id, self.no_geometry_id, self.other_claim_id = str(claim.id), str(no_geometry.id), str(other_claim.id)
+            session.commit()
+            artifact = session.scalar(select(ImageryArtifact).where(ImageryArtifact.claim_id == claim.id))
+            self.claim_id, self.no_geometry_id, self.other_claim_id, self.artifact_id = str(claim.id), str(no_geometry.id), str(other_claim.id), str(artifact.id)
         self.client = TestClient(app)
 
     def tearDown(self): self.client.close(); app.dependency_overrides.clear(); self.engine.dispose()
@@ -70,6 +72,15 @@ class FRAEvidenceAPITests(unittest.TestCase):
         self.assertEqual(missing.status_code, 422)
         reviewer = self.client.get(f"/api/fra/claims/{self.other_claim_id}/historical-evidence", headers=self.headers("evidence-reviewer"))
         self.assertEqual(reviewer.status_code, 200)
+
+    def test_only_reviewer_can_record_human_disposition(self):
+        path = f"/api/fra/claims/{self.claim_id}/historical-evidence/{self.artifact_id}/review"
+        denied = self.client.patch(path, headers=self.headers(), json={"verification_state": "verified", "notes": "Checked"})
+        self.assertEqual(denied.status_code, 403)
+        reviewed = self.client.patch(path, headers=self.headers("evidence-reviewer"), json={"verification_state": "needs_field_verification", "notes": "Cloud edge needs a site check."})
+        self.assertEqual(reviewed.status_code, 200, reviewed.text)
+        self.assertEqual(reviewed.json()["verification_state"], "needs_field_verification")
+        self.assertEqual(reviewed.json()["reviewer_notes"], "Cloud edge needs a site check.")
 
 
 if __name__ == "__main__": unittest.main()
