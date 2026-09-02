@@ -19,7 +19,7 @@ The built-in manifest adapters replay visibly synthetic fixtures and explicitly 
 
 Keep credentials in environment variables or a secret manager, never in the registry JSON.
 
-Local Python/artifact adapter metadata:
+Allow-listed local entity adapter metadata:
 
 ```json
 {
@@ -27,30 +27,46 @@ Local Python/artifact adapter metadata:
   "name": "tn-fra-ner",
   "version": "2026.09.0",
   "adapter_type": "local_python",
-  "framework": "pytorch",
-  "artifact_uri": "private-models/tn-fra-ner/2026.09.0",
+  "framework": "python",
+  "artifact_uri": null,
   "checksum": "sha256-of-reviewed-artifact",
   "metrics": {"status": "evaluated", "macro_f1": 0.82, "evaluation_set": "tn-held-out-v1"},
-  "configuration": {"entrypoint": "project_models.tn_ner:Adapter", "ready": true}
+  "configuration": {"runner": "tamil_nadu_fra_regex_v1", "ready": true}
 }
 ```
 
-REST adapter metadata:
+REST entity adapter metadata:
 
 ```json
 {
-  "task": "asset_detection",
-  "name": "tn-fra-assets",
+  "task": "entity_extraction",
+  "name": "tn-fra-entities",
   "version": "2026.09.0",
   "adapter_type": "rest",
   "framework": "onnx-runtime-service",
   "artifact_uri": null,
-  "metrics": {"status": "evaluated", "macro_f1": 0.76, "mean_iou": 0.61},
-  "configuration": {"base_url_env": "TN_ASSET_MODEL_URL", "timeout_seconds": 30, "ready": true}
+  "metrics": {"status": "evaluated", "macro_f1": 0.76},
+  "configuration": {"endpoint": "https://models.example.gov.in/fra/entities", "allowed_hosts": ["models.example.gov.in"], "timeout_seconds": 30, "ready": true}
 }
 ```
 
-Artifact-runner metadata uses `adapter_type: "artifact"` and a private `artifact_uri` plus checksum. Before using any of these types, add the concrete adapter factory and job-handler wiring in `app/services/fra_job_handlers.py`; the current worker intentionally instantiates only the safe synthetic manifest adapters.
+Historical-evidence processing uses a separately deployed REST model and the same strict version check:
+
+```json
+{
+  "task": "historical_evidence",
+  "name": "tn-fra-history",
+  "version": "2026.09.0",
+  "adapter_type": "rest",
+  "framework": "model-service",
+  "metrics": {"status": "evaluated", "evaluation_set": "tn-held-out-history-v1"},
+  "configuration": {"endpoint": "https://models.example.gov.in/fra/history", "allowed_hosts": ["models.example.gov.in"], "timeout_seconds": 60, "ready": true}
+}
+```
+
+The worker now instantiates the allow-listed Tamil Nadu local entity extractor, an allow-listed REST entity extractor, and an allow-listed REST historical processor. It fails closed on endpoint, host, readiness, or version mismatch. Asset manifests remain restricted to visibly synthetic fixture processing until a separately evaluated asset adapter is implemented and approved; no arbitrary Python entrypoint or artifact import is allowed.
+
+The REST historical response must contain base64 artifact bytes, `statistics`, string `quality_flags`, matching `processor_version` and `model_version`, and non-adjudicative provenance. The service limits decoded artifacts to 25 MB and rejects automated legal conclusions.
 
 ## Register, activate, and run
 
@@ -79,7 +95,7 @@ OCR samples use `{"text": "..."}`. Entity samples are field dictionaries. Asset 
 
 ## Operational boundary
 
-The current profile accepts only Tamil Nadu (`TN`). Authoritative village boundaries, legally approved rules, labelled evaluation sets, access approvals, and reviewed model documentation must replace every synthetic fixture before operational use. The UI must continue to display these exact meanings:
+The current profile accepts only Tamil Nadu (`TN`). Authoritative village boundaries, legally approved rules/catalogue versions, labelled evaluation sets, access approvals, and reviewed model documentation must replace every synthetic fixture before operational use. The UI must continue to display these exact meanings:
 
 - Model and satellite observations are supporting evidence and do not determine legal validity.
 - DSS recommendations are advisory and do not approve or sanction benefits.

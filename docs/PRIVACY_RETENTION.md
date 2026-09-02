@@ -12,9 +12,11 @@ This service records document claims; it does not determine or transfer legal ow
 - Detailed conflict evidence is restricted to the `admin` role and every resolution is audited.
 - S3 storage must use private buckets, blocked public access, server-side encryption, and a narrowly scoped API role.
 - Satellite source URIs are private metadata. API responses expose the observation and supporting-evidence label without returning the source URI.
+- STAC asset references, signed query strings, derived-artifact storage keys, and model endpoints are restricted processing metadata. Historical reports expose provider, collection, acquisition, licence, versions, metrics, and quality flags only.
 - DSS audit and recommendation rows may retain declared facts and rule identifiers, but never raw document content.
 - FRA archive raw text, reviewed fields, extraction evidence, and printable archive reports are restricted reviewer data. Archive reports require reviewer or administrator access.
 - Atlas responses minimize rights-holder identifiers for normal users. Private source/artifact URIs are excluded from asset, model, and report responses.
+- DSS fact snapshots contain derived values and source entity/version identifiers, never rights-holder names, raw OCR, private URIs, or contact fields. Operational planner dashboards aggregate counts; verifier queues expose case/archive references and locations only.
 - Synthetic status is a mandatory provenance field, not a substitute for access control.
 
 ## Retention

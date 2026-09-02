@@ -33,6 +33,8 @@ python -m scripts.mint_dev_token fra-staff --minutes 60
 
 All FRA routes require a database-backed authenticated user. A `user` can enter claims and evidence. A `reviewer` or `admin` is required for lifecycle decisions and title issuance. Only an `admin` can create DSS rule sets. The HS256 token and development-user scripts are local adapters; use the authority's approved identity provider in production.
 
+The temporary browser access-code account is assigned the `reviewer` role so local staff can exercise the populated archive, case, evidence, and verifier queues. Production identity roles must come from the approved identity provider.
+
 ## Claim workflow
 
 The lifecycle is explicit and append-only:
@@ -84,6 +86,12 @@ Submit it to `POST /api/fra/claims/{claim_id}/satellite-observations` after the 
 
 Real imagery providers and scientifically validated analysers must be implemented, reviewed, licensed, and calibrated outside this sample adapter before any operational use.
 
+## Historical evidence processing
+
+`POST /api/fra/claims/{claim_id}/historical-evidence` queues one to ten years after a claim has a geometry. Discovery uses a bounded, HTTPS/localhost and host/collection allow-listed STAC client. A registered active `historical_evidence` REST model receives the selected private scene references and claim geometry. Until that model is attached, the job completes with `insufficient_model`; it never substitutes fixture detections.
+
+`GET /api/fra/claims/{claim_id}/historical-evidence` returns redacted job/artifact status. Reviewers record a human disposition through the artifact review route. The protected printable report at `/api/fra/reports/claims/{claim_id}/historical-evidence` includes actual acquisition date, provider/collection, cloud and quality flags, geometry/model versions, metrics, and reviewer state. It omits storage keys and signed asset references and states that imagery is supporting evidence only.
+
 ## Sample DSS rules
 
 [`data/demo_dss_rules.json`](../data/demo_dss_rules.json) contains visibly synthetic water, housing, and livelihood sample rules. Post each object to `POST /api/fra/dss/rule-sets` with an administrator token. The API validates the constrained `all`, `any`, `eq`, `gte`, `lte`, `present`, and `absent` operators before persistence.
@@ -97,7 +105,11 @@ Evaluate active rules with an `Idempotency-Key` header:
 }
 ```
 
-`POST /api/fra/dss/evaluate` returns `recommended`, `not_recommended`, or `insufficient_data`, plus reasons, missing inputs, the exact rule version, source reference, and an advisory disclaimer. The engine has no arbitrary code, SQL, template, or network execution. Requests and outputs are stored for reproducibility; repeat calls by the same actor and rule with the same idempotency key return the existing recommendation.
+`POST /api/fra/dss/evaluate` is retained for administrator/test-supplied facts. Normal staff use `POST /api/fra/dss/derive-and-evaluate`, which snapshots title, claim, current verified asset, village socioeconomic, published water-stress, and source-quality facts. Missing or stale observations remain `unknown`; the absence of a row is never treated as proof that an asset is absent. Recommendations retain the exact fact snapshot and sources.
+
+`GET/POST /api/fra/dss/scheme-catalog` manages versioned policy metadata separately from executable conditions. Bundled Tamil Nadu entries for PM-KISAN, MGNREGA, PMAY-G, JJM, and DAJGUA are inactive and non-authoritative until an administrator records an HTTPS source, approving authority, effective date, and review date.
+
+The operational dashboard routes `/api/fra/dashboard/verifier` and `/api/fra/dashboard/planner` use the shared district/block/village filters. Verifier queues require reviewer/admin access. Planner results are privacy-minimized aggregates. These are tables and summaries; the Atlas has not been expanded with satellite rasters or thematic WebGIS controls.
 
 The bundled rules are examples only. An authorized department must approve authoritative scheme rules, effective dates, source references, data definitions, and review procedures.
 
@@ -118,4 +130,4 @@ docker compose config --quiet
 git diff --check
 ```
 
-The expected Alembic head is `20260826_0004`. Passing local tests demonstrates software behavior with synthetic data; it does not validate remote-sensing accuracy, legal sufficiency, scheme authority, or production integrations.
+The expected Alembic head is `20260902_0005`. Passing local tests demonstrates software behavior with synthetic data; it does not validate remote-sensing accuracy, legal sufficiency, scheme authority, or production integrations.

@@ -11,7 +11,7 @@ The legacy registry keeps its exclusive-land rule: exact parcel duplicates and m
 
 ## Product tour
 
-AranyaSetu provides a protected staff experience for both patta-to-parcel registration and Tamil Nadu-first FRA casework. The screenshots below use the repository's bundled synthetic demo data; they do not show authoritative land or claimant records.
+AranyaSetu provides a protected staff experience for both patta-to-parcel registration and Tamil Nadu-first FRA casework. The screenshots below use the repository's bundled synthetic sample data; they do not show authoritative land or claimant records.
 
 ### Secure staff access
 
@@ -59,7 +59,8 @@ The advisory planner shows the rule outcome, reasons, missing inputs, and model 
 - Keeps the standalone OCR and optional land-enrichment APIs available separately.
 - Models FRA rights holders, Gram Sabhas, claim decisions, versioned geometries, evidence, and titles under `/api/fra/*`.
 - Evaluates FRA overlaps by right type, creates explicitly supporting local satellite evidence, and returns versioned advisory DSS recommendations.
-- Provides a protected Tamil Nadu-first `/fra` workspace with searchable archive review, synchronized Atlas filters and summaries, versioned asset observations, advisory referrals, and privacy-safe printable reports.
+- Provides a protected Tamil Nadu-first `/fra` workspace with archive intake/review, native casework, geometry authoring, operational dashboards, synchronized Atlas filters, versioned observations, derived-fact advisory referrals, and privacy-safe printable reports.
+- Imports reviewed reference vectors, evaluates non-adjudicative intersections, discovers bounded allow-listed STAC scenes, and stores versioned historical evidence artifacts without exposing private scene or storage references.
 - Keeps OCR, entity extraction, and asset models behind replaceable versioned gateways so trained models can be attached later without changing the legal workflow.
 
 ## Staff workflow
@@ -145,6 +146,7 @@ data/
   demo_dss_rules.json
   synthetic_tamil_nadu_fra_archive.json
   synthetic_tamil_nadu_fra_atlas.geojson
+  tn_scheme_catalog.sample.json
   synthetic_example_village.geojson
 docs/                     Operations, privacy, specifications, and implementation plans
 migrations/               Alembic database migrations
@@ -205,7 +207,7 @@ docker compose exec api python -m scripts.import_aliases data/administrative_ali
 docker compose exec api python -m scripts.import_parcels data/synthetic_example_village.geojson
 ```
 
-The GeoJSON file contains 52 synthetic parcels, including irregular shapes used to demonstrate realistic boundaries. Imports are idempotent and report inserted, updated, skipped, invalid, duplicate, and repaired records.
+The GeoJSON file contains 52 synthetic parcels, including irregular shapes used to exercise realistic boundaries. Imports are idempotent and report inserted, updated, skipped, invalid, duplicate, and repaired records.
 
 ### 5. Open the application
 
@@ -224,7 +226,7 @@ docker compose exec api python -m scripts.seed_tamil_nadu_fra_demo
 docker compose exec api python -m scripts.run_fra_jobs --max-jobs 20
 ```
 
-The seed is idempotent and includes three synthetic village profiles, IFR/CR/CFR archive examples, claims and versioned geometry, a synthetic title, time-separated supporting observations, and advisory rule/referral examples. It is not authoritative case data. Trained models are optional and can be attached later using [the model adapter guide](docs/MODEL_ADAPTERS.md).
+The seed is idempotent and includes three synthetic village profiles, IFR/CR/CFR archive examples, claims and versioned geometry, a synthetic title, time-separated supporting observations, non-authoritative Tamil Nadu scheme-catalogue drafts, and advisory rule/referral examples. It is not authoritative case data. Trained models are optional and can be attached later using [the model adapter guide](docs/MODEL_ADAPTERS.md).
 
 ### Stop the stack
 
@@ -288,7 +290,7 @@ The first OCR request can take longer because PaddleOCR may download and initial
 
 ### Temporary browser login
 
-`POST /api/auth/demo-login` validates the configured four-digit access code, creates or updates the `registry-demo` database user, and returns an HttpOnly session cookie. The cookie is `SameSite=Strict` and becomes `Secure` when `ENVIRONMENT=production`.
+`POST /api/auth/demo-login` validates the configured four-digit access code, creates or updates the `registry-demo` database user with the `reviewer` role, and returns an HttpOnly session cookie. This lets local registry staff use the review queues bundled with the synthetic Tamil Nadu sample. The cookie is `SameSite=Strict` and becomes `Secure` when `ENVIRONMENT=production`.
 
 The access-code authentication is intentionally temporary. Before a real deployment:
 
@@ -364,6 +366,8 @@ These routes support historical conflict records. New competing claims are rejec
 The `/api/fra/*` domain covers rights holders, Gram Sabhas, IFR/CR/CFR claims, versioned geometry and evidence, reviewer-controlled transitions and titles, legacy promotion, right-aware spatial evaluation, supporting satellite observations, and explainable DSS recommendations. It is backward-compatible with the legacy routes above.
 
 Satellite observations are supporting evidence and do not determine legal validity. DSS recommendations are advisory and do not approve or sanction benefits. See the [FRA foundation guide](docs/FRA_FOUNDATION.md) for routes, roles, local manifests, sample rules, and limitations.
+
+The connected operational routes additionally provide archive batch ingestion, registry-to-FRA intake, native case workspaces, vector staging/publication, historical-evidence jobs/reports, verified fact derivation, versioned scheme catalogue entries, and privacy-minimized verifier/planner dashboards. The existing Atlas intentionally does not include satellite raster layers, time sliders, or thematic WebGIS controls.
 
 ## API examples
 
