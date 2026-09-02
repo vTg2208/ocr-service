@@ -1,5 +1,5 @@
 const FRAWorkspace = (() => {
-  const SECTIONS = ['archive', 'atlas', 'assets', 'planner', 'reports'];
+  const SECTIONS = ['archive', 'cases', 'atlas', 'assets', 'planner', 'reports'];
   function initialState() { return { section: 'archive', context: { state: 'TN', district: '', block: '', village: '' }, archive: { records: [], selected: null, search: '', loading: false } }; }
   function reduce(state, action) {
     if (action?.type === 'section' && SECTIONS.includes(action.value)) return { ...state, section: action.value };

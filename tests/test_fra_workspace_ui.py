@@ -40,11 +40,11 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn('class="rail-secondary-icon"', html)
         self.assertIn("Back to Patta Registry", html)
 
-    def test_workspace_has_five_sections_shared_context_and_archive_review_regions(self):
+    def test_workspace_has_six_sections_shared_context_and_archive_review_regions(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         parser = WorkspaceParser(); parser.feed(html)
 
-        self.assertEqual(parser.nav_sections, ["archive", "atlas", "assets", "planner", "reports"])
+        self.assertEqual(parser.nav_sections, ["archive", "cases", "atlas", "assets", "planner", "reports"])
         self.assertTrue({
             "skipLink", "workspaceNav", "contextDistrict", "contextBlock", "contextVillage",
             "staffName", "logoutButton", "archiveSearch", "archiveList", "archiveEmpty",
@@ -60,7 +60,7 @@ class FRAWorkspaceUITests(unittest.TestCase):
     def test_workspace_uses_modular_scripts_and_leaflet(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         for script in (
-            "api.js", "app.js", "archive.js", "atlas.js", "assets.js", "planner.js", "reports.js"
+            "api.js", "app.js", "archive.js", "cases.js", "atlas.js", "assets.js", "planner.js", "reports.js"
         ):
             self.assertIn(f"/static/fra/{script}", html)
         self.assertIn("leaflet", html.casefold())
@@ -72,7 +72,20 @@ class FRAWorkspaceUITests(unittest.TestCase):
             with self.subTest(icon=icon_name):
                 self.assertIn(f'/static/fra/icons/{icon_name}', html)
                 self.assertTrue((UI_ROOT / "icons" / icon_name).is_file())
-        self.assertEqual(html.count('class="rail-icon"'), 5)
+        self.assertEqual(html.count('class="rail-icon"'), 6)
+
+    def test_cases_workspace_exposes_intake_case_and_versioned_casework_controls(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+        parser = WorkspaceParser(); parser.feed(html)
+
+        required = {
+            "casesPanel", "caseModeIntake", "caseModeCases", "intakeList", "caseList",
+            "caseDetail", "caseGeometryForm", "caseEvidenceForm", "caseTransitionForm",
+            "caseTitleForm", "caseAuditTimeline",
+        }
+        self.assertTrue(required <= parser.ids)
+        self.assertIn('data-section="cases"', html)
+        self.assertIn("/static/fra/cases.js", html)
 
     def test_asset_workspace_uses_the_supplied_contact_sheet_and_accessible_legend(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
