@@ -184,6 +184,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .case-timeline { max-height: 250px; margin: 0; padding: 0; overflow: auto; list-style: none; }
 .case-timeline li { padding: 9px 12px; display: grid; gap: 3px; border-bottom: 1px solid var(--rule); }
 .case-timeline small { color: var(--ink-500); }
+.case-geometry-map { min-height: 280px; border-bottom: 1px solid var(--rule); background: var(--paper-200); }.compact-case-form small { color: var(--ink-500); font-size: .67rem; font-weight: 400; }
 .compact-case-form { padding: var(--space-3); display: grid; gap: var(--space-2); background: var(--paper-100); }
 .compact-case-form button { justify-self: start; }
 @media (max-width: 1120px) {

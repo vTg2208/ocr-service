@@ -48,3 +48,23 @@ test('case row presentation reports missing geometry without implying invalidity
     },
   );
 });
+
+test('claim boundary upload normalizes polygon features and rejects non-polygon data', () => {
+  const boundary = FRACasesUI.normalizeBoundaryGeoJSON({
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[
+        [78, 11], [78.1, 11], [78.1, 11.1], [78, 11],
+      ]] } },
+      { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: [[[
+        [79, 12], [79.1, 12], [79.1, 12.1], [79, 12],
+      ]]] } },
+    ],
+  });
+  assert.equal(boundary.type, 'MultiPolygon');
+  assert.equal(boundary.coordinates.length, 2);
+  assert.throws(
+    () => FRACasesUI.normalizeBoundaryGeoJSON({ type: 'Point', coordinates: [78, 11] }),
+    /Polygon or MultiPolygon/,
+  );
+});

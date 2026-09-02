@@ -84,10 +84,12 @@ class FRAWorkspaceUITests(unittest.TestCase):
             "casesPanel", "caseModeIntake", "caseModeCases", "intakeList", "caseList",
             "caseDetail", "caseGeometryForm", "caseEvidenceForm", "caseTransitionForm",
             "caseTitleForm", "caseAuditTimeline",
+            "caseGeometryMap", "caseGeometryUpload",
         }
         self.assertTrue(required <= parser.ids)
         self.assertIn('data-section="cases"', html)
         self.assertIn("/static/fra/cases.js", html)
+        self.assertIn("leaflet.draw", html.casefold())
 
     def test_asset_workspace_uses_the_supplied_contact_sheet_and_accessible_legend(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
