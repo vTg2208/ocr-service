@@ -8,6 +8,7 @@ from app.db.models import Claim, Document, OCRResult
 from app.services.audit import record_audit
 from app.services.claim_eligibility import ensure_land_available
 from app.services.conflict_detection import ordered_claim_pair
+from app.services.fra_intake import ensure_intake_for_legacy_claim
 
 __all__ = ["ClaimService", "ordered_claim_pair"]
 
@@ -27,7 +28,10 @@ class ClaimService:
             Claim.claimant_id == claimant_id, Claim.idempotency_key == idempotency_key,
         ))
         if existing:
-            return self._serialize(existing)
+            intake = ensure_intake_for_legacy_claim(
+                self.session, existing, actor_id=claimant_id, request_id=request_id,
+            )
+            return self._serialize(existing, intake)
         document = self.session.get(Document, document_id)
         if document is None or document.uploaded_by != claimant_id:
             raise PermissionError("Document does not belong to the authenticated user.")
@@ -54,10 +58,14 @@ class ClaimService:
             request_id=request_id,
         )
         self.session.flush()
-        return self._serialize(claim)
+        intake = ensure_intake_for_legacy_claim(
+            self.session, claim, actor_id=claimant_id, request_id=request_id,
+        )
+        return self._serialize(claim, intake)
 
-    def _serialize(self, claim):
+    def _serialize(self, claim, intake):
         return {
             "claim_id": str(claim.id), "status": claim.status,
+            "fra_intake_id": str(intake.id), "fra_intake_state": intake.state,
             "conflicts": [],
         }

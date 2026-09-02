@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
+from app.db.fra_operational_models import FRAIntakeItem
 from app.db.models import AuditEvent, Claim, ClaimConflict, Document, OCRResult, Parcel, User
 from app.services.claim_eligibility import ClaimUnavailableError
 from app.services.claim_service import ClaimService, ordered_claim_pair
@@ -93,8 +94,11 @@ class ClaimServiceTests(unittest.TestCase):
             )
             session.commit()
             count = session.scalar(select(func.count()).select_from(Claim))
+            intake_count = session.scalar(select(func.count()).select_from(FRAIntakeItem))
         self.assertEqual(first["claim_id"], second["claim_id"])
+        self.assertEqual(first["fra_intake_id"], second["fra_intake_id"])
         self.assertEqual(count, 1)
+        self.assertEqual(intake_count, 1)
 
     def test_same_claimant_cannot_create_a_second_claim_for_the_same_land(self):
         with Session(self.engine) as session:

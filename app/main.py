@@ -25,6 +25,7 @@ from app.api.fra_operations_routes import router as fra_operations_router
 from app.api.fra_atlas_routes import router as fra_atlas_router
 from app.api.fra_asset_routes import router as fra_asset_router
 from app.api.fra_planning_routes import router as fra_planning_router
+from app.api.fra_intake_routes import router as fra_intake_router
 from app.api.auth import SESSION_COOKIE, get_current_user
 from app.config import get_settings
 from app.db.session import get_db
@@ -75,6 +76,7 @@ app.include_router(fra_operations_router)
 app.include_router(fra_atlas_router)
 app.include_router(fra_asset_router)
 app.include_router(fra_planning_router)
+app.include_router(fra_intake_router)
 
 static_root = Path(__file__).parent / "static"
 app.mount("/static", RevalidatingStaticFiles(directory=static_root), name="static")
