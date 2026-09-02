@@ -47,7 +47,7 @@ class DemoAuthenticationTests(unittest.TestCase):
         self.assertEqual(session.json(), {
             "external_id": "registry-demo",
             "display_name": "Registry staff",
-            "role": "user",
+            "role": "reviewer",
         })
 
     def test_demo_login_rejects_wrong_code_without_cookie(self):

@@ -1,4 +1,4 @@
-"""Temporary browser-session routes for the registry demonstration."""
+"""Access-code browser-session routes for registry staff."""
 
 import secrets
 
@@ -39,12 +39,12 @@ def demo_login(payload: DemoLoginRequest, db: Session = Depends(get_db)):
         user = User(
             external_id="registry-demo",
             display_name="Registry staff",
-            role="user",
+            role="reviewer",
         )
         db.add(user)
     else:
         user.display_name = "Registry staff"
-        user.role = "user"
+        user.role = "reviewer"
     db.commit()
 
     token = create_access_token(
