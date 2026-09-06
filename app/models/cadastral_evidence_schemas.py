@@ -18,7 +18,7 @@ class ResolveRequest(ParcelFields):
     document_id: UUID
 
 
-class ClaimRequest(BaseModel):
+class ParcelLinkRequest(BaseModel):
     document_id: UUID
     parcel_id: UUID
     confirmed_fields: dict[str, Any]

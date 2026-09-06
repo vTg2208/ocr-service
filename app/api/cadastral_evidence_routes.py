@@ -1,4 +1,4 @@
-"""Authenticated patta processing, parcel, claim, and admin APIs."""
+"""Authenticated cadastral-evidence OCR, parcel matching, and registry APIs."""
 
 import hashlib
 from datetime import datetime, timezone
@@ -11,21 +11,21 @@ from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
 from app.api.auth import AuthenticatedUser, get_current_user, require_admin
-from app.api.routes import ocr_endpoint
+from app.api.document_intelligence_routes import ocr_endpoint
 from app.config import get_settings
 from app.db.models import Claim, ClaimConflict, Document, Notification, OCRResult, Parcel
 from app.db.session import get_db
-from app.models.land_mapping_models import ClaimRequest, ConflictUpdate, ResolveRequest
+from app.models.cadastral_evidence_schemas import ParcelLinkRequest, ConflictUpdate, ResolveRequest
 from app.services.audit import record_audit
-from app.services.claim_eligibility import ClaimUnavailableError
-from app.services.claim_service import ClaimService
+from app.services.cadastral_link_eligibility import ParcelLinkUnavailableError
+from app.services.cadastral_link_service import CadastralLinkService
 from app.services.parcel_resolver import ParcelLookup, ParcelResolver, parcel_public_dict
-from app.services.patta_extraction import extract_normalized_parcel_fields
+from app.services.cadastral_extraction import extract_normalized_parcel_fields
 from app.services.malware import ClamAVScanner, MalwareDetectedError, MalwareScannerUnavailable
 from app.services.storage import create_storage
 from app.utils.file_validation import FileValidationError, validate_upload
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", tags=["Supporting cadastral evidence"])
 settings = get_settings()
 
 
@@ -49,8 +49,12 @@ def _resolution(db, fields: dict):
     )
 
 
-@router.post("/pattas/process")
-async def process_patta(
+@router.post("/pattas/process", include_in_schema=False)
+@router.post(
+    "/cadastral-evidence/documents/process",
+    summary="Extract and match a supporting cadastral document",
+)
+async def process_cadastral_document(
     request: Request, file: UploadFile = File(...),
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
     user: AuthenticatedUser = Depends(get_current_user), db: Session = Depends(get_db),
@@ -114,7 +118,11 @@ async def process_patta(
         raise
 
 
-@router.post("/parcels/resolve")
+@router.post("/parcels/resolve", include_in_schema=False)
+@router.post(
+    "/cadastral-evidence/parcels/resolve",
+    summary="Resolve a reviewed cadastral parcel reference",
+)
 def resolve_parcel(
     payload: ResolveRequest, request: Request,
     user: AuthenticatedUser = Depends(get_current_user), db: Session = Depends(get_db),
@@ -137,7 +145,11 @@ def resolve_parcel(
     return result.model_dump()
 
 
-@router.get("/parcels/{parcel_id}")
+@router.get("/parcels/{parcel_id}", include_in_schema=False)
+@router.get(
+    "/cadastral-evidence/parcels/{parcel_id}",
+    summary="Get a supporting cadastral parcel",
+)
 def get_parcel(parcel_id: uuid.UUID, _user=Depends(get_current_user), db: Session = Depends(get_db)):
     parcel = db.get(Parcel, parcel_id)
     if parcel is None:
@@ -145,15 +157,19 @@ def get_parcel(parcel_id: uuid.UUID, _user=Depends(get_current_user), db: Sessio
     return parcel_public_dict(parcel)
 
 
-@router.post("/claims")
-def submit_claim(
-    payload: ClaimRequest, request: Request,
+@router.post("/claims", include_in_schema=False)
+@router.post(
+    "/cadastral-evidence/parcel-links",
+    summary="Record a reviewed document-to-parcel link",
+)
+def submit_parcel_link(
+    payload: ParcelLinkRequest, request: Request,
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
     user: AuthenticatedUser = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     try:
         with db.begin_nested():
-            response = ClaimService(
+            response = CadastralLinkService(
                 db, overlap_min_sqm=settings.overlap_min_sqm,
                 overlap_min_percent=settings.overlap_min_percent,
             ).submit(
@@ -163,7 +179,7 @@ def submit_claim(
             )
         db.commit()
         return response
-    except ClaimUnavailableError as exc:
+    except ParcelLinkUnavailableError as exc:
         db.rollback()
         record_audit(
             db, actor_id=user.id, action="claim_rejected", entity_type="parcel",
@@ -176,7 +192,7 @@ def submit_claim(
             status_code=409,
             content={
                 "success": False,
-                "message": "This land is already claimed.",
+                "message": "This parcel already has a supporting cadastral link.",
                 "reason": exc.reason,
             },
         )
@@ -192,7 +208,7 @@ def submit_claim(
             status_code=409,
             content={
                 "success": False,
-                "message": "This land is already claimed.",
+                "message": "This parcel already has a supporting cadastral link.",
                 "reason": "same_parcel",
             },
         )
@@ -202,14 +218,22 @@ def submit_claim(
         db.rollback(); raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/claims/mine")
-def my_claims(user: AuthenticatedUser = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/claims/mine", include_in_schema=False)
+@router.get(
+    "/cadastral-evidence/parcel-links/mine",
+    summary="List my supporting parcel links",
+)
+def my_parcel_links(user: AuthenticatedUser = Depends(get_current_user), db: Session = Depends(get_db)):
     claims = db.scalars(select(Claim).where(Claim.claimant_id == user.id).order_by(Claim.submitted_at.desc()))
     return [{"id": str(item.id), "parcel_id": str(item.parcel_id), "status": item.status,
              "submitted_at": item.submitted_at.isoformat()} for item in claims]
 
 
-@router.get("/notifications/mine")
+@router.get("/notifications/mine", include_in_schema=False)
+@router.get(
+    "/cadastral-evidence/notifications/mine",
+    summary="List my cadastral evidence notifications",
+)
 def my_notifications(user: AuthenticatedUser = Depends(get_current_user), db: Session = Depends(get_db)):
     notifications = db.scalars(select(Notification).where(
         Notification.user_id == user.id
@@ -238,19 +262,31 @@ def _admin_conflict(conflict: ClaimConflict, db: Session) -> dict:
     }
 
 
-@router.get("/admin/conflicts")
+@router.get("/admin/conflicts", include_in_schema=False)
+@router.get(
+    "/cadastral-evidence/admin/conflicts",
+    summary="List cadastral parcel-link conflicts",
+)
 def admin_conflicts(_admin=Depends(require_admin), db: Session = Depends(get_db)):
     return [_admin_conflict(item, db) for item in db.scalars(select(ClaimConflict).order_by(ClaimConflict.created_at))]
 
 
-@router.get("/admin/conflicts/{conflict_id}")
+@router.get("/admin/conflicts/{conflict_id}", include_in_schema=False)
+@router.get(
+    "/cadastral-evidence/admin/conflicts/{conflict_id}",
+    summary="Get a cadastral parcel-link conflict",
+)
 def admin_conflict(conflict_id: uuid.UUID, _admin=Depends(require_admin), db: Session = Depends(get_db)):
     conflict = db.get(ClaimConflict, conflict_id)
     if conflict is None: raise HTTPException(status_code=404, detail="Conflict not found.")
     return _admin_conflict(conflict, db)
 
 
-@router.patch("/admin/conflicts/{conflict_id}")
+@router.patch("/admin/conflicts/{conflict_id}", include_in_schema=False)
+@router.patch(
+    "/cadastral-evidence/admin/conflicts/{conflict_id}",
+    summary="Review a cadastral parcel-link conflict",
+)
 def update_conflict(
     conflict_id: uuid.UUID, payload: ConflictUpdate, request: Request,
     admin: AuthenticatedUser = Depends(require_admin), db: Session = Depends(get_db),

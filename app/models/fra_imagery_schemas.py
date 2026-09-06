@@ -1,6 +1,6 @@
 """Public request contract for claim-level historical evidence."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from typing import Literal
 
@@ -24,8 +24,29 @@ class HistoricalEvidenceRequest(BaseModel):
 class HistoricalEvidenceReview(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    expected_reviewed_at: datetime | None
     verification_state: Literal["verified", "rejected", "needs_field_verification"]
     notes: str = Field(min_length=1, max_length=2000)
 
 
-__all__ = ["HistoricalEvidenceRequest", "HistoricalEvidenceReview"]
+class SatelliteIngestionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    start_date: date
+    end_date: date
+    collection: str = Field(min_length=1, max_length=100)
+    band_keys: list[str] = Field(min_length=1, max_length=6)
+    max_cloud: float = Field(default=30, ge=0, le=100)
+
+    @field_validator("band_keys")
+    @classmethod
+    def validate_band_keys(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values]
+        if len(set(normalized)) != len(normalized) or any(not value for value in normalized):
+            raise ValueError("Satellite band keys must be distinct and non-empty.")
+        return normalized
+
+
+__all__ = [
+    "HistoricalEvidenceRequest", "HistoricalEvidenceReview", "SatelliteIngestionRequest",
+]

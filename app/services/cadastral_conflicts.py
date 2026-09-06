@@ -12,12 +12,12 @@ from app.db.models import Claim, ClaimConflict, Parcel
 INACTIVE_STATUSES = {"rejected", "superseded"}
 
 
-def ordered_claim_pair(claim_a_id: uuid.UUID, claim_b_id: uuid.UUID):
+def ordered_link_pair(claim_a_id: uuid.UUID, claim_b_id: uuid.UUID):
     return tuple(sorted((claim_a_id, claim_b_id), key=str))
 
 
 def _existing_conflict(session, a_id, b_id, conflict_type):
-    a_id, b_id = ordered_claim_pair(a_id, b_id)
+    a_id, b_id = ordered_link_pair(a_id, b_id)
     return session.scalar(select(ClaimConflict).where(
         ClaimConflict.claim_a_id == a_id, ClaimConflict.claim_b_id == b_id,
         ClaimConflict.conflict_type == conflict_type,
@@ -25,7 +25,7 @@ def _existing_conflict(session, a_id, b_id, conflict_type):
 
 
 def _create_conflict(session, new_claim, existing_claim, conflict_type, area, percent):
-    a_id, b_id = ordered_claim_pair(new_claim.id, existing_claim.id)
+    a_id, b_id = ordered_link_pair(new_claim.id, existing_claim.id)
     conflict = _existing_conflict(session, a_id, b_id, conflict_type)
     if conflict is None:
         conflict = ClaimConflict(

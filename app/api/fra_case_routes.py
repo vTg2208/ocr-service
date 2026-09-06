@@ -2,14 +2,15 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth import AuthenticatedUser, get_current_user, require_reviewer
-from app.db.fra_models import FRAClaim, GramSabha, RightsHolder
+from app.db.fra_models import GramSabha, RightsHolder
 from app.db.session import get_db
-from app.services.fra_cases import can_view_case, case_detail, case_summary, list_cases
+from app.api.fra_access import claim_for_user
+from app.services.fra_cases import case_detail, case_summary, list_cases
 
 
 router = APIRouter(prefix="/api/fra", tags=["FRA cases"])
@@ -40,10 +41,8 @@ def get_case(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.get(FRAClaim, claim_id)
+    claim = claim_for_user(db, claim_id, user)
     privileged = user.role in {"reviewer", "admin"}
-    if claim is None or not can_view_case(claim, user_id=user.id, privileged=privileged):
-        raise HTTPException(status_code=404, detail="FRA case not found.")
     return case_detail(db, claim, privileged=privileged)
 
 

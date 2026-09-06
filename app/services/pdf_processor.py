@@ -7,7 +7,8 @@ images, then merges the per-page text into a single result.
 """
 
 import logging
-from typing import List, Tuple
+from dataclasses import dataclass, field
+from typing import Tuple
 
 import pypdfium2 as pdfium
 
@@ -23,6 +24,14 @@ class PDFProcessingError(Exception):
     """Raised when a PDF cannot be parsed/rendered. Maps to HTTP 400."""
 
 
+@dataclass(frozen=True)
+class OCRPageResult:
+    page_number: int
+    text: str
+    confidence: float
+    lines: list[dict] = field(default_factory=list)
+
+
 class PDFProcessor:
     """Runs OCR across every page of a PDF and merges the results."""
 
@@ -31,29 +40,44 @@ class PDFProcessor:
         self.image_processor = image_processor or ImageProcessor()
 
     def process(self, pdf_bytes: bytes) -> Tuple[str, float]:
-        pages = self._render_pages(pdf_bytes)
+        page_results = self.process_pages(pdf_bytes)
+        merged_text = "\n\n".join(page.text for page in page_results)
+        average_confidence = (
+            round(sum(page.confidence for page in page_results) / len(page_results), 2)
+            if page_results else 0.0
+        )
+        return merged_text, average_confidence
 
-        page_texts: List[str] = []
-        page_confidences: List[float] = []
+    def process_pages(self, pdf_bytes: bytes) -> list[OCRPageResult]:
+        pages = self._render_pages(pdf_bytes)
+        results: list[OCRPageResult] = []
 
         for page_number, pil_page in enumerate(pages, start=1):
             try:
                 cv_image = self.image_processor.from_pil(pil_page)
-                text, confidence = self.ocr_engine.extract_text(cv_image)
+                prepared = self.image_processor.preprocess(cv_image)
+                if hasattr(self.ocr_engine, "extract_page"):
+                    analysis = self.ocr_engine.extract_page(prepared)
+                    text, confidence = analysis.text, analysis.confidence
+                    lines = [
+                        {
+                            "text": line.text,
+                            "confidence": line.confidence,
+                            "bounding_box": line.bounding_box,
+                        }
+                        for line in analysis.lines
+                    ]
+                else:
+                    text, confidence = self.ocr_engine.extract_text(prepared)
+                    lines = []
             except OCRException:
                 raise
             except Exception as exc:  # noqa: BLE001
                 logger.error("Failed processing PDF page %d: %s", page_number, exc)
                 raise OCRException("OCR processing failed.") from exc
 
-            page_texts.append(text)
-            page_confidences.append(confidence)
-
-        merged_text = "\n\n".join(page_texts)
-        average_confidence = (
-            round(sum(page_confidences) / len(page_confidences), 2) if page_confidences else 0.0
-        )
-        return merged_text, average_confidence
+            results.append(OCRPageResult(page_number, text, confidence, lines))
+        return results
 
     @staticmethod
     def _render_pages(pdf_bytes: bytes):

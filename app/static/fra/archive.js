@@ -1,6 +1,14 @@
 const FRAArchiveUI = (() => {
   const QUERY_ORDER = ['district', 'block', 'village', 'right_type', 'claim_status', 'review_state', 'claim_year', 'query'];
-  const REVIEW_FIELDS = ['holder_name', 'claim_number', 'district', 'block', 'village', 'right_type', 'claim_status', 'claim_year'];
+  const REVIEW_FIELDS = [
+    'holder_name', 'holder_type', 'household_name', 'community_name', 'claim_number',
+    'state', 'state_code', 'district', 'block', 'village', 'survey_number', 'subdivision_number',
+    'right_type', 'claim_status', 'claim_year', 'claimed_area', 'claimed_area_sqm',
+    'granted_area', 'granted_area_sqm', 'area_unit', 'gram_sabha_status', 'sdlc_status',
+    'dlc_status', 'decision_authority', 'decision_date', 'title_number', 'latitude',
+    'longitude', 'coordinates',
+  ];
+  const REQUIRED_REVIEW_FIELDS = new Set(['holder_name', 'district', 'block', 'village', 'right_type', 'claim_status']);
   function emptyState(allRecords, search) {
     if ((allRecords || []).length && search) return 'No matching records';
     if (!(allRecords || []).length) return 'No archive records';
@@ -22,11 +30,42 @@ const FRAArchiveUI = (() => {
       button.append(meta); button.addEventListener('click', () => onSelect(record)); item.appendChild(button); container.appendChild(item);
     });
   }
-  function renderFields(container, values, doc = document) {
-    container.replaceChildren();
-    REVIEW_FIELDS.forEach((key) => { const row = element(doc, 'div', 'field-row'); const label = element(doc, 'label', '', key.replaceAll('_', ' ')); const input = doc.createElement('input'); input.name = key; input.value = values?.[key] ?? ''; if (key === 'claim_year') input.type = 'number'; row.append(label, input); container.appendChild(row); });
+  function fieldReviewMeta(evidence = {}) {
+    const parts = [];
+    if (evidence.source_page) parts.push(`Page ${evidence.source_page}`);
+    else if (evidence.source_row) parts.push(`Row ${evidence.source_row}`);
+    if (evidence.confidence !== undefined && evidence.confidence !== null) parts.push(`${Math.round(Number(evidence.confidence) * 100)}% confidence`);
+    if (evidence.source_header) parts.push(`Source: ${evidence.source_header}`);
+    if (evidence.ambiguous) {
+      const candidates = (evidence.candidates || []).map((item) => item.value ?? item.source_value).filter((value) => value !== undefined && value !== null && String(value).trim());
+      parts.push(`Ambiguous${candidates.length ? `: ${candidates.join(' | ')}` : ''}`);
+    } else if (evidence.validation_error) parts.push('Invalid extraction; correction required');
+    return parts.join(' · ');
   }
-  function formValues(form) { const values = Object.fromEntries(new FormData(form).entries()); if (values.claim_year) values.claim_year = Number(values.claim_year); return values; }
+  function chainValue(value, fallback = 'Not recorded') { if (value === undefined || value === null || value === '') return fallback; return typeof value === 'object' ? JSON.stringify(value) : String(value); }
+  function fieldEvidenceRows(chain = {}) {
+    const locator = chain.locator || {}; const extraction = chain.extraction || {}; const reviewer = chain.reviewer;
+    const location = locator.page ? `Page ${locator.page}` : locator.row ? `Row ${locator.row}${locator.header ? ` · ${locator.header}` : ''}` : 'Not recorded';
+    const extractionLabel = [extraction.method, extraction.model_version, extraction.confidence == null ? null : `${Math.round(Number(extraction.confidence) * 100)}% confidence`].filter(Boolean).join(' · ') || 'Not recorded';
+    const reviewerLabel = reviewer ? [reviewer.display_name, reviewer.review_state, reviewer.reviewed_at].filter(Boolean).join(' · ') : 'Not reviewed';
+    return [['Value', chainValue(chain.value)], ['Source', chainValue(chain.source)], ['Document', chainValue(chain.document?.filename)], ['Page / row', location], ['Extraction', extractionLabel], ['Reviewer', reviewerLabel], ['Final value', chainValue(chain.final_value, 'Pending reviewer approval')]];
+  }
+  function appendEvidenceChain(row, chain, doc) {
+    const details = element(doc, 'details', 'field-provenance'); const summary = element(doc, 'summary', '', 'View evidence chain'); const list = element(doc, 'dl', 'provenance-chain');
+    fieldEvidenceRows(chain).forEach(([term, value]) => { const item = element(doc, 'div'); item.append(element(doc, 'dt', '', term), element(doc, 'dd', '', value)); list.appendChild(item); });
+    details.append(summary, list); row.appendChild(details);
+  }
+  function renderFields(container, values, evidence = {}, fieldReviews = [], doc = document) {
+    container.replaceChildren();
+    const reviews = new Map((fieldReviews || []).map((item) => [item.field_name, item]));
+    REVIEW_FIELDS.forEach((key) => { const fieldEvidence = evidence?.[key] || {}; const row = element(doc, 'div', `field-row${fieldEvidence.ambiguous || fieldEvidence.validation_error ? ' needs-correction' : ''}`); const label = element(doc, 'label', '', key.replaceAll('_', ' ')); const input = doc.createElement('input'); input.name = key; input.value = values?.[key] ?? ''; if (key === 'claim_year') input.type = 'number'; if (fieldEvidence.ambiguous || fieldEvidence.validation_error) input.placeholder = 'Reviewer correction required'; const metaText = fieldReviewMeta(fieldEvidence); row.append(label, input); if (metaText) row.append(element(doc, 'small', 'field-evidence', metaText)); const chain = reviews.get(key)?.evidence_chain; if (chain) appendEvidenceChain(row, chain, doc); container.appendChild(row); });
+  }
+  function formValues(form) {
+    const values = Object.fromEntries(new FormData(form).entries());
+    Object.keys(values).forEach((key) => { if (!String(values[key]).trim() && !REQUIRED_REVIEW_FIELDS.has(key)) delete values[key]; });
+    if (values.claim_year) values.claim_year = Number(values.claim_year);
+    return values;
+  }
   function canUploadBatch({ fileCount = 0, sourceOffice = '', district = '', uploading = false } = {}) {
     return !uploading && Number(fileCount) > 0 && Boolean(String(sourceOffice).trim()) && Boolean(String(district).trim());
   }
@@ -36,6 +75,14 @@ const FRAArchiveUI = (() => {
     const queued = `${accepted} ${accepted === 1 ? 'file' : 'files'} queued`;
     return rejected ? `${queued}; ${rejected} ${rejected === 1 ? 'file' : 'files'} rejected.` : `${queued}.`;
   }
+  function canUploadTabular({ filename = '', sourceOffice = '', district = '', uploading = false } = {}) {
+    return !uploading && /\.(csv|xlsx)$/i.test(String(filename).trim()) && Boolean(String(sourceOffice).trim()) && Boolean(String(district).trim());
+  }
+  function tabularSummary(result = {}) {
+    const accepted = Number(result.accepted || 0);
+    if (result.replayed) return `Existing register restored: ${accepted} ${accepted === 1 ? 'row is' : 'rows are'} already in the review queue.`;
+    return `${accepted} ${accepted === 1 ? 'row' : 'rows'} added to the review queue.`;
+  }
   function renderBatchFiles(container, files, doc = document) {
     container.replaceChildren();
     (files || []).forEach((file) => {
@@ -44,6 +91,6 @@ const FRAArchiveUI = (() => {
       item.append(copy, element(doc, 'span', 'record-state', file.status || 'ready')); container.appendChild(item);
     });
   }
-  return { REVIEW_FIELDS, batchSummary, canUploadBatch, emptyState, formValues, query, renderBatchFiles, renderFields, renderRecords };
+  return { REVIEW_FIELDS, batchSummary, canUploadBatch, canUploadTabular, emptyState, fieldEvidenceRows, fieldReviewMeta, formValues, query, renderBatchFiles, renderFields, renderRecords, tabularSummary };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = FRAArchiveUI;

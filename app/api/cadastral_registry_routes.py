@@ -1,4 +1,4 @@
-"""Authenticated registry views for claimed parcels and their source pattas."""
+"""Authenticated cadastral parcel links and their supporting source documents."""
 
 import uuid
 from decimal import Decimal
@@ -19,7 +19,7 @@ from app.services.storage import create_storage
 from app.services.parcel_resolver import parcel_public_dict
 
 
-router = APIRouter(prefix="/api/claims")
+router = APIRouter(tags=["Supporting cadastral evidence"])
 settings = get_settings()
 
 
@@ -31,8 +31,12 @@ def _request_id(request: Request) -> str:
     )
 
 
-@router.get("/registry")
-def claimed_land_registry(
+@router.get("/api/claims/registry", include_in_schema=False)
+@router.get(
+    "/api/cadastral-evidence/parcel-links",
+    summary="List supporting document-to-parcel links",
+)
+def parcel_link_registry(
     _user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -46,12 +50,7 @@ def claimed_land_registry(
         (claim.parcel.official_area_sqm or Decimal("0") for claim in claims),
         Decimal("0"),
     )
-    return {
-        "summary": {
-            "claimed_parcel_count": len(claims),
-            "claimed_official_area_sqm": float(total_area),
-        },
-        "claims": [
+    parcel_links = [
             {
                 "claim_id": str(claim.id),
                 "status": claim.status,
@@ -60,16 +59,30 @@ def claimed_land_registry(
                 "document": {
                     "filename": claim.document.original_filename,
                     "content_type": claim.document.content_type,
-                    "view_url": f"/api/claims/{claim.id}/patta",
+                    "view_url": f"/api/cadastral-evidence/parcel-links/{claim.id}/source-document",
                 },
             }
             for claim in claims
-        ],
+        ]
+    return {
+        "summary": {
+            "parcel_link_count": len(claims),
+            "linked_official_area_sqm": float(total_area),
+            # Compatibility fields for earlier registry clients.
+            "claimed_parcel_count": len(claims),
+            "claimed_official_area_sqm": float(total_area),
+        },
+        "parcel_links": parcel_links,
+        "claims": parcel_links,
     }
 
 
-@router.get("/{claim_id}/patta")
-def view_claim_patta(
+@router.get("/api/claims/{claim_id}/patta", include_in_schema=False)
+@router.get(
+    "/api/cadastral-evidence/parcel-links/{claim_id}/source-document",
+    summary="View the supporting cadastral source document",
+)
+def view_parcel_link_source_document(
     claim_id: uuid.UUID,
     request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
@@ -80,11 +93,11 @@ def view_claim_patta(
         raise HTTPException(status_code=404, detail="Registered claim not found.")
     document = db.get(Document, claim.document_id)
     if document is None:
-        raise HTTPException(status_code=404, detail="Patta document not found.")
+        raise HTTPException(status_code=404, detail="Cadastral evidence document not found.")
     try:
         content = create_storage(settings).read(document.storage_key)
     except (FileNotFoundError, ValueError) as exc:
-        raise HTTPException(status_code=404, detail="Patta document not found.") from exc
+        raise HTTPException(status_code=404, detail="Cadastral evidence document not found.") from exc
 
     record_audit(
         db, actor_id=user.id, action="patta_viewed", entity_type="claim",

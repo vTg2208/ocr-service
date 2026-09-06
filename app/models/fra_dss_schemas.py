@@ -13,7 +13,7 @@ class StrictModel(BaseModel):
 
 class DerivedDSSEvaluationCreate(StrictModel):
     claim_id: UUID
-    derivation_version: str = Field(default="tn-facts-v1", min_length=1, max_length=100)
+    derivation_version: str = Field(default="fra-dss-facts-v1", min_length=1, max_length=100)
     rule_set_ids: list[UUID] | None = Field(default=None, max_length=100)
 
 

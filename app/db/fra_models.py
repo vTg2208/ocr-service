@@ -8,9 +8,11 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Numeric,
     String,
     Text,
@@ -43,6 +45,12 @@ class GramSabha(Base):
 
 class RightsHolder(Base):
     __tablename__ = "rights_holders"
+    __table_args__ = (
+        CheckConstraint(
+            "holder_type IN ('individual', 'household', 'community')",
+            name="ck_rights_holder_type",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -62,6 +70,17 @@ class FRAClaim(Base):
     __table_args__ = (
         UniqueConstraint("claim_number", name="uq_fra_claim_number"),
         UniqueConstraint("legacy_claim_id", name="uq_fra_claim_legacy"),
+        UniqueConstraint("supersedes_claim_id", name="uq_fra_claim_supersedes"),
+        CheckConstraint("right_type IN ('IFR', 'CR', 'CFR')", name="ck_fra_claim_right_type"),
+        CheckConstraint(
+            "status IN ('draft', 'submitted', 'gram_sabha_verified', 'sdlc_review', "
+            "'dlc_decided', 'granted', 'rejected', 'remanded', 'withdrawn', 'superseded')",
+            name="ck_fra_claim_status",
+        ),
+        CheckConstraint(
+            "claimed_area_sqm IS NULL OR claimed_area_sqm > 0",
+            name="ck_fra_claim_area_positive",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
@@ -72,10 +91,12 @@ class FRAClaim(Base):
         ForeignKey("rights_holders.id"), nullable=False
     )
     gram_sabha_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("gram_sabhas.id"))
+    village_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fra_village_profiles.id"))
     submitted_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     legacy_claim_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("claims.id"))
     parcel_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("parcels.id"))
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("documents.id"))
+    supersedes_claim_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fra_claims.id"))
     claimed_area_sqm: Mapped[Decimal | None] = mapped_column(Numeric(16, 4))
     provenance_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -85,10 +106,17 @@ class FRAClaim(Base):
 
     rights_holder: Mapped[RightsHolder] = relationship(back_populates="claims")
     gram_sabha: Mapped[GramSabha | None] = relationship(back_populates="claims")
+    village: Mapped["FRAVillageProfile | None"] = relationship(back_populates="claims")
     submitter: Mapped[User] = relationship(foreign_keys=[submitted_by])
     legacy_claim: Mapped[Claim | None] = relationship(foreign_keys=[legacy_claim_id])
     parcel: Mapped[Parcel | None] = relationship(foreign_keys=[parcel_id])
     document: Mapped[Document | None] = relationship(foreign_keys=[document_id])
+    supersedes_claim: Mapped["FRAClaim | None"] = relationship(
+        foreign_keys=[supersedes_claim_id], remote_side=[id], back_populates="superseded_by_claim"
+    )
+    superseded_by_claim: Mapped["FRAClaim | None"] = relationship(
+        foreign_keys="FRAClaim.supersedes_claim_id", back_populates="supersedes_claim", uselist=False
+    )
     decisions: Mapped[list["FRADecision"]] = relationship(
         back_populates="claim", order_by="FRADecision.created_at"
     )
@@ -117,6 +145,8 @@ class FRADecision(Base):
     to_status: Mapped[str] = mapped_column(String(32), nullable=False)
     outcome: Mapped[str] = mapped_column(String(64), nullable=False)
     reasons_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    decision_date: Mapped[date | None] = mapped_column(Date)
+    reference_number: Mapped[str | None] = mapped_column(String(100))
     actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     request_id: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -129,6 +159,10 @@ class FRAGeometryVersion(Base):
     __tablename__ = "fra_geometry_versions"
     __table_args__ = (
         UniqueConstraint("claim_id", "version", name="uq_fra_geometry_claim_version"),
+        Index(
+            "ix_fra_geometry_versions_geometry_gist", "geometry",
+            postgresql_using="gist",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
@@ -148,6 +182,10 @@ class FRAGeometryVersion(Base):
 class SatelliteObservation(Base):
     __tablename__ = "satellite_observations"
     __table_args__ = (
+        CheckConstraint(
+            "asset_class IN ('agricultural_land','water_body','homestead','forest_cover','road','infrastructure','other_asset')",
+            name="ck_satellite_observations_asset_class",
+        ),
         UniqueConstraint(
             "provider", "scene_id", "claim_id", "asset_class",
             name="uq_satellite_scene_claim_asset",
@@ -180,6 +218,16 @@ class SatelliteObservation(Base):
 
 class FRAEvidenceItem(Base):
     __tablename__ = "fra_evidence_items"
+    __table_args__ = (
+        CheckConstraint(
+            "source_page_start IS NULL OR source_page_start > 0",
+            name="ck_fra_evidence_page_start_positive",
+        ),
+        CheckConstraint(
+            "source_page_end IS NULL OR source_page_end >= source_page_start",
+            name="ck_fra_evidence_page_range",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
     claim_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("fra_claims.id"), nullable=False)
@@ -188,6 +236,8 @@ class FRAEvidenceItem(Base):
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("documents.id"))
+    source_page_start: Mapped[int | None] = mapped_column()
+    source_page_end: Mapped[int | None] = mapped_column()
     satellite_observation_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("satellite_observations.id"), unique=True
     )
@@ -216,6 +266,10 @@ class FRATitle(Base):
     __table_args__ = (
         UniqueConstraint("claim_id", "version", name="uq_fra_title_claim_version"),
         UniqueConstraint("title_number", name="uq_fra_title_number"),
+        CheckConstraint(
+            "granted_area_sqm IS NULL OR granted_area_sqm > 0",
+            name="ck_fra_title_area_positive",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
@@ -225,6 +279,7 @@ class FRATitle(Base):
     geometry_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("fra_geometry_versions.id")
     )
+    granted_area_sqm: Mapped[Decimal | None] = mapped_column(Numeric(16, 4))
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     issued_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -239,9 +294,13 @@ class SchemeRuleSet(Base):
     __tablename__ = "scheme_rule_sets"
     __table_args__ = (
         UniqueConstraint("scheme_code", "version", name="uq_scheme_rule_version"),
+        Index("ix_scheme_rule_sets_catalog_entry_id", "catalog_entry_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
+    catalog_entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("scheme_catalog_entries.id")
+    )
     scheme_code: Mapped[str] = mapped_column(String(100), nullable=False)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     version: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -249,6 +308,12 @@ class SchemeRuleSet(Base):
     effective_to: Mapped[date | None] = mapped_column(Date)
     required_facts_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     condition_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    required_evidence_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    required_assets_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    exclusion_condition_json: Mapped[dict | None] = mapped_column(JSON)
+    priority_conditions_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    freshness_requirements_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    recommendation_logic_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     recommendation_text: Mapped[str] = mapped_column(Text, nullable=False)
     source_reference: Mapped[str] = mapped_column(String(500), nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -256,6 +321,7 @@ class SchemeRuleSet(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     creator: Mapped[User] = relationship(foreign_keys=[created_by])
+    catalog_entry: Mapped["SchemeCatalogEntry | None"] = relationship()
     recommendations: Mapped[list["DSSRecommendation"]] = relationship(
         back_populates="rule_set"
     )

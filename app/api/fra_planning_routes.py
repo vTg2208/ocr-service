@@ -9,14 +9,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.auth import AuthenticatedUser, get_current_user, require_admin, require_reviewer
+from app.api.fra_access import claim_for_user, visible_claim_ids
 from app.db.fra_completion_models import DSSReferral
-from app.db.fra_models import FRAClaim
 from app.db.fra_operational_models import SchemeCatalogEntry
 from app.db.session import get_db
 from app.models.fra_completion_schemas import DSSReferralCreate, DSSReferralUpdate
 from app.models.fra_dss_schemas import DerivedDSSEvaluationCreate, SchemeCatalogCreate
 from app.services.dss_engine import InvalidRuleError, evaluate_rules
-from app.services.dss_facts import derive_facts, fact_values
+from app.services.dss_facts import (
+    CURRENT_FACT_VERSION,
+    DSS_FACT_CONTRACT,
+    derive_facts,
+    fact_values,
+)
 from app.services.dss_referrals import (
     ReferralConflictError,
     ReferralValidationError,
@@ -33,6 +38,7 @@ from app.services.fra_reports import (
     render_village_report,
 )
 from app.services.scheme_catalog import CatalogValidationError, create_catalog_entry
+from app.services.scheme_convergence import list_scheme_convergence
 
 
 router = APIRouter(prefix="/api/fra", tags=["FRA planning and reports"])
@@ -61,6 +67,17 @@ def _recommendation_dict(item) -> dict:
         "outcome": item.outcome,
         "reasons": list(output.get("reasons") or []),
         "missing_inputs": list(output.get("missing_inputs") or []),
+        "required_evidence": list(output.get("required_evidence") or []),
+        "required_assets": list(output.get("required_assets") or []),
+        "unmet_assets": list(output.get("unmet_assets") or []),
+        "freshness_requirements": dict(
+            output.get("freshness_requirements") or {}
+        ),
+        "priority": output.get("priority") or "normal",
+        "priority_reasons": list(output.get("priority_reasons") or []),
+        "priority_missing_inputs": list(
+            output.get("priority_missing_inputs") or []
+        ),
         "recommendation": output.get("recommendation"),
         "source_reference": item.rule_set.source_reference,
         "advisory_only": True,
@@ -97,6 +114,19 @@ def _catalog_dict(entry: SchemeCatalogEntry) -> dict:
     }
 
 
+@router.get("/dss/fact-contract")
+def get_dss_fact_contract(
+    _user: AuthenticatedUser = Depends(get_current_user),
+):
+    return {
+        "version": CURRENT_FACT_VERSION,
+        "facts": [
+            {"name": name, "type": DSS_FACT_CONTRACT[name]}
+            for name in sorted(DSS_FACT_CONTRACT)
+        ],
+    }
+
+
 @router.post("/dss/derive-and-evaluate", status_code=201)
 def derive_and_evaluate(
     payload: DerivedDSSEvaluationCreate,
@@ -105,9 +135,7 @@ def derive_and_evaluate(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = db.get(FRAClaim, payload.claim_id)
-    if claim is None or (user.role not in {"reviewer", "admin"} and claim.submitted_by != user.id):
-        raise HTTPException(status_code=404, detail="FRA claim not found.")
+    claim = claim_for_user(db, payload.claim_id, user)
     try:
         snapshot = derive_facts(
             db, claim, payload.derivation_version, user.id, f"{idempotency_key}:facts",
@@ -172,13 +200,50 @@ def get_recommendations(
     claim_id: uuid.UUID | None = None,
     outcome: str | None = None,
     scheme_code: str | None = None,
-    _user: AuthenticatedUser = Depends(get_current_user),
+    district: str | None = None,
+    block: str | None = None,
+    village: str | None = None,
+    include_history: bool = False,
+    user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if claim_id:
+        claim_for_user(db, claim_id, user)
     items = list_recommendations(
-        db, claim_id=claim_id, outcome=outcome, scheme_code=scheme_code
+        db, claim_id=claim_id, outcome=outcome, scheme_code=scheme_code,
+        district=district, block=block, village=village, include_history=include_history,
+        visible_claim_ids=visible_claim_ids(user),
     )
     return {"items": [_recommendation_dict(item) for item in items], "warning": ADVISORY_WARNING}
+
+
+@router.get("/dss/convergence")
+def get_scheme_convergence(
+    claim_id: uuid.UUID | None = None,
+    outcome: str | None = None,
+    scheme_code: str | None = None,
+    district: str | None = None,
+    block: str | None = None,
+    village: str | None = None,
+    right_type: str | None = None,
+    intervention_type: str | None = None,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if claim_id:
+        claim_for_user(db, claim_id, user)
+    return list_scheme_convergence(
+        db,
+        claim_id=claim_id,
+        outcome=outcome,
+        scheme_code=scheme_code,
+        district=district,
+        block=block,
+        village=village,
+        right_type=right_type,
+        intervention_type=intervention_type,
+        visible_claim_ids=visible_claim_ids(user),
+    )
 
 
 @router.post("/dss/recommendations/{recommendation_id}/referrals", status_code=201)
@@ -201,9 +266,14 @@ def create_recommendation_referral(
             notes=payload.notes,
             request_id=_request_id(request),
         )
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="The operation conflicts with the current stored state.") from error
     except ReferralConflictError as error:
+        db.rollback()
         raise HTTPException(status_code=409, detail=str(error)) from error
     except ReferralValidationError as error:
+        db.rollback()
         status = 404 if "does not exist" in str(error) else 422
         raise HTTPException(status_code=status, detail=str(error)) from error
     _commit(db, "This recommendation already has a referral.")
@@ -232,9 +302,14 @@ def patch_referral(
             expected_revision=payload.expected_revision,
             request_id=_request_id(request),
         )
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="The operation conflicts with the current stored state.") from error
     except ReferralConflictError as error:
+        db.rollback()
         raise HTTPException(status_code=409, detail=str(error)) from error
     except ReferralValidationError as error:
+        db.rollback()
         raise HTTPException(status_code=422, detail=str(error)) from error
     _commit(db, "The referral changed while it was being updated.")
     return _referral_dict(referral)
@@ -269,6 +344,7 @@ def claim_report(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    claim_for_user(db, claim_id, user)
     try:
         return _html_response(render_claim_report(db, claim_id, actor_id=user.id))
     except ReportNotFoundError as error:
@@ -281,6 +357,7 @@ def historical_evidence_report(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    claim_for_user(db, claim_id, user)
     try:
         return _html_response(render_historical_evidence_report(db, claim_id, actor_id=user.id))
     except (ReportNotFoundError, PermissionError) as error:

@@ -42,10 +42,12 @@ const ClaimedLandUI = (() => {
   }
 
   function registryViewModel(payload, selectedClaimId, searchQuery = '') {
-    const sourceClaims = Array.isArray(payload?.claims) ? payload.claims : [];
+    const sourceClaims = Array.isArray(payload?.parcel_links)
+      ? payload.parcel_links
+      : (Array.isArray(payload?.claims) ? payload.claims : []);
     const claims = sourceClaims.map((claim, index) => ({ ...claim, serialNumber: index + 1 }));
-    const count = Number(payload?.summary?.claimed_parcel_count ?? claims.length);
-    const area = Number(payload?.summary?.claimed_official_area_sqm ?? 0);
+    const count = Number(payload?.summary?.parcel_link_count ?? payload?.summary?.claimed_parcel_count ?? claims.length);
+    const area = Number(payload?.summary?.linked_official_area_sqm ?? payload?.summary?.claimed_official_area_sqm ?? 0);
     const query = normalizedSearchValue(searchQuery);
     const queryParts = query.split(' ').filter(Boolean);
     const visibleClaims = queryParts.length
@@ -57,15 +59,15 @@ const ClaimedLandUI = (() => {
     const requested = visibleClaims.find((claim) => claim.claim_id === selectedClaimId);
     const selected = requested || visibleClaims[0] || null;
     const summaryText = count
-      ? `${count} claimed ${count === 1 ? 'parcel' : 'parcels'} · ${numberFormat.format(area)} m²`
-      : 'No claimed parcels';
+      ? `${count} ${count === 1 ? 'parcel link' : 'parcel links'} · ${numberFormat.format(area)} m²`
+      : 'No parcel links';
     const resultText = !claims.length
-      ? 'No claims registered'
+      ? 'No parcel links recorded'
       : !visibleClaims.length
-        ? 'No matching claims'
+        ? 'No matching parcel links'
         : query
-          ? `${visibleClaims.length} of ${claims.length} claims`
-          : `${claims.length} ${claims.length === 1 ? 'claim' : 'claims'}`;
+          ? `${visibleClaims.length} of ${claims.length} parcel links`
+          : `${claims.length} ${claims.length === 1 ? 'parcel link' : 'parcel links'}`;
     return { claims, visibleClaims, selected, summaryText, resultText, query };
   }
 
@@ -128,8 +130,8 @@ const ClaimedLandUI = (() => {
         : `${numberFormat.format(claim.parcel.official_area_sqm)} m²`);
       appendFact(facts, 'Registered', displayDate(claim.submitted_at));
       appendFact(facts, 'District', claim.parcel?.district || '—');
-      appendFact(facts, 'Patta file', claim.document?.filename || '—');
-      const viewPatta = createElement('button', 'secondary claim-patta-button', 'View original patta');
+      appendFact(facts, 'Source document', claim.document?.filename || '—');
+      const viewPatta = createElement('button', 'secondary claim-patta-button', 'View original evidence document');
       viewPatta.type = 'button';
       viewPatta.disabled = !claim.document?.view_url;
       viewPatta.addEventListener('click', () => {
@@ -268,9 +270,9 @@ const ClaimedLandUI = (() => {
     async function load(selectedClaimId = null) {
       setFeedback(byId('claimedLandFeedback'), 'info', 'Loading registered parcels…');
       try {
-        const response = await fetchImpl('/api/claims/registry');
+        const response = await fetchImpl('/api/cadastral-evidence/parcel-links');
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.message || 'Claimed land could not be loaded.');
+        if (!response.ok) throw new Error(payload.message || 'Parcel registry could not be loaded.');
         render(payload, selectedClaimId);
         setFeedback(byId('claimedLandFeedback'), '', '');
         return state.model;

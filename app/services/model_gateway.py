@@ -2,13 +2,20 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from math import isfinite
 from typing import Any, Protocol
 
 from sqlalchemy import select
 
 from app.db.fra_completion_models import ModelVersion
 from app.services.audit import record_audit
-from app.services.satellite_evidence import ASSET_CLASSES, ImageryProvider
+from app.services.satellite_evidence import ImageryProvider
+from app.services.asset_contracts import (
+    ASSET_CLASSES,
+    canonical_label_map,
+    normalize_asset_observation,
+    validate_asset_value,
+)
 from app.services.state_profiles import get_state_profile
 
 
@@ -99,7 +106,7 @@ def _validate_confidence(value: Any, *, field_name: str = "confidence") -> float
 
 
 def validate_model_output(output: Any) -> Any:
-    """Reject decision-like output anywhere in a model response."""
+    """Reject legal conclusions and non-finite JSON numbers before persistence."""
 
     if isinstance(output, dict):
         banned = BANNED_CONCLUSION_KEYS.intersection(str(key).casefold() for key in output)
@@ -112,6 +119,8 @@ def validate_model_output(output: Any) -> Any:
     elif isinstance(output, list):
         for value in output:
             validate_model_output(value)
+    elif isinstance(output, float) and not isfinite(output):
+        raise ModelOutputValidationError("Model output numbers must be finite.")
     return output
 
 
@@ -180,9 +189,15 @@ class ManifestAssetDetector:
         for item in source:
             if not isinstance(item, dict):
                 raise ModelOutputValidationError("Each asset feature must be an object.")
-            asset_class = str(item.get("asset_class") or "").strip()
+            asset_class, value = normalize_asset_observation(
+                item.get("asset_class"), item.get("value", {})
+            )
             if asset_class not in ASSET_CLASSES:
                 raise ModelOutputValidationError(f"Unsupported asset class: {asset_class or 'missing'}.")
+            try:
+                validate_asset_value(asset_class, value)
+            except ValueError as error:
+                raise ModelOutputValidationError(str(error)) from error
             feature_geometry = item.get("geometry")
             if not isinstance(feature_geometry, dict) or feature_geometry.get("type") not in {
                 "Point",
@@ -199,7 +214,7 @@ class ManifestAssetDetector:
                 {
                     "asset_class": asset_class,
                     "geometry": feature_geometry,
-                    "value": item.get("value", {}),
+                    "value": value,
                     "confidence": confidence,
                 }
             )
@@ -250,12 +265,18 @@ def register_model(
     )
     if existing is not None:
         return existing
+    try:
+        stored_label_map = (
+            canonical_label_map(label_map) if values["task"] == "asset_detection" else (label_map or {})
+        )
+    except ValueError as error:
+        raise ModelRegistrationError(str(error)) from error
     model = ModelVersion(
         **values,
         framework=framework,
         artifact_uri=artifact_uri,
         checksum=checksum,
-        label_map_json=label_map or {},
+        label_map_json=stored_label_map,
         metrics_json=metrics or {"status": "not_evaluated"},
         configuration_json=configuration or {},
         registered_by=actor_id,

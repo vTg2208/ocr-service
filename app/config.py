@@ -40,22 +40,22 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.groq.com/openai/v1"
     llm_model_name: str = "openai/gpt-oss-120b"
 
-    # --- Central land registry ---
-    database_url: str = "sqlite+pysqlite:///./ocr_land.db"
+    # --- Supporting cadastral evidence registry ---
+    database_url: str = "sqlite+pysqlite:///./aranyasetu.db"
     secure_upload_dir: str = "private_uploads"
     area_tolerance_percent: float = 10.0
     overlap_min_sqm: float = 1.0
     overlap_min_percent: float = 1.0
     automatic_match_confidence: float = 0.85
     auth_secret: str = "change-me-in-production"
-    auth_issuer: str = "ocr-land-registry"
-    auth_audience: str = "ocr-land-api"
+    auth_issuer: str = "aranyasetu"
+    auth_audience: str = "aranyasetu-api"
     demo_auth_enabled: bool = True
     demo_access_code: str = "1234"
     demo_session_minutes: int = 480
     upload_storage_backend: str = "local"
     s3_bucket: str = ""
-    s3_prefix: str = "patta-documents"
+    s3_prefix: str = "fra-evidence"
     clamav_host: str = ""
     clamav_port: int = 3310
     malware_scan_required: bool = False
@@ -71,6 +71,24 @@ class Settings(BaseSettings):
     stac_max_results: int = 100
     stac_max_cloud: float = 40
 
+    # --- Current satellite analysis-ready ingestion ---
+    satellite_stac_endpoint: str = "https://earth-search.aws.element84.com/v1/search"
+    satellite_stac_allowed_hosts: List[str] = ["earth-search.aws.element84.com"]
+    satellite_stac_allowed_collections: List[str] = ["sentinel-2-l2a"]
+    satellite_asset_allowed_hosts: List[str] = [
+        "sentinel-cogs.s3.us-west-2.amazonaws.com",
+        "e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com",
+    ]
+    satellite_default_band_keys: List[str] = ["green", "nir"]
+    satellite_max_output_pixels: int = 4_000_000
+
+    # --- Durable FRA background processing ---
+    job_lease_seconds: int = 300
+    job_heartbeat_seconds: int = 30
+    job_retry_base_seconds: int = 15
+    job_retry_max_seconds: int = 900
+    job_poll_seconds: float = 2.0
+
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -84,6 +102,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_safeguards(self):
+        if self.job_lease_seconds < 2:
+            raise ValueError("JOB_LEASE_SECONDS must be at least two seconds.")
+        if not 0 < self.job_heartbeat_seconds < self.job_lease_seconds:
+            raise ValueError("JOB_HEARTBEAT_SECONDS must be positive and shorter than the lease.")
+        if self.job_retry_base_seconds < 0 or self.job_retry_max_seconds < self.job_retry_base_seconds:
+            raise ValueError("Job retry delays must be non-negative and bounded in ascending order.")
+        if self.job_poll_seconds <= 0:
+            raise ValueError("JOB_POLL_SECONDS must be positive.")
         if self.environment.casefold() != "production":
             return self
         normalized_secret = self.auth_secret.casefold()

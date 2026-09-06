@@ -8,6 +8,7 @@ import re
 from typing import Protocol
 import zipfile
 
+from defusedxml import ElementTree
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, mapping, shape
 from shapely.validation import make_valid
 from sqlalchemy import select
@@ -17,13 +18,7 @@ from app.db.models import User
 from app.services.audit import record_audit
 
 
-DATASET_KINDS = {
-    "administrative_boundary",
-    "protected_area",
-    "forest_compartment",
-    "water_body",
-    "cadastral_parcel",
-}
+from app.services.reference_contracts import DATASET_KINDS
 
 
 class SpatialImportValidationError(ValueError):
@@ -101,14 +96,80 @@ def _validate_vector_archive(content: bytes) -> None:
         raise SpatialImportValidationError("Shapefile upload is not a valid ZIP archive.") from error
 
 
+class KMLDatasetReader:
+    """Read KML polygons without depending on an optional GDAL KML driver."""
+
+    @staticmethod
+    def _coordinates(element) -> list[list[float]]:
+        if element is None or not str(element.text or "").strip():
+            raise SpatialImportValidationError("KML polygon coordinates are missing.")
+        coordinates = []
+        for token in str(element.text).split():
+            parts = token.split(",")
+            if len(parts) < 2:
+                raise SpatialImportValidationError("KML polygon coordinates are invalid.")
+            try:
+                coordinates.append([float(parts[0]), float(parts[1])])
+            except ValueError as error:
+                raise SpatialImportValidationError("KML polygon coordinates are invalid.") from error
+        if len(coordinates) < 4:
+            raise SpatialImportValidationError("KML polygon rings require at least four coordinates.")
+        if coordinates[0] != coordinates[-1]:
+            coordinates.append(list(coordinates[0]))
+        return coordinates
+
+    def read(self, content: bytes, filename: str) -> VectorDataset:
+        if Path(filename).suffix.casefold() != ".kml":
+            raise SpatialImportValidationError("The built-in reader accepts KML files only.")
+        try:
+            root = ElementTree.fromstring(content)
+        except Exception as error:
+            raise SpatialImportValidationError("The KML file is not safe, well-formed XML.") from error
+        features = []
+        for index, placemark in enumerate(root.findall(".//{*}Placemark"), start=1):
+            polygons = []
+            for polygon in placemark.findall(".//{*}Polygon"):
+                outer = polygon.find(
+                    "./{*}outerBoundaryIs/{*}LinearRing/{*}coordinates"
+                )
+                rings = [self._coordinates(outer)]
+                for inner in polygon.findall(
+                    "./{*}innerBoundaryIs/{*}LinearRing/{*}coordinates"
+                ):
+                    rings.append(self._coordinates(inner))
+                polygons.append(rings)
+            if not polygons:
+                continue
+            properties = {}
+            name = placemark.find("./{*}name")
+            if name is not None and str(name.text or "").strip():
+                properties["name"] = str(name.text).strip()
+            for data in placemark.findall(".//{*}ExtendedData/{*}Data"):
+                key = str(data.get("name") or "").strip()
+                value = data.find("./{*}value")
+                if key and value is not None:
+                    properties[key[:255]] = str(value.text or "").strip()
+            features.append({
+                "type": "Feature",
+                "id": str(placemark.get("id") or index),
+                "properties": properties,
+                "geometry": (
+                    {"type": "Polygon", "coordinates": polygons[0]}
+                    if len(polygons) == 1
+                    else {"type": "MultiPolygon", "coordinates": polygons}
+                ),
+            })
+        return VectorDataset(crs="EPSG:4326", features=features)
+
+
 class FionaDatasetReader:
-    """Optional GDAL-backed reader for zipped Shapefile, KML, and GeoPackage."""
+    """GDAL-backed reader for zipped Shapefile and GeoPackage datasets."""
 
     def read(self, content: bytes, filename: str) -> VectorDataset:
         suffix = Path(filename).suffix.casefold()
         if suffix == ".zip":
             _validate_vector_archive(content)
-        elif suffix not in {".gpkg", ".kml"}:
+        elif suffix != ".gpkg":
             raise SpatialImportValidationError("Unsupported GDAL vector dataset format.")
         try:
             import fiona
@@ -150,11 +211,12 @@ class FionaDatasetReader:
 
 
 def reader_for_filename(filename: str) -> VectorDatasetReader:
-    return (
-        GeoJSONDatasetReader()
-        if Path(filename).suffix.casefold() in {".geojson", ".json"}
-        else FionaDatasetReader()
-    )
+    suffix = Path(filename).suffix.casefold()
+    if suffix in {".geojson", ".json"}:
+        return GeoJSONDatasetReader()
+    if suffix == ".kml":
+        return KMLDatasetReader()
+    return FionaDatasetReader()
 
 
 def _polygon_parts(geometry) -> list[Polygon]:
@@ -379,6 +441,7 @@ def publish_spatial_import(
 
 __all__ = [
     "GeoJSONDatasetReader",
+    "KMLDatasetReader",
     "FionaDatasetReader",
     "SpatialImportValidationError",
     "VectorDataset",

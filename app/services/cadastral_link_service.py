@@ -1,4 +1,4 @@
-"""Transactional, idempotent creation of exclusive parcel claims."""
+"""Transactional, idempotent creation of supporting cadastral parcel links."""
 
 from decimal import Decimal
 
@@ -6,17 +6,17 @@ from sqlalchemy import select
 
 from app.db.models import Claim, Document, OCRResult
 from app.services.audit import record_audit
-from app.services.claim_eligibility import ensure_land_available
-from app.services.conflict_detection import ordered_claim_pair
+from app.services.cadastral_link_eligibility import ensure_parcel_link_available
+from app.services.cadastral_conflicts import ordered_link_pair
 from app.services.fra_intake import ensure_intake_for_legacy_claim
 
-__all__ = ["ClaimService", "ordered_claim_pair"]
+__all__ = ["CadastralLinkService", "ordered_link_pair"]
 
 
-class ClaimService:
+class CadastralLinkService:
     def __init__(self, session, *, eligibility_checker=None, overlap_min_sqm=1.0, overlap_min_percent=1.0):
         self.session = session
-        self.eligibility_checker = eligibility_checker or ensure_land_available
+        self.eligibility_checker = eligibility_checker or ensure_parcel_link_available
         self.overlap_min_sqm = overlap_min_sqm
         self.overlap_min_percent = overlap_min_percent
 

@@ -1,0 +1,29 @@
+{
+  "schema_version": "fra-public-progress-v1",
+  "state_code": "TN",
+  "state_name": "Tamil Nadu",
+  "as_of": "2026-06-30",
+  "synthetic": false,
+  "granularity": "state_aggregate",
+  "source": {
+    "authority": "Ministry of Tribal Affairs, Government of India",
+    "title": "Monthly progress report on implementation of the Forest Rights Act, June 2026",
+    "reference": "https://tribal.nic.in/downloads/FRA/MPR/2026/(A)%20MPR%20June%202026.pdf",
+    "document_sha256": "0b94f05063852230c2b519ffb3de4bb0b1d0850e6a3ca22b1e41705b7b5b1cd1",
+    "page": 7
+  },
+  "claims_received": {
+    "individual": 33119,
+    "community": 1548,
+    "total": 34667
+  },
+  "titles_distributed": {
+    "individual": 15442,
+    "community": 1066,
+    "total": 16508
+  },
+  "limitations": [
+    "State aggregates cannot be converted into individual FRA claims or title records.",
+    "The report does not provide claim/title geometries or rights-holder identities."
+  ]
+}

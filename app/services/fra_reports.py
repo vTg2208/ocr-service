@@ -9,6 +9,7 @@ from app.db.fra_completion_models import AssetFeature, FRAArchiveRecord, FRAVill
 from app.db.fra_models import DSSRecommendation, FRAClaim
 from app.db.fra_operational_models import ImageryArtifact
 from app.db.models import User
+from app.services.asset_contracts import asset_subtype
 
 
 SUPPORTING_WARNING = (
@@ -174,20 +175,71 @@ def render_village_report(session, village_id, *, actor_id) -> str:
         select(AssetFeature).where(AssetFeature.village_id == village.id).order_by(AssetFeature.asset_class)
     ).all()
     asset_rows = "".join(
-        f"<tr><td>{_safe(item.asset_class)}</td><td>{_safe(item.verification_state)}</td><td>{_safe(item.confidence)}</td></tr>"
+        f"<tr><td>{_safe(item.asset_class)}</td><td>{_safe(asset_subtype(item.asset_class, item.observed_value_json))}</td><td>{_safe(item.verification_state)}</td><td>{_safe(item.confidence)}</td></tr>"
         for item in assets
-    ) or "<tr><td colspan='3'>No asset observations are recorded.</td></tr>"
+    ) or "<tr><td colspan='4'>No asset observations are recorded.</td></tr>"
     provenance = {
         key: ("[private source redacted]" if "private" in str(value).casefold() else value)
         for key, value in (village.provenance_json or {}).items()
     }
+    profile = village.asset_profile
+    profile_section = (
+        f"<section><h2>Calculated asset profile</h2><p>Taxonomy: {_safe(profile.taxonomy_version)} · "
+        f"Calculation: {_safe(profile.calculation_version)} · Reviewed observations: {_safe(profile.verified_asset_count)} · "
+        f"Pending review: {_safe(profile.pending_asset_count)}</p>"
+        f"<table><caption>Planning metrics</caption><tbody>{_metric_rows(profile.metrics_json)}</tbody></table>"
+        f"<p>Source imagery/model lineage: {_safe(profile.sources_json)}</p></section>"
+        if profile is not None
+        else "<section><h2>Calculated asset profile</h2><p>No calculated profile is available yet.</p></section>"
+    )
+    claims = session.scalars(
+        select(FRAClaim).where(FRAClaim.village_id == village.id)
+    ).all()
+    claim_ids = [claim.id for claim in claims]
+    recommendation_rows = []
+    if claim_ids:
+        recommendations = session.scalars(
+            select(DSSRecommendation)
+            .where(DSSRecommendation.claim_id.in_(claim_ids))
+            .order_by(DSSRecommendation.created_at.desc(), DSSRecommendation.id.desc())
+        ).all()
+        latest = {}
+        for recommendation in recommendations:
+            latest.setdefault(
+                (recommendation.claim_id, recommendation.rule_set.scheme_code),
+                recommendation,
+            )
+        for recommendation in latest.values():
+            output = dict(recommendation.output_json or {})
+            recommendation_rows.append(
+                "<tr>"
+                f"<td>{_safe(recommendation.claim.claim_number)}</td>"
+                f"<td>{_safe(recommendation.rule_set.display_name)}</td>"
+                f"<td>{_safe(recommendation.outcome.replace('_', ' '))}</td>"
+                f"<td>{_safe(output.get('priority') or 'normal')}</td>"
+                f"<td>{_safe(output.get('recommendation') or '')}</td>"
+                f"<td>{_safe(recommendation.rule_version)}</td>"
+                "</tr>"
+            )
+    planning_rows = "".join(recommendation_rows) or (
+        "<tr><td colspan='6'>No current DSS recommendation is recorded for this village.</td></tr>"
+    )
+    planning_section = (
+        "<section><h2>Advisory scheme convergence</h2>"
+        "<table><thead><tr><th>FRA claim</th><th>Scheme</th><th>Result</th>"
+        "<th>Priority</th><th>Recommendation</th><th>Rule version</th></tr></thead>"
+        f"<tbody>{planning_rows}</tbody></table>"
+        "<p>No benefit is approved or transmitted by this report. Human departmental review is required.</p>"
+        "</section>"
+    )
     body = (
         f"<section><h2>Administrative context</h2><p>State: Tamil Nadu (TN)</p>"
         f"<p>District: {_safe(village.district_name)} · Block/Taluk: {_safe(village.block_name)} · Village: {_safe(village.village_name)}</p>"
         f"<p>Reference version: {_safe(village.reference_version)}</p>"
         f"<p>Provenance: {_safe(provenance)}</p></section>"
-        f"<section><h2>Asset observations</h2><table><thead><tr><th>Class</th><th>Verification</th><th>Confidence</th></tr></thead><tbody>{asset_rows}</tbody></table></section>"
-        "<section><h2>Planning scope</h2><p>No benefit is approved or transmitted by this report. Human departmental review is required.</p></section>"
+        f"<section><h2>Asset observations</h2><table><thead><tr><th>Class</th><th>Subtype</th><th>Verification</th><th>Confidence</th></tr></thead><tbody>{asset_rows}</tbody></table></section>"
+        f"{profile_section}"
+        f"{planning_section}"
     )
     return _page(
         f"Village planning report · {village.village_name}", body, synthetic=village.synthetic

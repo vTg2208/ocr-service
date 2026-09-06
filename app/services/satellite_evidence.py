@@ -12,41 +12,13 @@ from app.db.fra_models import FRAEvidenceItem, SatelliteObservation
 from app.services.audit import record_audit
 
 
-ASSET_CLASSES = {
-    "agricultural_cover",
-    "anganwadi",
-    "barren_land",
-    "borewell",
-    "bridge",
-    "check_dam",
-    "community_centre",
-    "electricity_grid",
-    "fisheries",
-    "forest_cover",
-    "forest_nursery",
-    "grazing_land",
-    "health_centre",
-    "homestead",
-    "irrigation_canal",
-    "livestock",
-    "market",
-    "minor_forest_produce",
-    "open_well",
-    "pipeline",
-    "plantation_orchard",
-    "pond",
-    "rainwater_harvesting",
-    "river_stream",
-    "road",
-    "sanitation_toilet",
-    "school",
-    "scrubland",
-    "solar_power",
-    "storage_warehouse",
-    "tap_water",
-    "water_body",
-    "water_tank",
-}
+from app.services.asset_contracts import (
+    ASSET_CLASSES,
+    normalize_asset_observation,
+    validate_asset_value,
+)
+
+
 BANNED_CONCLUSION_KEYS = {"valid", "invalid", "approved", "rejected", "eligibility"}
 
 
@@ -147,7 +119,9 @@ class LocalObservationAnalyser:
                 raise SatelliteEvidenceValidationError(
                     "Satellite observations cannot contain an automated legal conclusion."
                 )
-            asset_class = str(item.get("asset_class") or "").strip()
+            asset_class, value_data = normalize_asset_observation(
+                item.get("asset_class"), item.get("value")
+            )
             if asset_class not in ASSET_CLASSES:
                 raise SatelliteEvidenceValidationError(
                     f"Unsupported satellite asset class: {asset_class or 'missing'}."
@@ -167,9 +141,11 @@ class LocalObservationAnalyser:
                 raise SatelliteEvidenceValidationError(
                     "Observation value must be a string, number, or boolean."
                 )
-            observations.append(
-                AssetObservation(asset_class, value, float(confidence))
-            )
+            try:
+                validate_asset_value(asset_class, value_data)
+            except ValueError as error:
+                raise SatelliteEvidenceValidationError(str(error)) from error
+            observations.append(AssetObservation(asset_class, value_data, float(confidence)))
         return AnalysisResult(
             observations=observations,
             analyser_version=self.version,
@@ -220,7 +196,7 @@ def create_supporting_observations(
             provider=scene.provider,
             source_uri=scene.source_uri,
             asset_class=item.asset_class,
-            observed_value_json={"value": item.value},
+            observed_value_json=dict(item.value),
             confidence=Decimal(str(item.confidence)),
             analyser_version=result.analyser_version,
             acquired_at=scene.acquired_at,

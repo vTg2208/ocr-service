@@ -24,7 +24,7 @@
         const body = await response.json().catch(() => ({}));
         throw new Error(body.message || 'The access code was not accepted.');
       }
-      window.location.assign('/land-mapping');
+      window.location.assign('/fra');
     } catch (error) {
       status.textContent = error.message;
       input.select();

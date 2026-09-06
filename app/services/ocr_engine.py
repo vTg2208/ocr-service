@@ -7,6 +7,7 @@ satisfy. PaddleOCR is the default implementation.
 
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import os
 from typing import Tuple
 
@@ -24,6 +25,20 @@ class OCRException(Exception):
 
 class OCRInitializationError(OCRException):
     """Raised when an OCR engine cannot be initialized."""
+
+
+@dataclass(frozen=True)
+class OCRLineResult:
+    text: str
+    confidence: float
+    bounding_box: list[float] | None = None
+
+
+@dataclass(frozen=True)
+class OCRPageAnalysis:
+    text: str
+    confidence: float
+    lines: list[OCRLineResult]
 
 
 class OCRService(ABC):
@@ -69,6 +84,10 @@ class PaddleOCREngine(OCRService):
             ) from exc
 
     def extract_text(self, image: np.ndarray) -> Tuple[str, float]:
+        result = self.extract_page(image)
+        return result.text, result.confidence
+
+    def extract_page(self, image: np.ndarray) -> OCRPageAnalysis:
         try:
             if image.ndim == 2:
                 image = np.repeat(image[:, :, np.newaxis], 3, axis=2)
@@ -78,18 +97,25 @@ class PaddleOCREngine(OCRService):
             for page in results:
                 texts = page.get("rec_texts", [])
                 scores = page.get("rec_scores", [])
-                for value, score in zip(texts, scores):
+                boxes = page.get("rec_boxes", [])
+                for index, (value, score) in enumerate(zip(texts, scores)):
                     text = str(value).strip()
                     if not text:
                         continue
-                    lines.append(text)
-                    confidences.append(float(score) * 100)
+                    normalized_score = float(score)
+                    box = None
+                    if index < len(boxes):
+                        candidate = boxes[index]
+                        if len(candidate) == 4:
+                            box = [float(coordinate) for coordinate in candidate]
+                    lines.append(OCRLineResult(text, normalized_score, box))
+                    confidences.append(normalized_score * 100)
         except Exception as exc:
             logger.error("PaddleOCR inference failed: %s", exc)
             raise OCRException("OCR processing failed.") from exc
 
-        extracted_text = "\n".join(lines)
+        extracted_text = "\n".join(line.text for line in lines)
         average_confidence = (
             round(sum(confidences) / len(confidences), 2) if confidences else 0.0
         )
-        return extracted_text, average_confidence
+        return OCRPageAnalysis(extracted_text, average_confidence, lines)

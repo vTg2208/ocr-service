@@ -17,7 +17,7 @@ from app.models.response_models import (
     LandRecord,
     OtherLandAttribute,
 )
-from app.services.land_candidates import LandCandidateSet, extract_land_candidates
+from app.services.cadastral_candidates import CadastralCandidateSet, extract_cadastral_candidates
 
 settings = get_settings()
 
@@ -43,7 +43,7 @@ def _deterministic_evidence(text: str) -> FieldEvidence:
     )
 
 
-def _shared_location(candidates: LandCandidateSet) -> LandLocation:
+def _shared_location(candidates: CadastralCandidateSet) -> LandLocation:
     fields = {}
     for candidate in candidates.locations:
         if candidate.kind not in fields:
@@ -54,7 +54,7 @@ def _shared_location(candidates: LandCandidateSet) -> LandLocation:
     return LandLocation(**fields)
 
 
-def _shared_references(candidates: LandCandidateSet) -> list[DocumentReference]:
+def _shared_references(candidates: CadastralCandidateSet) -> list[DocumentReference]:
     references = [
         DocumentReference(
             kind="date",
@@ -76,9 +76,9 @@ def _shared_references(candidates: LandCandidateSet) -> list[DocumentReference]:
 
 def build_deterministic_land_result(
     text: str,
-) -> tuple[LandExtractionResult, LandCandidateSet]:
+) -> tuple[LandExtractionResult, CadastralCandidateSet]:
     """Build conservative parcel records without semantic inference."""
-    candidates = extract_land_candidates(text)
+    candidates = extract_cadastral_candidates(text)
     location = _shared_location(candidates)
     references = _shared_references(candidates)
     records = []
@@ -184,7 +184,7 @@ def _llm_evidenced_text(item: dict) -> EvidencedText:
     )
 
 
-class LandEnrichmentService:
+class CadastralEnrichmentService:
     """Combine deterministic candidates with optional evidence-bound LLM output."""
 
     def __init__(self, client=None, model_name: str | None = None):
@@ -210,7 +210,7 @@ class LandEnrichmentService:
             )
             return deterministic
 
-    async def _request_payload(self, text: str, candidates: LandCandidateSet) -> dict:
+    async def _request_payload(self, text: str, candidates: CadastralCandidateSet) -> dict:
         response = await self.client.chat.completions.create(
             model=self.model_name,
             messages=[
@@ -237,7 +237,7 @@ class LandEnrichmentService:
     def _merge_validated(
         self,
         text: str,
-        candidates: LandCandidateSet,
+        candidates: CadastralCandidateSet,
         deterministic: LandExtractionResult,
         payload: dict,
     ) -> LandExtractionResult:
@@ -358,7 +358,7 @@ class LandEnrichmentService:
         return deterministic
 
     @staticmethod
-    def _known_numeric_value(value: str, candidates: LandCandidateSet) -> bool:
+    def _known_numeric_value(value: str, candidates: CadastralCandidateSet) -> bool:
         known = {candidate.survey_number for candidate in candidates.parcels}
         known.update(
             candidate.area_raw
@@ -372,7 +372,7 @@ class LandEnrichmentService:
     @staticmethod
     def _merge_coordinates(
         text: str,
-        candidates: LandCandidateSet,
+        candidates: CadastralCandidateSet,
         record: LandRecord,
         item: dict,
     ) -> bool:

@@ -8,6 +8,8 @@ from app.db.fra_completion_models import DSSReferral
 from app.db.fra_models import DSSRecommendation
 from app.db.models import User
 from app.services.audit import record_audit
+from app.services.concurrency import reserve_revision
+from app.services.fra_locations import claim_location, location_matches
 
 
 ALLOWED_PRIORITIES = {"low", "normal", "high", "urgent"}
@@ -40,22 +42,35 @@ def list_recommendations(
     session,
     *,
     claim_id=None,
+    visible_claim_ids=None,
     outcome: str | None = None,
     scheme_code: str | None = None,
+    district: str | None = None,
+    block: str | None = None,
+    village: str | None = None,
+    include_history: bool = False,
 ) -> list[DSSRecommendation]:
     statement = select(DSSRecommendation)
+    if visible_claim_ids is not None:
+        statement = statement.where(DSSRecommendation.claim_id.in_(visible_claim_ids))
     if claim_id is not None:
         statement = statement.where(DSSRecommendation.claim_id == claim_id)
-    if outcome:
-        statement = statement.where(DSSRecommendation.outcome == outcome)
     recommendations = session.scalars(
-        statement.order_by(DSSRecommendation.created_at.desc(), DSSRecommendation.id)
+        statement.order_by(DSSRecommendation.created_at.desc(), DSSRecommendation.id.desc())
     ).all()
-    if scheme_code:
-        recommendations = [
-            item for item in recommendations if item.rule_set.scheme_code == scheme_code
-        ]
-    return list(recommendations)
+    result, seen = [], set()
+    for item in recommendations:
+        key = (item.claim_id, item.rule_set.scheme_code)
+        if not include_history and key in seen:
+            continue
+        seen.add(key)
+        if outcome and item.outcome != outcome:
+            continue
+        if scheme_code and item.rule_set.scheme_code != scheme_code:
+            continue
+        if location_matches(claim_location(item.claim), district=district, block=block, village=village):
+            result.append(item)
+    return result
 
 
 def create_referral(
@@ -157,11 +172,12 @@ def update_referral(
     if target in {"closed", "withdrawn"} and not normalized_notes:
         raise ReferralValidationError(f"Notes are required when a referral is {target}.")
     before = {"status": referral.status, "revision": referral.revision}
+    reserve_revision(session, referral, expected_revision=expected_revision, state_field="status",
+                     conflict=ReferralConflictError("The referral changed since it was loaded."))
     referral.status = target
     referral.notes = normalized_notes
     if assigned_to is not None:
         referral.assigned_to = " ".join(assigned_to.split()) or None
-    referral.revision += 1
     history = list(referral.history_json or [])
     history.append(
         {

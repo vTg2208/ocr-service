@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.db.fra_models import FRAClaim
 from app.db.models import AuditEvent
 from app.services.fra_workflow import allowed_transitions
+from app.services.fra_locations import claim_location, location_matches
 
 
 PRIVATE_KEYS = {"private_uri", "artifact_uri", "source_uri", "storage_key"}
@@ -29,20 +30,7 @@ def _gram_sabha(claim: FRAClaim):
 
 
 def _location(claim: FRAClaim) -> dict:
-    gram_sabha = _gram_sabha(claim)
-    if gram_sabha is not None:
-        return {
-            "district": gram_sabha.district,
-            "block": gram_sabha.block,
-            "village": gram_sabha.village,
-        }
-    if claim.parcel is not None:
-        return {
-            "district": claim.parcel.district,
-            "block": claim.parcel.taluk,
-            "village": claim.parcel.village,
-        }
-    return {"district": None, "block": None, "village": None}
+    return {key: value for key, value in claim_location(claim).items() if key != "state"}
 
 
 def case_summary(claim: FRAClaim) -> dict:
@@ -85,11 +73,7 @@ def list_cases(
     result = []
     for claim in claims:
         location = _location(claim)
-        if district and (location["district"] or "").casefold() != district.casefold():
-            continue
-        if block and (location["block"] or "").casefold() != block.casefold():
-            continue
-        if village and (location["village"] or "").casefold() != village.casefold():
+        if not location_matches(location, district=district, block=block, village=village):
             continue
         if term and term not in " ".join(
             [claim.claim_number, claim.rights_holder.display_name, *(value or "" for value in location.values())]

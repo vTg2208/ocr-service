@@ -11,6 +11,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -95,6 +96,10 @@ class SpatialReferenceFeature(Base):
             "source_authority", "source_version", "source_record_id",
             name="uq_spatial_source_record",
         ),
+        Index(
+            "ix_spatial_reference_features_geometry_gist", "geometry",
+            postgresql_using="gist",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
@@ -119,6 +124,10 @@ class ImagerySceneRecord(Base):
     __tablename__ = "imagery_scenes"
     __table_args__ = (
         UniqueConstraint("provider", "collection", "scene_id", name="uq_imagery_scene"),
+        Index(
+            "ix_imagery_scenes_footprint_gist", "footprint",
+            postgresql_using="gist",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)

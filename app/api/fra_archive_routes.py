@@ -14,11 +14,18 @@ from app.config import get_settings
 from app.models.fra_completion_schemas import (
     FRAArchiveBatchUploadResponse,
     FRAArchiveRecordCreate,
+    FRAArchiveRejection,
     FRAArchiveReview,
+    FRAArchivePromote,
     FRAImportBatchCreate,
 )
 from app.services.fra_document_intake import ArchiveUpload, ingest_archive_batch
-from app.services.malware import ClamAVScanner
+from app.services.fra_tabular_intake import (
+    TabularUpload,
+    TabularValidationError,
+    ingest_tabular_archive,
+)
+from app.services.malware import ClamAVScanner, MalwareDetectedError, MalwareScannerUnavailable
 from app.services.storage import create_storage
 from app.services.fra_archive import (
     ArchiveConflictError,
@@ -26,6 +33,7 @@ from app.services.fra_archive import (
     create_archive_record,
     create_import_batch,
     promote_archive_record,
+    reject_archive_record,
     review_archive_record,
     search_archive,
 )
@@ -56,11 +64,24 @@ def _unsupported(error: UnsupportedStateError) -> HTTPException:
     )
 
 
-def _record_or_404(db: Session, record_id: uuid.UUID) -> FRAArchiveRecord:
+def _record_or_404(
+    db: Session, record_id: uuid.UUID, user: AuthenticatedUser
+) -> FRAArchiveRecord:
     record = db.get(FRAArchiveRecord, record_id)
-    if record is None:
+    if record is None or (
+        user.role not in {"reviewer", "admin"} and record.batch.created_by != user.id
+    ):
         raise HTTPException(status_code=404, detail="FRA archive record not found.")
     return record
+
+
+def _batch_or_404(db: Session, batch_id: uuid.UUID, user: AuthenticatedUser) -> FRAImportBatch:
+    batch = db.get(FRAImportBatch, batch_id)
+    if batch is None or (
+        user.role not in {"reviewer", "admin"} and batch.created_by != user.id
+    ):
+        raise HTTPException(status_code=404, detail="FRA import batch not found.")
+    return batch
 
 
 def _record_summary(record: FRAArchiveRecord) -> dict:
@@ -83,6 +104,44 @@ def _record_summary(record: FRAArchiveRecord) -> dict:
         "promoted_claim_id": str(record.promoted_claim_id) if record.promoted_claim_id else None,
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat(),
+    }
+
+
+def _field_evidence_chain(record, run, field, *, privileged: bool) -> dict:
+    evidence = dict(field.evidence_json or {})
+    reviewer = None
+    if field.reviewed_by:
+        reviewer = {
+            "id": str(field.reviewed_by) if privileged else None,
+            "display_name": (
+                field.reviewer.display_name if privileged and field.reviewer is not None
+                else "Recorded reviewer"
+            ),
+            "reviewed_at": field.reviewed_at.isoformat() if field.reviewed_at else None,
+            "review_state": field.review_state,
+        }
+    return {
+        "value": field.extracted_value_json,
+        "source": record.batch.source_label,
+        "document": {
+            "id": str(record.document.id),
+            "filename": record.document.original_filename,
+            "content_type": record.document.content_type,
+            "sha256": record.document.sha256,
+        },
+        "locator": {
+            "page": field.source_page or evidence.get("source_page"),
+            "row": evidence.get("source_row"),
+            "header": evidence.get("source_header"),
+        },
+        "extraction": {
+            "method": field.extraction_method,
+            "model_version": run.entity_model_version,
+            "confidence": float(field.confidence) if field.confidence is not None else None,
+        },
+        "reviewer": reviewer,
+        "corrected_value": field.corrected_value_json,
+        "final_value": field.final_value_json,
     }
 
 
@@ -136,6 +195,47 @@ async def upload_batch(
     return result
 
 
+@router.post("/tabular-upload", status_code=202)
+async def upload_tabular_register(
+    request: Request,
+    file: UploadFile = File(...),
+    source_office: str = Form(..., min_length=1, max_length=255),
+    district: str = Form(..., min_length=1, max_length=255),
+    idempotency_key: str = Header(..., alias="Idempotency-Key", max_length=255),
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    content = await file.read(settings.max_file_size_bytes + 1)
+    if len(content) > settings.max_file_size_bytes:
+        raise HTTPException(status_code=413, detail="The tabular source exceeds the upload limit.")
+    try:
+        result = ingest_tabular_archive(
+            db,
+            upload=TabularUpload(file.filename or "upload", file.content_type, content),
+            source_office=source_office,
+            district=district,
+            actor_id=user.id,
+            idempotency_key=idempotency_key,
+            storage=create_storage(settings),
+            scanner=ClamAVScanner(
+                settings.clamav_host,
+                settings.clamav_port,
+                required=settings.malware_scan_required,
+            ),
+            request_id=_request_id(request),
+        )
+    except MalwareDetectedError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except MalwareScannerUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except UnsupportedStateError as error:
+        raise _unsupported(error) from error
+    except TabularValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    _commit(db, "The tabular archive conflicts with an existing source.")
+    return result
+
+
 @router.post("/batches", status_code=201)
 def create_batch(
     payload: FRAImportBatchCreate,
@@ -181,10 +281,11 @@ def create_record(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    batch = db.get(FRAImportBatch, payload.batch_id)
-    if batch is None:
-        raise HTTPException(status_code=404, detail="FRA import batch not found.")
-    if db.get(Document, payload.document_id) is None:
+    batch = _batch_or_404(db, payload.batch_id, user)
+    document = db.get(Document, payload.document_id)
+    if document is None or (
+        user.role not in {"reviewer", "admin"} and document.uploaded_by != user.id
+    ):
         raise HTTPException(status_code=404, detail="Archive document not found.")
     try:
         record = create_archive_record(
@@ -211,9 +312,14 @@ def create_record(
         )
     except UnsupportedStateError as error:
         raise _unsupported(error) from error
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="The operation conflicts with the current stored state.") from error
     except ArchiveConflictError as error:
+        db.rollback()
         raise HTTPException(status_code=409, detail=str(error)) from error
     except ArchiveValidationError as error:
+        db.rollback()
         raise HTTPException(status_code=422, detail=str(error)) from error
     _commit(db, "The archive record conflicts with an existing record.")
     return {**_record_summary(record), "processing_job_id": str(job.id)}
@@ -232,7 +338,7 @@ def list_records(
     claim_year: int | None = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
-    _user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     filters = {
@@ -246,7 +352,10 @@ def list_records(
         "claim_year": claim_year,
     }
     try:
-        records = search_archive(db, query=query, filters=filters, offset=offset, limit=limit)
+        records = search_archive(
+            db, query=query, filters=filters, offset=offset, limit=limit,
+            created_by=None if user.role in {"reviewer", "admin"} else user.id,
+        )
     except ArchiveValidationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     return {"items": [_record_summary(record) for record in records], "offset": offset, "limit": limit}
@@ -258,7 +367,7 @@ def get_record(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    record = _record_or_404(db, record_id)
+    record = _record_or_404(db, record_id, user)
     privileged = user.role in {"reviewer", "admin"}
     extractions = [
         {
@@ -272,12 +381,41 @@ def get_record(
             "provenance": dict(run.provenance_json or {}),
             "created_at": run.created_at.isoformat(),
             **({"raw_text": run.raw_text} if privileged else {}),
+            **({
+                "field_reviews": [
+                    {
+                        "field_name": field.field_name,
+                        "source_page": field.source_page,
+                        "source_value": field.source_value_json,
+                        "extracted_value": field.extracted_value_json,
+                        "extraction_method": field.extraction_method,
+                        "confidence": float(field.confidence) if field.confidence is not None else None,
+                        "evidence": dict(field.evidence_json or {}),
+                        "corrected_value": field.corrected_value_json,
+                        "final_value": field.final_value_json,
+                        "review_state": field.review_state,
+                        "reviewed_by": str(field.reviewed_by) if field.reviewed_by else None,
+                        "reviewed_at": field.reviewed_at.isoformat() if field.reviewed_at else None,
+                        "evidence_chain": _field_evidence_chain(
+                            record, run, field, privileged=privileged
+                        ),
+                    }
+                    for field in run.field_reviews
+                ]
+            } if privileged else {}),
         }
         for run in record.extraction_runs
     ]
     return {
         **_record_summary(record),
         "reviewed_fields": dict(record.reviewed_fields_json or {}),
+        "source_document": {
+            "id": str(record.document.id),
+            "filename": record.document.original_filename,
+            "content_type": record.document.content_type,
+            "sha256": record.document.sha256,
+            "source": record.batch.source_label,
+        },
         "provenance": dict(record.provenance_json or {}),
         "extraction_runs": extractions,
         "warning": "Synthetic sample data" if record.synthetic else None,
@@ -292,7 +430,7 @@ def review_record(
     user: AuthenticatedUser = Depends(require_reviewer),
     db: Session = Depends(get_db),
 ):
-    record = _record_or_404(db, record_id)
+    record = _record_or_404(db, record_id, user)
     try:
         review_archive_record(
             db,
@@ -302,29 +440,64 @@ def review_record(
             expected_revision=payload.expected_revision,
             request_id=_request_id(request),
         )
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="The operation conflicts with the current stored state.") from error
     except ArchiveConflictError as error:
+        db.rollback()
         raise HTTPException(status_code=409, detail=str(error)) from error
     except ArchiveValidationError as error:
+        db.rollback()
         raise HTTPException(status_code=422, detail=str(error)) from error
     _commit(db, "The archive record changed during review.")
+    return _record_summary(record)
+
+
+@router.post("/records/{record_id}/reject")
+def reject_extraction(
+    record_id: uuid.UUID,
+    payload: FRAArchiveRejection,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_reviewer),
+    db: Session = Depends(get_db),
+):
+    record = _record_or_404(db, record_id, user)
+    try:
+        reject_archive_record(
+            db, record, reason=payload.reason, reviewer_id=user.id,
+            expected_revision=payload.expected_revision, request_id=_request_id(request),
+        )
+    except ArchiveConflictError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except ArchiveValidationError as error:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    _commit(db, "The archive record changed while the extraction was being rejected.")
     return _record_summary(record)
 
 
 @router.post("/records/{record_id}/promote", status_code=201)
 def promote_record(
     record_id: uuid.UUID,
+    payload: FRAArchivePromote,
     request: Request,
     user: AuthenticatedUser = Depends(require_reviewer),
     db: Session = Depends(get_db),
 ):
-    record = _record_or_404(db, record_id)
+    record = _record_or_404(db, record_id, user)
     try:
         claim = promote_archive_record(
-            db, record, actor_id=user.id, request_id=_request_id(request)
+            db, record, actor_id=user.id, expected_revision=payload.expected_revision, request_id=_request_id(request)
         )
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="The operation conflicts with the current stored state.") from error
     except ArchiveConflictError as error:
+        db.rollback()
         raise HTTPException(status_code=409, detail=str(error)) from error
     except ArchiveValidationError as error:
+        db.rollback()
         raise HTTPException(status_code=422, detail=str(error)) from error
     _commit(db, "The reviewed archive record conflicts with an existing FRA claim.")
     return {

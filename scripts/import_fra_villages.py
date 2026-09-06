@@ -1,4 +1,4 @@
-"""Import a synthetic Tamil Nadu FRA village GeoJSON pack."""
+"""Import a provenance-declared Tamil Nadu FRA village GeoJSON pack."""
 
 import argparse
 import json

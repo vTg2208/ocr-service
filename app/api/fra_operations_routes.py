@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.api.fra_access import claim_for_user, visible_claim_ids
 from app.api.auth import AuthenticatedUser, get_current_user, require_admin, require_reviewer
 from app.db.fra_completion_models import ModelVersion, ProcessingJob
 from app.db.session import get_db
@@ -63,11 +64,22 @@ def _job_dict(job: ProcessingJob, *, detailed: bool = False) -> dict:
         "max_attempts": job.max_attempts,
         "error_code": job.error_code,
         "error_message": job.error_message,
+        "available_at": job.available_at.isoformat(),
+        "started_at": job.started_at.isoformat() if job.started_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        "retry_scheduled": job.state == "queued" and job.attempts > 0,
+        "can_retry": job.state in {"failed", "quarantined"},
         "created_at": job.created_at.isoformat(),
         "updated_at": job.updated_at.isoformat(),
     }
     if detailed:
         result["result"] = dict(job.result_json or {})
+        result["worker_id"] = job.worker_id
+        result["heartbeat_at"] = job.heartbeat_at.isoformat() if job.heartbeat_at else None
+        result["lease_expires_at"] = (
+            job.lease_expires_at.isoformat() if job.lease_expires_at else None
+        )
+        result["failure_history"] = list(job.failure_history_json or [])
     return result
 
 
@@ -156,7 +168,11 @@ def list_jobs(
 ):
     statement = select(ProcessingJob)
     if user.role not in {"reviewer", "admin"}:
-        statement = statement.where(ProcessingJob.requested_by == user.id)
+        statement = statement.where(
+            ProcessingJob.requested_by == user.id,
+            (ProcessingJob.entity_type != "fra_claim")
+            | ProcessingJob.entity_id.in_(visible_claim_ids(user)),
+        )
     if state:
         statement = statement.where(ProcessingJob.state == state)
     if task_type:
@@ -178,6 +194,8 @@ def get_job(
     job = _job_or_404(db, job_id)
     if not _can_view_job(user, job):
         raise HTTPException(status_code=404, detail="Processing job not found.")
+    if job.entity_type == "fra_claim":
+        claim_for_user(db, job.entity_id, user)
     return _job_dict(job, detailed=True)
 
 
@@ -189,6 +207,8 @@ def retry_processing_job(
     db: Session = Depends(get_db),
 ):
     job = _job_or_404(db, job_id)
+    if job.entity_type == "fra_claim":
+        claim_for_user(db, job.entity_id, user)
     try:
         retry_job(db, job)
     except JobStateError as error:

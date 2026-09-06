@@ -44,7 +44,7 @@ class LocationCandidate:
 
 
 @dataclass
-class LandCandidateSet:
+class CadastralCandidateSet:
     parcels: list[SurveyAreaCandidate] = field(default_factory=list)
     coordinates: list[CoordinatePairCandidate] = field(default_factory=list)
     dates: list[TextCandidate] = field(default_factory=list)
@@ -109,9 +109,9 @@ def _valid_coordinate_pair(latitude: float, longitude: float) -> bool:
     return -90 <= latitude <= 90 and -180 <= longitude <= 180
 
 
-def extract_land_candidates(text: str) -> LandCandidateSet:
+def extract_cadastral_candidates(text: str) -> CadastralCandidateSet:
     """Extract only explicit, source-locatable land candidates."""
-    candidates = LandCandidateSet()
+    candidates = CadastralCandidateSet()
 
     for match in _SURVEY_AREA_PATTERN.finditer(text):
         unit = match.group("unit")

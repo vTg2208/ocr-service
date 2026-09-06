@@ -50,17 +50,43 @@ def _recognize_archive_document(content: bytes, filename: str):
     validated = validate_upload(filename, content)
     engine = _ocr_engine()
     if validated.is_pdf:
-        raw_text, confidence_percent = PDFProcessor(engine).process(validated.content)
+        page_results = PDFProcessor(engine).process_pages(validated.content)
     else:
         image = ImageProcessor.decode(validated.content)
-        raw_text, confidence_percent = engine.extract_text(image)
+        prepared = ImageProcessor().preprocess(image)
+        if hasattr(engine, "extract_page"):
+            analysis = engine.extract_page(prepared)
+            text, confidence_percent = analysis.text, analysis.confidence
+            lines = [
+                {"text": line.text, "confidence": line.confidence, "bounding_box": line.bounding_box}
+                for line in analysis.lines
+            ]
+        else:
+            text, confidence_percent = engine.extract_text(prepared)
+            lines = []
+        from app.services.pdf_processor import OCRPageResult
+        page_results = [OCRPageResult(1, text, confidence_percent, lines)]
+    raw_text = "\n\n".join(page.text for page in page_results)
+    confidence_percent = (
+        round(sum(page.confidence for page in page_results) / len(page_results), 2)
+        if page_results else 0.0
+    )
     settings = get_settings()
     model_version = (
         f"{settings.paddleocr_detection_model_name}+"
         f"{settings.paddleocr_recognition_model_name}"
     )
     elapsed_ms = max(0, round((time.perf_counter() - started) * 1000))
-    return raw_text, float(confidence_percent) / 100, model_version, elapsed_ms
+    pages = [
+        {
+            "page_number": page.page_number,
+            "text": page.text,
+            "confidence": float(page.confidence) / 100,
+            "lines": list(page.lines),
+        }
+        for page in page_results
+    ]
+    return raw_text, float(confidence_percent) / 100, model_version, elapsed_ms, pages
 
 
 def _active_entity_model(session, payload: dict) -> ModelVersion:
@@ -131,12 +157,13 @@ def _archive_extract(session, job):
                 "model_configuration_invalid", str(error), retriable=False
             ) from error
         content = _read_archive_document(record)
-        raw_text, ocr_confidence, ocr_model_version, _ocr_time_ms = (
+        raw_text, ocr_confidence, ocr_model_version, _ocr_time_ms, pages = (
             _recognize_archive_document(content, record.document.original_filename)
         )
         manifest = {
             "raw_text": raw_text,
             "ocr_confidence": ocr_confidence,
+            "pages": pages,
             "state_code": record.state_code,
         }
         entity_model_version_id = model.id
@@ -215,6 +242,41 @@ def _historical_evidence(session, job):
         raise JobExecutionError("historical_evidence_error", str(error), retriable=error.retriable) from error
 
 
+def _satellite_ingestion(session, job):
+    from app.services.satellite_ingestion import (
+        COGRasterPreprocessor, SatelliteIngestionError, process_satellite_ingestion_job,
+    )
+    from app.services.stac_imagery import STACClient, STACConfigurationError
+    from app.services.storage import create_storage
+
+    settings = get_settings()
+    try:
+        stac_client = STACClient(
+            settings.satellite_stac_endpoint,
+            allowed_hosts=set(settings.satellite_stac_allowed_hosts),
+            allowed_collections=set(settings.satellite_stac_allowed_collections),
+            timeout_seconds=settings.stac_timeout_seconds,
+            max_pages=settings.stac_max_pages,
+            max_results=settings.stac_max_results,
+        )
+        preprocessor = COGRasterPreprocessor(
+            allowed_hosts=set(settings.satellite_asset_allowed_hosts),
+            max_output_pixels=settings.satellite_max_output_pixels,
+        )
+    except (STACConfigurationError, SatelliteIngestionError) as error:
+        raise JobExecutionError("satellite_configuration_invalid", str(error), retriable=False) from error
+    try:
+        return process_satellite_ingestion_job(
+            session, job, stac_client=stac_client, preprocessor=preprocessor,
+            storage=create_storage(settings),
+        )
+    except SatelliteIngestionError as error:
+        raise JobExecutionError(
+            "satellite_ingestion_error", str(error), retriable=error.retriable
+        ) from error
+
+
 register_job_handler("archive_extract", _archive_extract)
 register_job_handler("asset_inference", _asset_inference)
 register_job_handler("historical_evidence", _historical_evidence)
+register_job_handler("satellite_ingestion", _satellite_ingestion)

@@ -1,9 +1,7 @@
 """
-API route definitions.
+FRA document-intelligence and platform health endpoints.
 
-Two endpoints: a health check and the core OCR endpoint. All heavy
-lifting (validation, preprocessing, OCR) is delegated to the services
-layer — this module only orchestrates the request/response cycle.
+OCR remains one replaceable stage in the legacy FRA digitization pipeline.
 """
 
 import logging
@@ -62,16 +60,16 @@ def _get_or_raise_ocr_engine() -> PaddleOCREngine:
     except OCRInitializationError as exc:
         raise HTTPException(
             status_code=503,
-            detail="OCR service is unavailable because the OCR engine could not be initialized.",
+            detail="Document intelligence is unavailable because the OCR engine could not be initialized.",
         ) from exc
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse, tags=["Platform operations"], summary="Get platform health")
 async def health_check() -> HealthResponse:
     return HealthResponse(status="healthy")
 
 
-@router.get("/health/ready", response_model=HealthResponse)
+@router.get("/health/ready", response_model=HealthResponse, tags=["Platform operations"], summary="Check platform readiness")
 async def readiness_check(db: Session = Depends(get_db)) -> HealthResponse:
     try:
         db.execute(text("SELECT 1"))
@@ -80,7 +78,13 @@ async def readiness_check(db: Session = Depends(get_db)) -> HealthResponse:
     return HealthResponse(status="ready")
 
 
-@router.post("/evaluate", response_model=OCREvaluationResponse)
+@router.post("/evaluate", include_in_schema=False)
+@router.post(
+    "/api/fra/document-intelligence/evaluate",
+    response_model=OCREvaluationResponse,
+    tags=["FRA document intelligence"],
+    summary="Evaluate OCR against reviewed reference text",
+)
 async def evaluate_endpoint(
     reference_text: str = Form(...),
     ocr_text: str = Form(...),
@@ -91,9 +95,12 @@ async def evaluate_endpoint(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/ocr", include_in_schema=False)
 @router.post(
-    "/ocr",
+    "/api/fra/document-intelligence/ocr",
     response_model=OCRResponse,
+    tags=["FRA document intelligence"],
+    summary="Digitize a scanned FRA or supporting document",
     responses={400: {"description": "Validation error"}, 500: {"description": "OCR failure"}},
 )
 async def ocr_endpoint(file: UploadFile = File(...), prompt: str | None = Form(None)) -> OCRResponse:
@@ -118,7 +125,8 @@ async def ocr_endpoint(file: UploadFile = File(...), prompt: str | None = Form(N
             text, confidence = _get_pdf_processor().process(validated.content)
         else:
             image = ImageProcessor.decode(validated.content)
-            text, confidence = _get_or_raise_ocr_engine().extract_text(image)
+            prepared = _image_processor.preprocess(image)
+            text, confidence = _get_or_raise_ocr_engine().extract_text(prepared)
     except PDFProcessingError as exc:
         logger.warning("PDF processing failed for '%s': %s", validated.safe_filename, exc)
         raise HTTPException(status_code=400, detail=str(exc)) from exc

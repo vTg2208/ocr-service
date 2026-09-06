@@ -301,7 +301,7 @@ if (typeof document !== 'undefined') (() => {
 
   async function processFile() {
     if (!fileInput.files[0]) {
-      ParcelLedgerUI.setFeedback($('#processStatus'), 'error', 'Choose a patta file first.');
+      ParcelLedgerUI.setFeedback($('#processStatus'), 'error', 'Choose a cadastral evidence file first.');
       return;
     }
     setButtonBusy(processButton, true, 'Reading document…');
@@ -309,7 +309,7 @@ if (typeof document !== 'undefined') (() => {
     const body = new FormData();
     body.append('file', fileInput.files[0]);
     try {
-      const result = await fetch('/api/pattas/process', {
+      const result = await fetch('/api/cadastral-evidence/documents/process', {
         method: 'POST', headers: headers(crypto.randomUUID()), body,
       }).then(jsonResponse);
       state.documentId = result.document_id;
@@ -417,7 +417,7 @@ if (typeof document !== 'undefined') (() => {
     setButtonBusy(matchButton, true, 'Updating match…');
     ParcelLedgerUI.setFeedback($('#reviewFeedback'), 'info', 'Checking the corrected fields against the registry…');
     try {
-      const result = await fetch('/api/parcels/resolve', {
+      const result = await fetch('/api/cadastral-evidence/parcels/resolve', {
         method: 'POST',
         headers: { ...headers(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ document_id: state.documentId, ...formFields() }),
@@ -440,10 +440,10 @@ if (typeof document !== 'undefined') (() => {
   });
 
   claimButton.addEventListener('click', async () => {
-    setButtonBusy(claimButton, true, 'Registering claim…');
-    ParcelLedgerUI.setFeedback($('#claimResult'), 'info', 'Registering the claim…');
+    setButtonBusy(claimButton, true, 'Recording parcel link…');
+    ParcelLedgerUI.setFeedback($('#claimResult'), 'info', 'Recording the cadastral evidence link…');
     try {
-      const result = await fetch('/api/claims', {
+      const result = await fetch('/api/cadastral-evidence/parcel-links', {
         method: 'POST',
         headers: { ...headers(crypto.randomUUID()), 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -458,8 +458,8 @@ if (typeof document !== 'undefined') (() => {
       const completion = $('#completionPanel');
       completion.hidden = false;
       completion.classList.remove('review-required');
-      $('#completionTitle').textContent = 'Claim registered';
-      $('#completionMessage').textContent = 'This parcel is now protected from competing claims.';
+      $('#completionTitle').textContent = 'Parcel link recorded';
+      $('#completionMessage').textContent = 'This cadastral record is available as supporting evidence for FRA case review.';
       $('#documentStatus').textContent = 'Registered';
       $('#documentStatus').setAttribute('aria-label', 'Document status: Registered');
       setStage(ParcelLedgerUI.workflowStage(state));
@@ -472,8 +472,8 @@ if (typeof document !== 'undefined') (() => {
         confirmParcel.disabled = true;
         claimButton.disabled = true;
         $('#viewClaimedLandButton').hidden = false;
-        $('#documentStatus').textContent = 'Already claimed';
-        $('#documentStatus').setAttribute('aria-label', 'Document status: Already claimed');
+        $('#documentStatus').textContent = 'Parcel already linked';
+        $('#documentStatus').setAttribute('aria-label', 'Document status: Parcel already linked');
       } else {
         claimButton.disabled = !state.confirmed;
       }

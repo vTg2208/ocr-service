@@ -1,4 +1,4 @@
-"""Atomic availability checks for exclusive land claims."""
+"""Atomic availability checks for the supporting cadastral parcel-link registry."""
 
 from dataclasses import dataclass
 import uuid
@@ -10,16 +10,16 @@ from app.db.models import Claim, Parcel
 
 
 INACTIVE_STATUSES = {"rejected", "superseded"}
-CLAIM_REGISTRY_LOCK = 731_945_117
+PARCEL_LINK_REGISTRY_LOCK = 731_945_117
 
 
 @dataclass
-class ClaimUnavailableError(ValueError):
+class ParcelLinkUnavailableError(ValueError):
     reason: str
     blocking_claim_id: uuid.UUID
 
     def __str__(self) -> str:
-        return "This land is already claimed."
+        return "This parcel already has a supporting cadastral link."
 
 
 def _lock_registry(session) -> None:
@@ -27,12 +27,12 @@ def _lock_registry(session) -> None:
     if session.bind.dialect.name == "postgresql":
         session.execute(
             text("SELECT pg_advisory_xact_lock(:lock_id)"),
-            {"lock_id": CLAIM_REGISTRY_LOCK},
+            {"lock_id": PARCEL_LINK_REGISTRY_LOCK},
         )
 
 
-def ensure_land_available(session, parcel_id, *, min_sqm=1.0, min_percent=1.0) -> None:
-    """Raise when an active claim already owns this parcel or overlapping land."""
+def ensure_parcel_link_available(session, parcel_id, *, min_sqm=1.0, min_percent=1.0) -> None:
+    """Raise when an active parcel link already covers this parcel or overlapping land."""
     _lock_registry(session)
 
     exact = session.scalar(select(Claim).where(
@@ -40,7 +40,7 @@ def ensure_land_available(session, parcel_id, *, min_sqm=1.0, min_percent=1.0) -
         Claim.status.not_in(INACTIVE_STATUSES),
     ))
     if exact is not None:
-        raise ClaimUnavailableError("same_parcel", exact.id)
+        raise ParcelLinkUnavailableError("same_parcel", exact.id)
 
     candidate = session.get(Parcel, parcel_id)
     if candidate is None:
@@ -65,7 +65,7 @@ def ensure_land_available(session, parcel_id, *, min_sqm=1.0, min_percent=1.0) -
             area = float(overlap_area or 0)
             percent = area / float(smaller_area) * 100 if smaller_area else 0
             if area >= min_sqm and percent >= min_percent:
-                raise ClaimUnavailableError("spatial_overlap", claim_id)
+                raise ParcelLinkUnavailableError("spatial_overlap", claim_id)
         return None
 
     candidate_geometry = shape(candidate.geometry)
@@ -82,5 +82,5 @@ def ensure_land_available(session, parcel_id, *, min_sqm=1.0, min_percent=1.0) -
         denominator = min(candidate_geometry.area, claimed_geometry.area)
         percent = area / denominator * 100 if denominator else 0
         if area >= min_sqm and percent >= min_percent:
-            raise ClaimUnavailableError("spatial_overlap", claim.id)
+            raise ParcelLinkUnavailableError("spatial_overlap", claim.id)
     return None

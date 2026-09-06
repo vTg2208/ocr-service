@@ -110,9 +110,14 @@ def patch_intake(
             actor_id=reviewer.id,
             request_id=_request_id(request),
         )
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="The operation conflicts with the current stored state.") from error
     except IntakeConflictError as error:
+        db.rollback()
         raise HTTPException(status_code=409, detail=str(error)) from error
     except ValueError as error:
+        db.rollback()
         raise HTTPException(status_code=422, detail=str(error)) from error
     _commit(db)
     return _item_dict(item)
@@ -138,9 +143,14 @@ def promote_intake_item(
             actor_id=reviewer.id,
             request_id=_request_id(request),
         )
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="The operation conflicts with the current stored state.") from error
     except IntakeConflictError as error:
+        db.rollback()
         raise HTTPException(status_code=409, detail=str(error)) from error
     except FRAClaimValidationError as error:
+        db.rollback()
         raise HTTPException(status_code=422, detail=str(error)) from error
     _commit(db)
     return {

@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
-  <link rel="stylesheet" href="/static/fra/styles.css?v=20260902.2">
+  <link rel="stylesheet" href="/static/fra/styles.css?v=20260906.8">
 </head>
 <body>
   <a class="skip-link" id="skipLink" href="#workspaceMain">Skip to workspace</a>
@@ -16,42 +16,111 @@
     <aside class="navigation-rail">
       <a class="rail-brand" href="/fra" aria-label="AranyaSetu Tamil Nadu FRA Platform">
         <span class="brand-emblem" aria-hidden="true"><img src="/static/brand/aranyasetu-emblem.png" alt=""></span>
-        <span><strong>AranyaSetu</strong><small>Tamil Nadu FRA Platform</small></span>
+        <span><strong>AranyaSetu</strong><small>FRA Spatial Intelligence + DSS</small></span>
       </a>
       <nav id="workspaceNav" aria-label="FRA workspaces">
-        <button class="rail-link" type="button" data-section="dashboard"><img class="rail-icon" src="/static/fra/icons/planner.png" alt="" aria-hidden="true">Dashboard</button>
-        <button class="rail-link active" type="button" data-section="archive" aria-current="page"><img class="rail-icon" src="/static/fra/icons/archieve.png" alt="" aria-hidden="true">Archive</button>
-        <button class="rail-link" type="button" data-section="cases"><img class="rail-icon" src="/static/fra/icons/archieve.png" alt="" aria-hidden="true">Cases</button>
+        <button class="rail-link active" type="button" data-section="dashboard" aria-current="page"><img class="rail-icon" src="/static/fra/icons/planner.png" alt="" aria-hidden="true">FRA Overview</button>
         <button class="rail-link" type="button" data-section="atlas"><img class="rail-icon" src="/static/fra/icons/atlas.png" alt="" aria-hidden="true">FRA Atlas</button>
-        <button class="rail-link" type="button" data-section="assets"><img class="rail-icon" src="/static/fra/icons/assets.png" alt="" aria-hidden="true">Assets</button>
+        <button class="rail-link" type="button" data-section="cases"><img class="rail-icon" src="/static/fra/icons/archieve.png" alt="" aria-hidden="true">Case Management</button>
+        <button class="rail-link" type="button" data-section="assets"><img class="rail-icon" src="/static/fra/icons/assets.png" alt="" aria-hidden="true">Asset Intelligence</button>
         <button class="rail-link" type="button" data-section="planner"><img class="rail-icon" src="/static/fra/icons/planner.png" alt="" aria-hidden="true">DSS Planner</button>
         <button class="rail-link" type="button" data-section="reports"><img class="rail-icon" src="/static/fra/icons/reports.png" alt="" aria-hidden="true">Reports</button>
       </nav>
-      <a class="rail-secondary" href="/land-mapping">
+      <div class="rail-account"><span><small>Signed in as</small><strong id="staffName">Registry staff</strong></span><button id="logoutButton" type="button">Logout</button></div>
+      <a class="rail-secondary" href="/cadastral-evidence">
         <span class="rail-secondary-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M16 10H4m5-5-5 5 5 5"></path></svg></span>
-        <span>Back to Patta Registry</span>
+        <span>Cadastral evidence</span>
       </a>
     </aside>
     <div class="application">
-      <header class="context-bar">
-        <label><span>State</span><select id="contextState" disabled><option value="TN">Tamil Nadu</option></select></label>
-        <label><span>District</span><select id="contextDistrict"><option value="">All districts</option></select></label>
-        <label><span>Block/Taluk</span><select id="contextBlock"><option value="">All blocks/taluks</option></select></label>
-        <label><span>Village</span><select id="contextVillage"><option value="">All villages</option></select></label>
-        <div class="session-account"><span><small>Signed in as</small><strong id="staffName">Registry staff</strong></span><button id="logoutButton" type="button">Logout</button></div>
-      </header>
       <main id="workspaceMain" tabindex="-1">
         <p class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"></p>
-        <section class="workspace-panel" id="dashboardPanel" data-panel="dashboard" aria-labelledby="dashboardTitle" hidden>
-          <header class="workspace-title"><div><h1 id="dashboardTitle">Operations dashboard</h1><p>Review Tamil Nadu work queues and privacy-minimized planning summaries.</p></div><button id="refreshDashboard" class="text-action" type="button">Refresh</button></header>
-          <p class="legal-warning">Operational summaries support human verification and planning; they do not determine legal validity or approve benefits.</p><p id="dashboardStatus" class="inline-status" role="status" aria-live="polite">Open the dashboard to load current records.</p>
-          <section id="verifierDashboard" class="dashboard-section"><div class="section-bar"><h2>Verifier work queues</h2><span>Reviewer access</span></div><div id="verifierDashboardMetrics" class="dashboard-metrics"></div><div class="dashboard-table"><table><thead><tr><th>Reference</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead><tbody id="verifierDashboardQueue"></tbody></table></div></section>
-          <section class="dashboard-section"><div class="section-bar"><h2>Planner summary</h2><span>Aggregated records</span></div><div id="plannerDashboardMetrics" class="dashboard-metrics"></div><div id="plannerDashboardGroups" class="dashboard-groups"></div></section>
+        <div id="workspaceFilterWidget" class="workspace-filter-widget" hidden>
+          <button id="contextFilterToggle" class="context-filter-toggle" type="button" aria-expanded="false" aria-controls="contextFilterPanel">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4.5h14l-5.5 6.2v4.1l-3 1.7v-5.8L3 4.5Z"></path></svg>
+            <span>Filters</span><span id="contextFilterCount" class="context-filter-count" hidden>0</span>
+          </button>
+          <section id="contextFilterPanel" class="context-filter-panel" aria-labelledby="contextFilterTitle" hidden>
+            <div class="context-filter-heading"><div><span>Current scope</span><strong id="contextFilterTitle">Administrative filters</strong></div><button id="contextFilterClose" type="button" aria-label="Close filters">×</button></div>
+            <p id="contextFilterSummary">Showing all available Tamil Nadu records.</p>
+            <div class="context-filter-fields">
+              <label><span>State</span><select id="contextState" disabled><option value="TN">Tamil Nadu</option></select></label>
+              <label><span>District</span><select id="contextDistrict"><option value="">All districts</option></select></label>
+              <label><span>Block/Taluk</span><select id="contextBlock"><option value="">All blocks/taluks</option></select></label>
+              <label><span>Village</span><select id="contextVillage"><option value="">All villages</option></select></label>
+            </div>
+            <small>Changes apply immediately to the open workspace.</small>
+          </section>
+        </div>
+        <section class="workspace-panel active overview" id="dashboardPanel" data-panel="dashboard" aria-labelledby="dashboardTitle">
+          <header class="overview-masthead">
+            <div class="overview-title-group"><span class="overview-seal" aria-hidden="true">FRA</span><div><span class="overview-kicker">Programme briefing</span><h1 id="dashboardTitle">FRA Overview</h1><p id="dashboardScope">Tamil Nadu · All available records</p></div></div>
+            <div class="overview-refresh filter-host"><button id="refreshDashboard" class="text-action" type="button">Refresh briefing</button><span id="dashboardStatus" role="status" aria-live="polite">Preparing current position…</span></div>
+          </header>
+
+          <section class="overview-alert" aria-labelledby="priorityBriefingTitle">
+            <span class="alert-symbol" aria-hidden="true">!</span>
+            <div><span class="overview-kicker">Attention required</span><h2 id="priorityBriefingTitle"><strong id="dashboardAttentionTotal">—</strong> <span id="dashboardAttentionLabel">items need attention</span></h2><p id="dashboardAttentionSummary">Review the most important work in the selected area.</p></div>
+            <div class="alert-next"><span>Largest current workload</span><strong id="dashboardBottleneck">Waiting for current data</strong><button id="dashboardBottleneckAction" class="text-action" type="button" hidden>Open workspace</button></div>
+          </section>
+
+          <div class="mis-board">
+            <aside class="kpi-rail" aria-label="Key FRA programme figures">
+              <div class="mis-panel-heading"><span>Key figures</span><small>Selected scope</small></div>
+              <dl>
+                <div><dt>Total FRA cases</dt><dd id="dashboardTotalClaims">—</dd></div>
+                <div><dt>Granted cases</dt><dd id="dashboardGrantedCases">—</dd></div>
+                <div><dt>Pending cases</dt><dd id="dashboardPendingCases">—</dd></div>
+                <div><dt>Active titles</dt><dd id="dashboardActiveTitles">—</dd></div>
+                <div><dt>Claims mapped</dt><dd id="dashboardSpatializedClaims">—</dd></div>
+                <div><dt>Villages covered</dt><dd id="dashboardVillagesCovered">—</dd></div>
+              </dl>
+            </aside>
+
+            <div class="mis-main">
+              <section class="priority-briefing" aria-labelledby="priorityQueueTitle">
+                <div class="mis-panel-heading priority-heading"><div><span>Priority work queue</span><small>Opens the responsible workspace</small></div><span id="dashboardAccessMode" class="access-mode">Checking access</span></div>
+                <ol id="dashboardPriorityQueue" class="priority-list" aria-label="Highest-priority FRA work"></ol>
+              </section>
+
+              <div class="analytics-grid">
+                <section class="analytics-panel status-panel" aria-labelledby="statusMatrixTitle">
+                  <div class="mis-panel-heading"><span id="statusMatrixTitle">Claim status matrix</span><button class="panel-link" type="button" data-overview-target="cases">View cases</button></div>
+                  <div class="status-summary"><strong id="dashboardRightsReadiness">Loading title coverage</strong><span id="dashboardRightsDetail">Comparing active titles with FRA cases.</span></div>
+                  <div id="dashboardStatusBar" class="status-composition" role="img" aria-label="Claim status distribution"><span class="status-granted"></span><span class="status-pending"></span><span class="status-rejected"></span><span class="status-other"></span></div>
+                  <dl class="status-ledger"><div><dt><i class="status-key granted"></i>Granted</dt><dd id="dashboardStatusGranted">—</dd></div><div><dt><i class="status-key pending"></i>Pending</dt><dd id="dashboardStatusPending">—</dd></div><div><dt><i class="status-key rejected"></i>Rejected</dt><dd id="dashboardRejectedCases">—</dd></div></dl>
+                </section>
+
+                <section class="analytics-panel rights-panel" aria-labelledby="rightsMixTitle">
+                  <div class="mis-panel-heading"><span id="rightsMixTitle">Claims by right type</span><small>IFR · CR · CFR</small></div>
+                  <div class="rights-bars">
+                    <div><span>IFR</span><div class="bar-track"><i id="dashboardIFRBar"></i></div><strong id="dashboardIFRCount">—</strong></div>
+                    <div><span>CR</span><div class="bar-track"><i id="dashboardCRBar"></i></div><strong id="dashboardCRCount">—</strong></div>
+                    <div><span>CFR</span><div class="bar-track"><i id="dashboardCFRBar"></i></div><strong id="dashboardCFRCount">—</strong></div>
+                  </div>
+                </section>
+
+                <section class="analytics-panel spatial-panel" aria-labelledby="spatialHealthTitle">
+                  <div class="mis-panel-heading"><span id="spatialHealthTitle">Spatial record health</span><button class="panel-link" type="button" data-overview-target="atlas">Open Atlas</button></div>
+                  <strong id="dashboardSpatialHeadline">Loading boundary coverage</strong><p id="dashboardSpatialDetail">Checking usable claim boundaries.</p>
+                  <div class="coverage-track" aria-hidden="true"><i id="dashboardSpatialBar"></i></div>
+                </section>
+
+                <section class="analytics-panel planning-panel" aria-labelledby="planningHealthTitle">
+                  <div class="mis-panel-heading"><span id="planningHealthTitle">Planning evidence health</span><button class="panel-link" type="button" data-overview-target="planner">Open DSS</button></div>
+                  <strong id="dashboardPlanningReadiness">Loading scheme evidence</strong><p id="dashboardPlanningDetail">Checking verified facts and evidence gaps.</p>
+                  <div class="planning-key"><span>Potential candidates</span><b id="dashboardPotentialCandidates">—</b><span>Insufficient data</span><b id="dashboardInsufficientCases">—</b></div>
+                </section>
+              </div>
+            </div>
+          </div>
+          <p class="overview-legal">Operational summaries support human verification and planning. They do not establish legal validity or approve scheme benefits.</p>
         </section>
-        <section class="workspace-panel active" id="archivePanel" data-panel="archive" aria-labelledby="archiveTitle">
-          <header class="workspace-title"><div><h1 id="archiveTitle">Archive</h1><p>Review digitized IFR, CR and CFR source records before promotion.</p></div><span id="archiveCount">Loading records</span></header>
+        <section class="workspace-panel" id="archivePanel" data-panel="archive" aria-labelledby="archiveTitle" hidden>
+          <header class="workspace-title"><div><h1 id="archiveTitle">Case Management</h1><p>Manage legacy FRA records, native cases, evidence, decisions and titles.</p></div><div class="workspace-heading-actions filter-host"><span id="archiveCount">Loading records</span></div></header>
+          <div class="case-mode-tabs" role="tablist" aria-label="Case Management view"><button id="archiveModeLegacy" class="active" type="button" role="tab" aria-selected="true">Legacy records</button><button id="archiveModeCases" type="button" role="tab">Native FRA cases</button><button id="archiveModeIntake" type="button" role="tab">Registry intake</button></div>
           <section class="archive-upload-sheet" aria-labelledby="archiveUploadTitle">
-            <div class="archive-upload-intro"><span class="section-kicker">Secure intake</span><h2 id="archiveUploadTitle">Import source records</h2><p>Upload scanned Tamil Nadu FRA records. Each accepted file enters the review queue; extraction does not decide legal validity.</p></div>
+            <div class="archive-upload-intro"><span class="section-kicker">Legacy records</span><h2 id="archiveUploadTitle">Import source records</h2><p>Upload scanned records or a CSV/XLSX legacy register. Every accepted document or row enters the review queue; extraction does not decide legal validity.</p></div>
             <form id="archiveUploadForm" class="archive-upload-form">
               <label><span>Source office</span><input id="archiveSourceOffice" name="source_office" value="District Tribal Welfare Office" maxlength="255" required></label>
               <label><span>District</span><input id="archiveUploadDistrict" name="district" value="Salem" maxlength="255" required></label>
@@ -59,6 +128,13 @@
               <button id="archiveUploadButton" class="primary-action" type="submit">Validate and queue files</button>
             </form>
             <div class="archive-upload-feedback"><p id="archiveUploadSummary" class="inline-status" role="status" aria-live="polite">Choose source files to begin.</p><ol id="archiveUploadResults" class="upload-results" aria-label="Archive upload results"></ol></div>
+            <form id="archiveTabularForm" class="archive-upload-form archive-tabular-form">
+              <label><span>Register source office</span><input id="archiveTabularSourceOffice" name="source_office" value="District Tribal Welfare Office" maxlength="255" required></label>
+              <label><span>Register district</span><input id="archiveTabularDistrict" name="district" value="Salem" maxlength="255" required></label>
+              <label class="archive-file-field"><span>Legacy register</span><input id="archiveTabularFile" name="file" type="file" accept=".csv,.xlsx" required><small>One UTF-8 CSV or values-only XLSX file; up to 5,000 rows and 10 MB.</small></label>
+              <button id="archiveTabularButton" class="secondary-action" type="submit">Validate and import register</button>
+            </form>
+            <div class="archive-upload-feedback archive-tabular-feedback"><p id="archiveTabularSummary" class="inline-status" role="status" aria-live="polite">Choose a CSV or XLSX register to begin.</p><ol id="archiveTabularResults" class="upload-results" aria-label="Tabular import results"></ol></div>
           </section>
           <div class="archive-layout">
             <aside class="queue-sheet" aria-labelledby="queueTitle">
@@ -77,6 +153,7 @@
               <div class="evidence-review-grid">
                 <section class="source-evidence" id="sourceEvidence" aria-labelledby="sourceTitle">
                   <div class="section-bar"><h3 id="sourceTitle">Document extraction</h3><span id="modelVersion">Model loading</span></div>
+                  <p id="extractionWarnings" class="extraction-warnings" role="status">Loading extraction warnings.</p>
                   <pre id="rawExtraction">Loading reviewer-accessible source text.</pre>
                   <dl class="provenance-list" id="extractionProvenance"><div><dt>Confidence</dt><dd>Loading</dd></div><div><dt>Processing</dt><dd>Loading</dd></div><div><dt>Provenance</dt><dd>Loading</dd></div></dl>
                 </section>
@@ -84,8 +161,8 @@
                   <div class="section-bar"><h3 id="fieldsTitle">Standardized fields</h3><span>Reviewer values</span></div>
                   <form id="reviewForm">
                     <div class="field-table" id="reviewedFields"><p>Loading standardized reviewer values.</p></div>
-                    <label class="notes-field"><span>Reviewer notes</span><textarea id="reviewNotes" rows="3" placeholder="Record corrections or supporting context">Reviewed against the synthetic source record.</textarea></label>
-                    <div class="review-actions"><button class="secondary-action" id="saveReviewButton" type="submit" disabled>Save review</button><button class="primary-action" id="promoteButton" type="button" disabled>Promote to FRA claim</button></div>
+                    <label class="notes-field"><span>Reviewer notes</span><textarea id="reviewNotes" rows="3" placeholder="Required when rejecting an extraction"></textarea></label>
+                    <div class="review-actions"><button class="secondary-action" id="saveReviewButton" type="submit" disabled>Approve extraction</button><button class="secondary-action danger-action" id="rejectExtractionButton" type="button" disabled>Reject extraction</button><button class="primary-action" id="promoteButton" type="button" disabled>Promote to FRA claim</button></div>
                   </form>
                 </section>
               </div>
@@ -93,9 +170,9 @@
           </div>
         </section>
         <section class="workspace-panel" id="casesPanel" data-panel="cases" aria-labelledby="casesTitle" hidden>
-          <header class="workspace-title"><div><h1 id="casesTitle">FRA Cases</h1><p>Triage registry submissions and manage native IFR, CR and CFR case records.</p></div><span id="caseCount">Loading cases</span></header>
+          <header class="workspace-title"><div><h1 id="casesTitle">Case Management</h1><p>Manage legacy FRA records, native cases, evidence, decisions and titles.</p></div><div class="workspace-heading-actions filter-host"><span id="caseCount">Loading cases</span></div></header>
           <p id="caseMessage" class="inline-status case-message" role="status" aria-live="polite"></p>
-          <div class="case-mode-tabs" role="tablist" aria-label="FRA case workspace mode"><button id="caseModeCases" class="active" type="button" role="tab">Native cases</button><button id="caseModeIntake" type="button" role="tab">Registry intake</button></div>
+          <div class="case-mode-tabs" role="tablist" aria-label="Case Management view"><button id="caseModeLegacy" type="button" role="tab">Legacy records</button><button id="caseModeCases" class="active" type="button" role="tab" aria-selected="true">Native FRA cases</button><button id="caseModeIntake" type="button" role="tab">Registry intake</button></div>
           <div id="intakeWorkspace" class="case-layout" hidden>
             <aside class="queue-sheet"><header class="sheet-heading"><div><h2>Intake queue</h2><p>Review registry claims before FRA classification.</p></div><span id="intakeCount">Loading</span></header><ol id="intakeList" class="case-list" aria-label="Registry claims awaiting FRA triage"></ol></aside>
             <article class="case-detail-sheet"><header class="sheet-heading"><div><h2 id="intakeReference">Select an intake item</h2><p>Promotion creates a linked native FRA case; it is not a legal decision.</p></div><span id="intakeCurrentState" class="record-state">No selection</span></header>
@@ -125,7 +202,7 @@
           </div>
         </section>
         <section class="workspace-panel" id="atlasPanel" data-panel="atlas" aria-labelledby="atlasTitle" hidden>
-          <header class="workspace-title"><div><h1 id="atlasTitle">FRA Atlas</h1><p>Explore Tamil Nadu village, right, title and supporting asset layers.</p></div><span>Reference view</span></header>
+          <header class="workspace-title"><div><h1 id="atlasTitle">FRA Atlas</h1><p>Explore FRA claims and titles with administrative, land, forest, water and infrastructure context.</p></div><div class="workspace-heading-actions filter-host"><span>Reference view</span></div></header>
           <div class="map-workspace">
             <aside class="tool-sheet">
               <form id="atlasFilters" class="stacked-form">
@@ -133,45 +210,75 @@
                 <label><span>Right type</span><select name="right_type"><option value="">All rights</option><option>IFR</option><option>CR</option><option>CFR</option></select></label>
                 <label><span>Claim status</span><select name="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="gram_sabha_verified">Gram Sabha verified</option><option value="sdlc_review">SDLC review</option><option value="dlc_decided">DLC decided</option><option value="granted">Granted</option><option value="rejected">Rejected</option><option value="remanded">Remanded</option><option value="withdrawn">Withdrawn</option></select></label>
                 <label><span>Tribal group</span><input name="tribal_group" placeholder="All tribal groups"></label>
+                <label><span>Claimant or community category</span><input name="claimant_category" placeholder="All categories"></label>
                 <label><span>Year</span><input name="year" inputmode="numeric" pattern="[0-9]{4}" placeholder="All years"></label>
-                <fieldset id="atlasLayers"><legend>Visible layers</legend><label><input type="checkbox" name="layers" value="village" checked>Villages</label><label><input type="checkbox" name="layers" value="claim" checked>Claims</label><label><input type="checkbox" name="layers" value="title" checked>Titles</label><label><input type="checkbox" name="layers" value="asset" checked>Assets</label></fieldset>
+                <div class="form-grid"><label><span>Minimum area (m²)</span><input name="min_area_sqm" type="number" min="0" step="0.01" placeholder="No minimum"></label><label><span>Maximum area (m²)</span><input name="max_area_sqm" type="number" min="0" step="0.01" placeholder="No maximum"></label></div>
+                <fieldset id="atlasLayers"><legend>Administrative layers</legend><label><input type="checkbox" name="layers" value="country" checked>India</label><label><input type="checkbox" name="layers" value="state" checked>State</label><label><input type="checkbox" name="layers" value="district" checked>Districts</label><label><input type="checkbox" name="layers" value="block" checked>Blocks</label><label><input type="checkbox" name="layers" value="village" checked>Villages</label></fieldset>
+                <fieldset><legend>FRA layers</legend><label><input type="checkbox" name="layers" value="claim" checked>IFR / CR / CFR claims</label><label><input type="checkbox" name="layers" value="title" checked>Granted titles</label><label><input type="checkbox" name="layers" value="asset" checked>Satellite asset observations</label></fieldset>
+                <fieldset><legend>Imagery coverage</legend><label><input type="checkbox" name="layers" value="satellite_imagery" checked>Current satellite imagery</label><label><input type="checkbox" name="layers" value="historical_imagery" checked>Historical imagery where available</label></fieldset>
+                <fieldset><legend>Supporting reference layers</legend><label><input type="checkbox" name="layers" value="forest_area" checked>Forest areas</label><label><input type="checkbox" name="layers" value="protected_area" checked>Protected areas</label><label><input type="checkbox" name="layers" value="cadastral_parcel" checked>Cadastral parcels</label><label><input type="checkbox" name="layers" value="water_body" checked>Water bodies</label><label><input type="checkbox" name="layers" value="groundwater" checked>Groundwater</label><label><input type="checkbox" name="layers" value="groundwater_stress" checked>Groundwater stress</label><label><input type="checkbox" name="layers" value="water_stress" checked>Water stress</label><label><input type="checkbox" name="layers" value="infrastructure" checked>Infrastructure</label><label><input type="checkbox" name="layers" value="forest_compartment" checked>Forest compartments</label></fieldset>
                 <button class="primary-action" type="submit">Apply to map and summary</button>
               </form>
               <section id="atlasSummary" class="summary-ledger" aria-live="polite"><p>Loading the Tamil Nadu summary.</p></section>
             </aside>
-            <div class="map-sheet"><div id="atlasMap" class="map-canvas" role="img" aria-label="Filtered Tamil Nadu FRA features"></div><p class="map-note">Boundaries and observations shown here are synthetic samples and not authoritative.</p></div>
+            <div class="map-sheet"><div id="atlasMap" class="map-canvas" role="img" aria-label="Filtered Tamil Nadu FRA features"></div><p class="map-note">Imagery polygons show the claim area covered by a completed private imagery artifact; they are not public raster tiles. Only published reference layers are shown. Records marked as synthetic are samples and are not authoritative.</p></div>
             <aside class="result-sheet"><div class="section-bar"><h2>Mapped records</h2><span id="atlasFeatureCount">Loading features</span></div><ol id="atlasResults" class="result-list" aria-label="Filtered Atlas features"></ol></aside>
           </div>
         </section>
         <section class="workspace-panel" id="assetsPanel" data-panel="assets" aria-labelledby="assetsTitle" hidden>
-          <header class="workspace-title"><div><h1 id="assetsTitle">Assets</h1><p>Run versioned observations and record human verification.</p></div><span>Human-in-the-loop</span></header>
+          <header class="workspace-title"><div><h1 id="assetsTitle">Satellite Asset Intelligence</h1><p>Prepare real satellite imagery for spatial FRA records, then review model observations.</p></div><div class="workspace-heading-actions filter-host"><span>Human-in-the-loop</span></div></header>
           <p class="legal-warning">Every model observation is supporting evidence and requires human verification; it does not determine legal validity.</p>
           <div class="asset-workspace">
             <aside class="tool-sheet">
-              <form id="assetInferenceForm" class="stacked-form">
-                <div class="section-bar"><h2>New observation</h2><span>Queued job</span></div>
-                <label><span>Active model</span><select id="assetModel" required><option value="">Awaiting trained model</option></select></label>
-                <label><span>Village</span><select id="assetVillage"><option value="">Loading Tamil Nadu villages</option></select></label>
-                <label><span>Scene reference</span><input id="assetScene" required value="synthetic-tn-scene-001"></label>
-                <label><span>Asset class</span><select id="assetClass"><option value="water_body">Water body</option></select></label>
-                <button class="primary-action" type="submit">Queue inference</button>
-                <p id="assetJobStatus" class="inline-status" aria-live="polite"></p>
+              <form id="imageryIngestionForm" class="stacked-form">
+                <div class="section-bar"><h2>Prepare satellite imagery</h2><span>Real STAC + COG pipeline</span></div>
+                <label><span>Spatial FRA claim</span><select id="imageryClaim" required><option value="">Loading spatial claims</option></select></label>
+                <label><span>Collection</span><select id="imageryCollection"><option value="sentinel-2-l2a">Sentinel-2 Level-2A</option></select></label>
+                <label><span>Start date</span><input id="imageryStartDate" type="date" value="2025-01-01" required></label>
+                <label><span>End date</span><input id="imageryEndDate" type="date" value="2025-03-31" required></label>
+                <label><span>Raster bands</span><input id="imageryBandKeys" value="green, nir" required><small>STAC asset keys, comma separated.</small></label>
+                <label><span>Maximum cloud cover (%)</span><input id="imageryMaxCloud" type="number" min="0" max="100" step="0.1" value="20" required></label>
+                <button class="primary-action" type="submit">Discover and prepare imagery</button>
+                <p id="imageryJobStatus" class="inline-status" aria-live="polite"></p>
               </form>
+              <section class="imagery-register"><div class="section-bar"><h2>Asset model attachment</h2><span>Deferred</span></div><p class="model-placeholder">Your trained asset-detection model will consume the prepared raster artifact through the versioned model registry. Inference remains unavailable until its artifact, label map, preprocessing contract, and adapter configuration are attached.</p></section>
+              <section class="imagery-register"><div class="section-bar"><h2>Imagery jobs</h2><button id="refreshImagery" class="text-action" type="button">Refresh</button></div><ol id="imageryIngestionList" class="result-list" aria-label="Satellite imagery ingestion jobs"></ol></section>
             </aside>
             <div class="map-sheet"><div id="assetMap" class="map-canvas" role="img" aria-label="Supporting asset observations"></div><aside class="asset-map-legend" aria-label="Asset map legend" hidden><strong>Visible assets</strong><ul id="assetLegend"></ul></aside><p class="map-note">Confidence is displayed as model provenance, never as an entitlement decision.</p></div>
-            <aside class="result-sheet"><div class="section-bar"><h2>Observation register</h2><button id="refreshAssets" class="text-action" type="button">Refresh</button></div><ol id="assetList" class="result-list" aria-label="Asset observations"></ol></aside>
+            <aside class="result-sheet"><div class="section-bar"><h2>Observation register</h2><button id="refreshAssets" class="text-action" type="button">Refresh</button></div><ol id="assetList" class="result-list" aria-label="Asset observations"></ol><div class="section-bar profile-bar"><h2>Village profiles</h2><button id="refreshVillageAssetProfiles" class="text-action" type="button">Refresh</button></div><ol id="villageAssetProfiles" class="result-list profile-list" aria-label="Village asset profiles"></ol></aside>
           </div>
         </section>
         <section class="workspace-panel" id="plannerPanel" data-panel="planner" aria-labelledby="plannerTitle" hidden>
-          <header class="workspace-title"><div><h1 id="plannerTitle">DSS Planner</h1><p>Inspect explainable recommendations and manage advisory referrals.</p></div><span>Advisory only</span></header>
+          <header class="workspace-title"><div><h1 id="plannerTitle">DSS Planner</h1><p>Inspect explainable recommendations and manage advisory referrals.</p></div><div class="workspace-heading-actions filter-host"><span>Advisory only</span></div></header>
           <p class="legal-warning">This decision-support workspace does not approve or sanction benefits. A responsible department must independently review every referral.</p>
+          <div class="planner-summary" id="plannerSummary" aria-label="Scheme convergence summary">
+            <div><span>Potential candidates</span><strong id="plannerCandidateCount">—</strong></div>
+            <div><span>Not indicated</span><strong id="plannerNotIndicatedCount">—</strong></div>
+            <div><span>Insufficient data</span><strong id="plannerInsufficientCount">—</strong></div>
+            <div><span>Not evaluated</span><strong id="plannerNotEvaluatedCount">—</strong></div>
+          </div>
           <div class="planner-layout">
-            <aside class="tool-sheet"><form id="recommendationFilters" class="stacked-form"><div class="section-bar"><h2>Recommendation filters</h2><span>Explainable rules</span></div><label><span>Native FRA claim</span><select id="plannerClaim"><option value="">Loading native claims</option></select></label><button id="deriveRecommendations" class="primary-action" type="button">Derive verified facts and evaluate</button><p id="factSnapshotStatus" class="inline-status" aria-live="polite">Facts are derived only from current verified records; missing data remains unknown.</p><label><span>Outcome</span><select name="outcome"><option value="">All outcomes</option><option value="recommended">Recommended</option><option value="not_recommended">Not recommended</option><option value="insufficient_data">Insufficient data</option></select></label><label><span>Scheme code</span><input name="scheme_code" value="TN-FRA-WATER-SUPPORT"></label><label><span>Referral department</span><input id="referralDepartment" value="District Rural Development Agency" required></label><button class="secondary-action" type="submit">Load existing recommendations</button></form></aside>
-            <section class="recommendation-sheet"><div class="section-bar"><h2>Advisory recommendations</h2><span id="recommendationCount">Loading recommendations</span></div><ol id="recommendationList" class="recommendation-list" aria-live="polite"></ol></section>
+            <aside class="tool-sheet">
+              <form id="recommendationFilters" class="stacked-form">
+                <div class="section-bar"><h2>Schemes and eligibility</h2><span>Explainable screening rules</span></div>
+                <p class="planner-context-note">State, district, block and village follow the workspace filters.</p>
+                <label><span>FRA category</span><select name="right_type"><option value="">All FRA categories</option><option value="IFR">IFR</option><option value="CR">CR</option><option value="CFR">CFR</option></select></label>
+                <label><span>Intervention type</span><select id="plannerIntervention" name="intervention_type"><option value="">All intervention types</option></select></label>
+                <label><span>Scheme</span><select id="plannerScheme" name="scheme_code"><option value="">All schemes</option></select></label>
+                <label><span>Evaluation result</span><select name="outcome"><option value="">All results</option><option value="recommended">Potential candidate</option><option value="not_recommended">Not indicated</option><option value="insufficient_data">Insufficient data</option></select></label>
+                <label><span>Native FRA claim</span><select id="plannerClaim"><option value="">Loading native claims</option></select></label>
+                <button id="deriveRecommendations" class="primary-action" type="button">Derive verified facts and evaluate</button>
+                <p id="factSnapshotStatus" class="inline-status" aria-live="polite">Facts are derived only from current verified records; missing data remains unknown.</p>
+                <label><span>Referral department</span><input id="referralDepartment" value="District Rural Development Agency" required></label>
+                <button class="secondary-action" type="submit">Apply planning filters</button>
+              </form>
+            </aside>
+            <section class="recommendation-sheet"><div class="section-bar"><h2>Deficiencies and recommendations</h2><span id="recommendationCount">Scheme convergence</span></div><ol id="recommendationList" class="recommendation-list" aria-live="polite"></ol></section>
           </div>
         </section>
         <section class="workspace-panel" id="reportsPanel" data-panel="reports" aria-labelledby="reportsTitle" hidden>
-          <header class="workspace-title"><div><h1 id="reportsTitle">Reports</h1><p>Open privacy-safe printable case and village reports.</p></div><span>Protected output</span></header>
+          <header class="workspace-title"><div><h1 id="reportsTitle">Reports</h1><p>Open privacy-safe printable case and village reports.</p></div><div class="workspace-heading-actions filter-host"><span>Protected output</span></div></header>
+          <div class="report-coverage" aria-label="Report coverage"><span>FRA progress</span><span>Spatial statistics</span><span>Asset statistics</span><span>Scheme convergence</span></div>
           <div class="report-grid">
             <section class="report-sheet"><span class="report-kicker">Village profile</span><h2>Context report</h2><p>Summarizes reference attributes, FRA counts and provenance for one Tamil Nadu village.</p><label><span>Village</span><select id="reportVillage"><option value="">Loading Tamil Nadu villages</option></select></label><button id="openVillageReport" class="primary-action" type="button">Open village report</button></section>
             <section class="report-sheet"><span class="report-kicker">Archive evidence</span><h2>Reviewer case sheet</h2><p>Shows source, extraction, reviewed fields and audit-safe provenance. Reviewer access is required.</p><label><span>Archive record ID</span><input id="reportArchive" placeholder="UUID from Archive"></label><button id="openArchiveReport" class="secondary-action" type="button">Open archive report</button></section>
@@ -184,6 +291,6 @@
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="/static/fra/api.js?v=20260826.2"></script><script src="/static/fra/archive.js?v=20260902.1"></script><script src="/static/fra/cases.js?v=20260902.3"></script><script src="/static/fra/assets.js?v=20260902.2"></script><script src="/static/fra/atlas.js?v=20260902.2"></script><script src="/static/fra/planner.js?v=20260902.3"></script><script src="/static/fra/reports.js?v=20260902.3"></script><script src="/static/fra/dashboard.js?v=20260902.1"></script><script src="/static/fra/app.js?v=20260902.3"></script>
+  <script src="/static/fra/api.js?v=20260905.1"></script><script src="/static/fra/archive.js?v=20260906.2"></script><script src="/static/fra/cases.js?v=20260906.1"></script><script src="/static/fra/assets.js?v=20260906.3"></script><script src="/static/fra/atlas.js?v=20260905.1"></script><script src="/static/fra/planner.js?v=20260906.2"></script><script src="/static/fra/reports.js?v=20260902.3"></script><script src="/static/fra/dashboard.js?v=20260906.3"></script><script src="/static/fra/app.js?v=20260906.4"></script>
 </body>
 </html>
