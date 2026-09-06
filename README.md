@@ -1,17 +1,17 @@
 # AranyaSetu
 
-Patta OCR, cadastral parcel matching, exclusive legacy land-claim registration, and a protected Forest Rights Act workflow foundation for authorized staff.
+AranyaSetu is an FRA Spatial Intelligence and Decision Support platform for digitizing legacy Forest Rights Act records, managing native FRA cases, spatializing claims and titles, mapping supporting assets, and producing explainable scheme recommendations for authorized staff.
 
-AranyaSetu accepts Tamil and English patta scans, extracts the parcel reference, asks staff to verify the result, locates the corresponding cadastral polygon, and records the accepted document-to-parcel link. Registered polygons remain visible in a searchable map ledger, and authorized staff can reopen the original patta that created each claim.
+The primary lifecycle is **Ingest → Structure → Spatialize → Enrich → Visualize → Recommend**. FRA claims, verification records, Gram Sabha/SDLC/DLC decisions, titles, villages, geometries, satellite-derived observations, and advisory recommendations are the platform's core records.
 
-The legacy registry keeps its exclusive-land rule: exact parcel duplicates and material polygon overlaps are rejected before another legacy claim is stored. Native FRA claims use a separate right-aware policy because IFR, CR, and CFR rights can have different exclusivity and layering rules.
+Patta OCR and cadastral parcel matching remain available as supporting evidence for FRA spatialization. An ordinary patta is never represented as an FRA title or as proof that an FRA right has been granted.
 
 > [!IMPORTANT]
-> This repository is a research prototype, not a legal land-ownership system. A claim records a patta-to-parcel association; it does not create, transfer, or certify ownership. The included cadastral data is synthetic and must never be presented as authoritative.
+> This repository is a research prototype, not an FRA adjudication or legal land-ownership system. Extracted records, mapped boundaries, asset observations, and DSS recommendations require review by the responsible authority. Bundled demonstration data is synthetic and must never be presented as authoritative.
 
 ## Product tour
 
-AranyaSetu provides a protected staff experience for both patta-to-parcel registration and Tamil Nadu-first FRA casework. The screenshots below use the repository's bundled synthetic sample data; they do not show authoritative land or claimant records.
+AranyaSetu provides a protected, Tamil Nadu-first FRA workflow from legacy intake through Atlas visualization and advisory planning. The screenshots below use the repository's bundled synthetic sample data; they do not show authoritative land or claimant records.
 
 ### Secure staff access
 
@@ -19,15 +19,11 @@ The temporary development sign-in keeps the registry and FRA workspaces behind a
 
 ![AranyaSetu staff sign-in screen](docs/images/aranyasetu-login.png)
 
-### Patta claim workflow
-
-Staff upload a patta, review the OCR-derived fields and parcel match, and then confirm registration. The separate **Claimed land** tab provides the searchable map ledger for accepted claims.
-
-![AranyaSetu patta upload and claim workflow](docs/images/aranyasetu-patta-workflow.png)
-
 ### FRA archive review
 
-The Archive workspace brings the source record, extraction provenance, standardized fields, and reviewer-controlled promotion into one evidence review screen.
+The Archive workspace accepts scanned PDF/image batches and existing UTF-8 CSV or XLSX registers. Scans are queued for OCR and entity extraction; each non-empty register row is mapped immediately into the same review queue. The private original, source page or row, source header/value, extraction method, confidence, model/schema version, reviewer correction, and approved value remain linked to each extracted field.
+
+Reference geometry enters a companion staged import through `/api/fra/geospatial/imports`. It accepts GeoJSON, zipped Shapefile, KML, and GeoPackage polygons, validates CRS and geometry, records repair/duplicate provenance, and requires reviewer publication before the features become reference data.
 
 ![AranyaSetu FRA archive review workspace](docs/images/aranyasetu-fra-archive.png)
 
@@ -43,45 +39,43 @@ The advisory planner shows the rule outcome, reasons, missing inputs, and model 
 
 ![AranyaSetu explainable DSS planner](docs/images/aranyasetu-dss-planner.png)
 
+### Supporting cadastral evidence
+
+Where an FRA record needs parcel identification, staff can use the separate cadastral evidence workspace to review survey and subdivision references and compare them with reference parcels. These records enter FRA casework only through the legacy-intake review and normalization controls.
+
 ## What the application does
 
-- Reads JPG, PNG, BMP, TIFF, and PDF documents with PaddleOCR.
-- Supports Tamil and English recognition, including common Tamil patta table layouts.
-- Extracts state, district, taluk, village, survey number, subdivision, and document area when evidence is present.
-- Shows OCR evidence and requires staff verification before registration.
-- Resolves parcels by the full administrative and survey key.
-- Displays real GeoJSON parcel boundaries, including irregular polygons.
-- Rejects an exact duplicate parcel or a materially overlapping claimed polygon.
-- Persists registered claims and polygons in the database.
-- Provides a searchable claimed-land index synchronized with the map.
-- Opens the privately stored original patta from a registered claim.
-- Records upload, correction, claim, rejection, and patta-view audit events.
-- Keeps the standalone OCR and optional land-enrichment APIs available separately.
 - Models FRA rights holders, Gram Sabhas, claim decisions, versioned geometries, evidence, and titles under `/api/fra/*`.
-- Evaluates FRA overlaps by right type, creates explicitly supporting local satellite evidence, and returns versioned advisory DSS recommendations.
+- Reads legacy FRA JPG, PNG, BMP, TIFF, and PDF documents with PaddleOCR and accepts reviewed CSV/XLSX registers.
+- Extracts Tamil and English FRA entities with page-level evidence, confidence, validation warnings, and explicit human correction.
+- Imports staged reference vectors and connects reviewed records to native FRA claims, titles, villages, and versioned geometries.
+- Evaluates FRA overlaps by right type, ingests bounded Sentinel-2 analysis-ready evidence, and returns versioned advisory DSS recommendations.
 - Provides a protected Tamil Nadu-first `/fra` workspace with archive intake/review, native casework, geometry authoring, operational dashboards, synchronized Atlas filters, versioned observations, derived-fact advisory referrals, and privacy-safe printable reports.
+- Imports legacy CSV/XLSX registers into row-level archive review while retaining the private source and field-level mapping evidence.
 - Imports reviewed reference vectors, evaluates non-adjudicative intersections, discovers bounded allow-listed STAC scenes, and stores versioned historical evidence artifacts without exposing private scene or storage references.
 - Keeps OCR, entity extraction, and asset models behind replaceable versioned gateways so trained models can be attached later without changing the legal workflow.
+- Retains authenticated cadastral document and parcel-matching tools as supporting evidence for FRA land identification.
 
-## Staff workflow
+## Primary FRA workflow
 
 ```text
 Sign in
-  -> upload a patta
-  -> OCR and deterministic field extraction
-  -> verify or correct the extracted fields
-  -> resolve the official cadastral parcel
-  -> inspect the parcel polygon and area comparison
-  -> confirm the document-to-parcel match
-  -> pass the exclusive-land availability check
-  -> register and persist the claim
+  -> ingest legacy FRA documents and data
+  -> OCR and extract structured entities
+  -> review and approve normalized values
+  -> create or link a native FRA case
+  -> spatialize the claim or title
+  -> enrich the village with supporting asset observations
+  -> visualize the evidence in the FRA Atlas
+  -> evaluate advisory scheme rules
+  -> review the recommendation and its provenance
 ```
 
-After registration, the **Claimed land** view lists every stored claim on the left and all registered polygons on the right. Selecting a list item highlights and zooms to its polygon; selecting a polygon opens the corresponding list record. Clicking the active item or polygon again deselects it. Each selected record can open the original uploaded patta.
+The cadastral evidence workspace retains revenue/Patta OCR, survey and subdivision matching, and the parcel registry as supporting FRA spatialization tools. Records from that workspace enter FRA casework only through the reviewed legacy-intake and normalization controls.
 
-## How duplicate claims are prevented
+## Supporting cadastral-link safeguards
 
-AranyaSetu uses several layers of protection:
+The separate cadastral evidence registry prevents duplicate parcel links with several layers of protection:
 
 1. A database unique constraint allows only one claim for a parcel ID.
 2. PostgreSQL uses a transaction-scoped advisory lock to serialize availability checks.
@@ -110,36 +104,36 @@ SQLite uses Shapely for development-time overlap checks. PostgreSQL/PostGIS is r
 
 ```text
 Staff browser
-  -> FastAPI session and registry routes
-      -> private document storage
-      -> PaddleOCR and deterministic patta extraction
-      -> cadastral parcel resolver
-      -> exclusive-claim availability gate
+  -> FastAPI session and FRA routes
+      -> private legacy-record storage
+      -> page-level PaddleOCR and FRA entity extraction
+      -> reviewer normalization and native FRA case mapping
+      -> versioned FRA geometry, evidence, decision, and title records
+      -> FRA Atlas and village asset intelligence
+      -> explainable DSS and scheme referrals
       -> SQLAlchemy -> PostgreSQL/PostGIS
       -> append-only audit events
 
-Standalone API clients
-  -> OCR, evaluation, and optional enrichment routes
+Supporting cadastral evidence
+  -> authenticated document processing and parcel resolution
+      -> reviewed survey/subdivision references for FRA spatialization
 
-Authorized FRA clients
-  -> protected FRA claim, evidence, spatial, satellite, and DSS routes
-      -> append-only decisions and versioned geometries/titles
-      -> right-aware PostGIS/Shapely spatial policy
-      -> local replaceable provider interfaces
+Replaceable integrations
+  -> OCR, entity extraction, STAC imagery, asset models, and reference datasets
 ```
 
-The browser UI never stores or displays its signed session token. Parcel responses expose registry geometry and provenance without claimant identifiers or private storage keys. Original pattas are streamed only through an authenticated, audited endpoint.
+The browser UI never stores or displays its signed session token. Parcel responses expose registry geometry and provenance without claimant identifiers or private storage keys. Original cadastral evidence documents, including Pattas, are streamed only through an authenticated, audited endpoint.
 
 ## Repository layout
 
 ```text
 app/
-  api/                    HTTP routes, authentication, and registry APIs
+  api/                    FRA, document-intelligence, DSS, and supporting-evidence APIs
   db/                     SQLAlchemy models and session management
   models/                 API request and response models
-  services/               OCR, extraction, matching, claims, storage, and audit logic
+  services/               FRA workflows, spatial intelligence, OCR, DSS, storage, and audit logic
   static/login/           Temporary staff sign-in page
-  static/land-mapping/    Upload, verification, registration, and claimed-land UI
+  static/cadastral-evidence/ Supporting document-to-parcel evidence UI
   utils/                  Upload validation helpers
 data/
   administrative_aliases.json
@@ -167,8 +161,8 @@ Dockerfile                Production-shaped API image
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/vTg2208/ocr-service.git
-cd ocr-service
+git clone <repository-url> aranyasetu
+cd aranyasetu
 ```
 
 ### 2. Create the environment file
@@ -198,7 +192,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-The API container waits for PostGIS and ClamAV, applies Alembic migrations, and then starts Uvicorn on port `8000`.
+The API container waits for PostGIS and ClamAV, applies Alembic migrations, and then starts Uvicorn on port `8000`. After API readiness, the separate worker starts polling durable FRA jobs. Each running job has a renewable lease; interrupted work is recovered and retried with bounded backoff, while permanent failures are quarantined for reviewer action.
 
 ### 4. Import development reference data
 
@@ -223,10 +217,23 @@ Seed the complete invented Tamil Nadu FRA story after migrations:
 
 ```bash
 docker compose exec api python -m scripts.seed_tamil_nadu_fra_demo
-docker compose exec api python -m scripts.run_fra_jobs --max-jobs 20
 ```
 
+The Compose worker processes the seeded queue automatically. For a bounded local worker run outside Compose, use `python -m scripts.run_fra_jobs --max-jobs 20`.
+
 The seed is idempotent and includes three synthetic village profiles, IFR/CR/CFR archive examples, claims and versioned geometry, a synthetic title, time-separated supporting observations, non-authoritative Tamil Nadu scheme-catalogue drafts, and advisory rule/referral examples. It is not authoritative case data. Trained models are optional and can be attached later using [the model adapter guide](docs/MODEL_ADAPTERS.md).
+
+Run the limited Villupuram pilot with real public geographic and Sentinel-2
+context, explicit synthetic claim fixtures, and a truthful model placeholder:
+
+```powershell
+docker compose exec api python -m scripts.seed_tamil_nadu_fra_pilot
+```
+
+The command emits a machine-readable status for every stage from legacy FRA
+intake through scheme convergence. See [the Tamil Nadu pilot guide](docs/TAMIL_NADU_PILOT.md)
+for the exact provenance and expected `awaiting_user_model` and
+`insufficient_data` states.
 
 ### Stop the stack
 
@@ -265,7 +272,7 @@ For a SQLite development run, create `.env` with at least:
 
 ```dotenv
 ENVIRONMENT=development
-DATABASE_URL=sqlite+pysqlite:///./ocr_land.db
+DATABASE_URL=sqlite+pysqlite:///./aranyasetu.db
 AUTH_SECRET=replace-with-a-long-random-development-secret
 DEMO_AUTH_ENABLED=true
 DEMO_ACCESS_CODE=1234
@@ -312,18 +319,18 @@ These scripts are for local development, not production identity management.
 
 ## API overview
 
-### Public OCR and enrichment routes
+### Document intelligence and supporting extraction routes
 
 | Method | Route | Purpose |
 |---|---|---|
 | `GET` | `/health` | Process liveness check |
 | `GET` | `/health/ready` | Database readiness check |
-| `POST` | `/ocr` | OCR for an image or PDF; optional prompt-based analysis |
-| `POST` | `/evaluate` | Compare OCR text with verified reference text |
-| `POST` | `/land/extract` | Extract evidence-backed land records from existing OCR text |
-| `POST` | `/ocr/land` | Run OCR and optional land-record enrichment together |
+| `POST` | `/api/fra/document-intelligence/ocr` | Digitize an FRA or supporting image/PDF; optionally analyze it |
+| `POST` | `/api/fra/document-intelligence/evaluate` | Compare OCR text with verified reference text |
+| `POST` | `/api/cadastral-evidence/text/extract` | Extract evidence-backed land fields from reviewed OCR text |
+| `POST` | `/api/cadastral-evidence/documents/extract` | Digitize and optionally enrich a supporting land record |
 
-The base `/ocr` route does not require an LLM key. It returns extracted text, average model confidence, and review signals for dates, areas, survey references, and mixed-script tokens. Model confidence is not measured textual or factual accuracy.
+The document-intelligence OCR route does not require an LLM key. It returns extracted text, average model confidence, and review signals for dates, areas, survey references, and mixed-script tokens. Model confidence is not measured textual or factual accuracy. Earlier `/ocr`, `/evaluate`, `/land/extract`, and `/ocr/land` paths remain compatibility aliases and are omitted from the generated API catalogue.
 
 ### Browser and session routes
 
@@ -331,25 +338,26 @@ The base `/ocr` route does not require an LLM key. It returns extracted text, av
 |---|---|---|
 | `GET` | `/` | Redirect to staff login |
 | `GET` | `/login` | Temporary staff sign-in page |
-| `GET` | `/land-mapping` | Staff claim application |
+| `GET` | `/cadastral-evidence` | Supporting cadastral evidence workspace |
+| `GET` | `/land-mapping` | Compatibility redirect to `/cadastral-evidence` |
 | `POST` | `/api/auth/demo-login` | Start a temporary staff session |
 | `GET` | `/api/auth/session` | Return the signed-in staff identity |
 | `POST` | `/api/auth/logout` | Clear the browser session |
 
-### Protected registry routes
+### Supporting cadastral evidence routes
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/api/pattas/process` | Validate, scan, privately store, OCR, extract, and attempt parcel resolution |
-| `POST` | `/api/parcels/resolve` | Resolve staff-corrected fields and persist valid candidate IDs |
-| `GET` | `/api/parcels/{parcel_id}` | Return privacy-safe parcel metadata and GeoJSON geometry |
-| `POST` | `/api/claims` | Register an available parcel or return `409` when land is already claimed |
-| `GET` | `/api/claims/registry` | Return persistent claimed polygons, summaries, and patta view URLs |
-| `GET` | `/api/claims/{claim_id}/patta` | Stream the authenticated claim's original patta |
-| `GET` | `/api/claims/mine` | Return the current user's claims |
-| `GET` | `/api/notifications/mine` | Return the current user's notifications |
+| `POST` | `/api/cadastral-evidence/documents/process` | Validate, scan, privately store, digitize, extract, and attempt parcel resolution |
+| `POST` | `/api/cadastral-evidence/parcels/resolve` | Resolve staff-corrected fields and persist valid candidate IDs |
+| `GET` | `/api/cadastral-evidence/parcels/{parcel_id}` | Return privacy-safe parcel metadata and GeoJSON geometry |
+| `POST` | `/api/cadastral-evidence/parcel-links` | Record an available document-to-parcel link or return `409` on a conflict |
+| `GET` | `/api/cadastral-evidence/parcel-links` | Return persistent parcel links, summaries, and source-document view URLs |
+| `GET` | `/api/cadastral-evidence/parcel-links/{link_id}/source-document` | Stream the authenticated supporting source document |
+| `GET` | `/api/cadastral-evidence/parcel-links/mine` | Return the current user's parcel links |
+| `GET` | `/api/cadastral-evidence/notifications/mine` | Return the current user's cadastral evidence notifications |
 
-`POST /api/pattas/process` and `POST /api/claims` require an `Idempotency-Key` header. Repeating a successful request with the same user and key returns the existing result instead of creating a duplicate.
+The document-processing and parcel-link endpoints require an `Idempotency-Key` header. Repeating a successful request with the same user and key returns the existing result instead of creating a duplicate. Earlier `/api/pattas`, `/api/parcels`, and `/api/claims` paths remain compatibility aliases but are omitted from the generated API catalogue.
 
 ### Legacy conflict-review routes
 
@@ -365,17 +373,17 @@ These routes support historical conflict records. New competing claims are rejec
 
 The `/api/fra/*` domain covers rights holders, Gram Sabhas, IFR/CR/CFR claims, versioned geometry and evidence, reviewer-controlled transitions and titles, legacy promotion, right-aware spatial evaluation, supporting satellite observations, and explainable DSS recommendations. It is backward-compatible with the legacy routes above.
 
-Satellite observations are supporting evidence and do not determine legal validity. DSS recommendations are advisory and do not approve or sanction benefits. See the [FRA foundation guide](docs/FRA_FOUNDATION.md) for routes, roles, local manifests, sample rules, and limitations.
+Satellite observations are supporting evidence and do not determine legal validity. DSS recommendations are advisory and do not approve or sanction benefits. See the [FRA foundation guide](docs/FRA_FOUNDATION.md) for routes, roles, imagery processing, scheme rules, and limitations.
 
-The connected operational routes additionally provide archive batch ingestion, registry-to-FRA intake, native case workspaces, vector staging/publication, historical-evidence jobs/reports, verified fact derivation, versioned scheme catalogue entries, and privacy-minimized verifier/planner dashboards. The existing Atlas intentionally does not include satellite raster layers, time sliders, or thematic WebGIS controls.
+The connected operational routes additionally provide archive batch ingestion, registry-to-FRA intake, native case workspaces, vector staging/publication, imagery jobs and reports, verified fact derivation, versioned scheme catalogue entries, and privacy-minimized verifier/planner dashboards. The Atlas exposes imagery coverage and thematic reference layers with synchronized hierarchy, right, lifecycle, year, category, and area filters.
 
 ## API examples
 
-### Standalone OCR
+### FRA document digitization
 
 ```bash
-curl -X POST http://localhost:8000/ocr \
-  -F "file=@/path/to/patta.png"
+curl -X POST http://localhost:8000/api/fra/document-intelligence/ocr \
+  -F "file=@/path/to/fra-record.png"
 ```
 
 Supported extensions are `jpg`, `jpeg`, `png`, `bmp`, `tif`, `tiff`, and `pdf`. The default upload limit is 10 MB.
@@ -383,7 +391,7 @@ Supported extensions are `jpg`, `jpeg`, `png`, `bmp`, `tif`, `tiff`, and `pdf`. 
 ### OCR evaluation
 
 ```bash
-curl -X POST http://localhost:8000/evaluate \
+curl -X POST http://localhost:8000/api/fra/document-intelligence/evaluate \
   -F "reference_text=Survey No. 614/1B" \
   -F "ocr_text=Survey No. 614/IB"
 ```
@@ -400,8 +408,8 @@ curl -c cookies.txt \
 
 curl -b cookies.txt \
   -H "Idempotency-Key: upload-example-1" \
-  -F "file=@/path/to/patta.png" \
-  http://localhost:8000/api/pattas/process
+  -F "file=@/path/to/revenue-record.png" \
+  http://localhost:8000/api/cadastral-evidence/documents/process
 ```
 
 ## OCR and parcel matching behavior
@@ -462,15 +470,15 @@ Environment variables are loaded from `.env`. Environment values override applic
 |---|---:|---|
 | `DATABASE_URL` | SQLite database in the project directory | SQLAlchemy database URL |
 | `AUTH_SECRET` | insecure development placeholder | HS256 development/session signing secret |
-| `AUTH_ISSUER` | `ocr-land-registry` | Required token issuer |
-| `AUTH_AUDIENCE` | `ocr-land-api` | Required token audience |
+| `AUTH_ISSUER` | `aranyasetu` | Required token issuer |
+| `AUTH_AUDIENCE` | `aranyasetu-api` | Required token audience |
 | `DEMO_AUTH_ENABLED` | `true` | Enable the temporary access-code login |
 | `DEMO_ACCESS_CODE` | `1234` | Temporary local access code |
 | `DEMO_SESSION_MINUTES` | `480` | Temporary session lifetime |
 | `SECURE_UPLOAD_DIR` | `private_uploads` | Local private document root |
 | `UPLOAD_STORAGE_BACKEND` | `local` | `local` or `s3` |
 | `S3_BUCKET` | empty | Required for S3 storage |
-| `S3_PREFIX` | `patta-documents` | Private S3 object prefix |
+| `S3_PREFIX` | `fra-evidence` | Private S3 object prefix |
 | `CLAMAV_HOST` | empty | ClamAV host; omitted scanning is allowed only outside fail-closed mode |
 | `CLAMAV_PORT` | `3310` | ClamAV daemon port |
 | `MALWARE_SCAN_REQUIRED` | `false` | Reject uploads if scanning is unavailable |
@@ -502,15 +510,15 @@ python -m pytest -q
 Run the dependency-free browser-logic suite:
 
 ```bash
-node --test tests/land_mapping_ui.test.js
+node --test tests/cadastral_evidence_ui.test.js
 ```
 
 Useful focused checks:
 
 ```bash
-python -m pytest -q tests/test_patta_extraction.py tests/test_parcel_resolver.py
-python -m pytest -q tests/test_claim_eligibility.py tests/test_claim_service.py
-python -m pytest -q tests/test_land_api.py tests/test_land_mapping_ui.py
+python -m pytest -q tests/test_cadastral_extraction.py tests/test_parcel_resolver.py
+python -m pytest -q tests/test_cadastral_link_eligibility.py tests/test_cadastral_link_service.py
+python -m pytest -q tests/test_cadastral_evidence_api.py tests/test_cadastral_evidence_ui.py
 python -m pytest -q tests/test_migrations.py tests/test_production_safeguards.py
 ```
 
@@ -518,7 +526,7 @@ python -m pytest -q tests/test_migrations.py tests/test_production_safeguards.py
 
 - Uploaded registry documents are stored outside the public static directory.
 - Local paths are resolved beneath the configured private root; S3 keys are constrained to the configured prefix.
-- Patta responses are authenticated, use `Cache-Control: private, no-store`, and are audited.
+- Cadastral source-document responses are authenticated, use `Cache-Control: private, no-store`, and are audited.
 - File extension, MIME signature, size, filename, and decodability are validated.
 - Production uploads fail closed when ClamAV is unavailable.
 - Registry responses exclude claimant IDs and private storage keys.
@@ -569,19 +577,23 @@ Confirm that reference data was imported and that state, district, taluk, villag
 
 ### Claim registration returns `409`
 
-This is expected when the parcel ID is already claimed or its polygon materially overlaps active claimed land. Inspect the existing parcel in the **Claimed land** view instead of creating another claim.
+This is expected when the parcel already has a supporting link or its polygon materially overlaps an active parcel link. Inspect the existing entry in the **Parcel registry** view instead of recording another link.
 
-### A stored patta cannot be opened
+### A stored cadastral evidence document cannot be opened
 
 Check that the private upload volume or S3 object still exists and that the current process uses the same `SECURE_UPLOAD_DIR` or S3 configuration used when the document was registered.
 
 ## Additional documentation
 
+- [Architecture and implementation guide](docs/ARCHITECTURE.md)
 - [Operations guide](docs/OPERATIONS.md)
 - [Privacy and retention baseline](docs/PRIVACY_RETENTION.md)
 - [Forest Rights Act foundation](docs/FRA_FOUNDATION.md)
-- [Exclusive land-claims design](docs/superpowers/specs/2026-08-26-exclusive-land-claims-design.md)
-- [Exclusive land-claims implementation plan](docs/superpowers/plans/2026-08-26-exclusive-land-claims.md)
+- [Model adapter contracts](docs/MODEL_ADAPTERS.md)
+- [Tamil Nadu pilot and provenance](docs/TAMIL_NADU_PILOT.md)
+- [Ordered project demonstration flow](docs/DEMO_FLOW.md)
+- [Final priority outcome audit](docs/FINAL_OUTCOME_AUDIT.md)
+- [Implementation checklist](docs/IMPLEMENTATION_CHECKLIST.md)
 
 ## License
 

@@ -1,133 +1,115 @@
-# Forest Rights Act foundation
+# Forest Rights Act workflow reference
 
-AranyaSetu now includes a protected, production-shaped foundation for individual forest rights (IFR), community rights (CR), and community forest resource rights (CFR). It models rights holders, Gram Sabhas, claims, append-only decisions, versioned geometries and titles, evidence, satellite observations, and explainable scheme recommendations.
+AranyaSetu models the review lifecycle for Individual Forest Rights (IFR),
+Community Rights (CR), and Community Forest Resource Rights (CFR). The full
+system architecture, data model, evidence contracts, and limitations are in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-This is infrastructure for an authorized FRA workflow. It is not a legal decision-maker and does not replace a Forest Rights Committee, Gram Sabha, SDLC, DLC, or responsible department.
+The platform supports authorized work; it does not replace a Forest Rights
+Committee, Gram Sabha, SDLC, DLC, or responsible line department. Satellite
+observations are supporting evidence. DSS outputs are advisory and never
+approve a right, determine scheme eligibility, or sanction a benefit.
 
-> **Satellite observations are supporting evidence and do not determine legal validity.**
->
-> **DSS recommendations are advisory and do not approve or sanction benefits.**
+## FRA-centred boundaries
 
-## Boundaries and compatibility
+Native FRA behavior is under `/api/fra/*`. The separate
+`/cadastral-evidence` workspace supports survey/subdivision matching and parcel
+identification. Its records can enter FRA casework only through controlled
+legacy intake and promotion. Earlier `/api/pattas`, `/api/parcels`, and
+`/api/claims` routes remain undocumented compatibility aliases.
 
-The original patta workflow and `/api/claims` routes remain unchanged. They keep their exclusive-parcel rule. Native FRA behavior is isolated under `/api/fra/*` and uses a right-aware spatial policy:
+Staff `User` records identify authenticated actors. `RightsHolder` records
+identify the individual, household, community, or Gram Sabha whose rights are
+being recorded. They are separate records with different access rules.
 
-- material IFR-to-IFR overlap is blocked;
-- overlap involving CR or CFR is sent for human review because FRA rights can be layered or shared;
-- inactive draft, rejected, withdrawn, and superseded claims do not block another claim;
-- geometry findings never change claim status automatically.
-
-Staff `User` records identify authenticated actors. `RightsHolder` records identify the person, household, or community whose rights are being recorded. These are deliberately separate records.
-
-## Setup and roles
-
-Apply the latest migration and create development identities:
-
-```powershell
-alembic upgrade head
-python -m scripts.create_user fra-staff --display-name "FRA Staff" --role user
-python -m scripts.create_user fra-reviewer --display-name "FRA Reviewer" --role reviewer
-python -m scripts.create_user fra-admin --display-name "FRA Administrator" --role admin
-python -m scripts.mint_dev_token fra-staff --minutes 60
-```
-
-All FRA routes require a database-backed authenticated user. A `user` can enter claims and evidence. A `reviewer` or `admin` is required for lifecycle decisions and title issuance. Only an `admin` can create DSS rule sets. The HS256 token and development-user scripts are local adapters; use the authority's approved identity provider in production.
-
-The temporary browser access-code account is assigned the `reviewer` role so local staff can exercise the populated archive, case, evidence, and verifier queues. Production identity roles must come from the approved identity provider.
-
-## Claim workflow
-
-The lifecycle is explicit and append-only:
+## Lifecycle
 
 ```text
 draft -> submitted -> gram_sabha_verified -> sdlc_review
       -> dlc_decided -> granted or rejected
 ```
 
-Remand, withdrawal, and supersession paths are validated by the service. Rejection, remand, and supersession require reasons. Each accepted transition creates a decision and audit event. Issuing a corrected title creates another title version and deactivates, but does not delete, the earlier version.
+Remand, withdrawal, and supersession paths are validated. Decisions are
+append-only. Rejection, remand, and supersession require reasons. Corrected
+titles create a new version and deactivate the prior version without deleting
+history.
 
-Typical API order:
+Typical native case order:
 
-1. `POST /api/fra/rights-holders`
-2. `POST /api/fra/gram-sabhas` for a CR or CFR claim
-3. `POST /api/fra/claims`
-4. `POST /api/fra/claims/{claim_id}/geometries`
-5. `POST /api/fra/claims/{claim_id}/evidence`
-6. `POST /api/fra/claims/{claim_id}/spatial-evaluation`
-7. Reviewer calls `POST /api/fra/claims/{claim_id}/transitions`
-8. After grant, reviewer calls `POST /api/fra/claims/{claim_id}/titles`
+1. Create or match the rights holder and Gram Sabha.
+2. Create an IFR, CR, or CFR claim.
+3. Add a versioned Polygon/MultiPolygon claim boundary.
+4. Attach evidence and run right-aware spatial evaluation.
+5. Record reviewer-controlled Gram Sabha, SDLC, and DLC transitions.
+6. Issue a versioned title only after the claim is granted.
 
-GeoJSON `Polygon` and `MultiPolygon` inputs are validated and stored as WGS84 `MultiPolygon` values. SQLite uses a local projected Shapely calculation for development; PostgreSQL/PostGIS uses geography-based square-metre calculations for production-shaped evaluation.
+Material IFR-to-IFR overlap is blocked. CR/CFR overlap is returned as a human
+review finding because community rights may be layered. Spatial evaluation does
+not change lifecycle state.
 
-## Promoting a legacy claim
+## Legacy promotion
 
-`POST /api/fra/claims/promote-legacy/{legacy_claim_id}` accepts a rights-holder ID, an FRA right type, and a Gram Sabha ID when required. It reuses the original private document and parcel links, copies confirmed fields into provenance, and creates geometry version 1 from the cadastral parcel. Repeating the operation returns the same FRA claim through the unique legacy link.
+Legacy scans, PDFs, CSV registers, and XLSX registers enter the archive review
+queue. OCR/entity or tabular extraction results must be corrected and approved
+before promotion. Promotion normalizes right type, status, areas, dates,
+authority, holder, village, and supporting survey/subdivision evidence; it also
+detects duplicates and retains the complete source-to-native mapping.
 
-Promotion is a compatibility adapter. It does not assert that the legacy patta claim has been legally recognized under the FRA.
+`POST /api/fra/claims/promote-legacy/{legacy_claim_id}` remains available for
+reviewed cadastral compatibility records. It never treats an ordinary Patta as
+an FRA title.
 
-## Local satellite manifest
+## Satellite, assets, and Atlas
 
-The satellite endpoint accepts only an explicit synthetic/local scene manifest. It does not fetch imagery and the local analyser does not inspect pixels. A request supplies a private source URI, acquisition date, analyser version, and deterministic observations, for example:
+`POST /api/fra/claims/{claim_id}/imagery-ingestions` queues real bounded
+Sentinel-2 analysis-ready ingestion for a spatial claim. Historical-evidence
+routes separately discover and process time-separated supporting imagery.
+Private artifact locations and provider URLs are redacted.
 
-```json
-{
-  "scene_id": "synthetic-scene-2005",
-  "provider": "local-manifest",
-  "source_uri": "private://synthetic-scene-2005",
-  "acquired_at": "2005-01-15",
-  "analyser_version": "local-v1",
-  "observations": [
-    {"asset_class": "forest_cover", "value": 0.72, "confidence": 0.83}
-  ]
-}
-```
+Asset records use `fra-assets-v1`; village aggregates use
+`village-assets-v2`. The user-supplied trained detector is not attached, so
+production inference is explicitly `awaiting_user_model`. No fixture detection
+is substituted.
 
-Submit it to `POST /api/fra/claims/{claim_id}/satellite-observations` after the claim has a geometry version. Every observation creates linked evidence with `legal_role: supporting`, `verification_state: unverified`, and `source_verified: false`. Source URIs are persisted as private provenance and omitted from API responses. Missing manifests return `503` without partial records. Automated fields such as `valid`, `approved`, or `eligibility` are rejected.
+The FRA Atlas combines administrative boundaries, villages, claims, titles,
+reviewed assets, imagery footprints, and published forest, water, groundwater,
+infrastructure, cadastral, and other reference layers. Shared filters drive the
+map and progress statistics.
 
-Real imagery providers and scientifically validated analysers must be implemented, reviewed, licensed, and calibrated outside this sample adapter before any operational use.
+## DSS and scheme convergence
 
-## Historical evidence processing
+Normal evaluations derive `fra-dss-facts-v1` from the selected claim, active
+title, reviewed village assets, imagery coverage, and published references.
+Missing and stale values remain unknown. Rules validate required facts/assets,
+exclusions, priorities, freshness, and outcome logic.
 
-`POST /api/fra/claims/{claim_id}/historical-evidence` queues one to ten years after a claim has a geometry. Discovery uses a bounded, HTTPS/localhost and host/collection allow-listed STAC client. A registered active `historical_evidence` REST model receives the selected private scene references and claim geometry. Until that model is attached, the job completes with `insufficient_model`; it never substitutes fixture detections.
+An executable rule must link to an active authoritative scheme catalogue
+version. Bundled scheme entries and rules are examples until an authorized
+department supplies approval metadata. Results preserve evidence, reasons,
+missing inputs, fact/rule/catalogue versions, and referral history.
 
-`GET /api/fra/claims/{claim_id}/historical-evidence` returns redacted job/artifact status. Reviewers record a human disposition through the artifact review route. The protected printable report at `/api/fra/reports/claims/{claim_id}/historical-evidence` includes actual acquisition date, provider/collection, cloud and quality flags, geometry/model versions, metrics, and reviewer state. It omits storage keys and signed asset references and states that imagery is supporting evidence only.
+## Roles and local verification
 
-## Sample DSS rules
-
-[`data/demo_dss_rules.json`](../data/demo_dss_rules.json) contains visibly synthetic water, housing, and livelihood sample rules. Post each object to `POST /api/fra/dss/rule-sets` with an administrator token. The API validates the constrained `all`, `any`, `eq`, `gte`, `lte`, `present`, and `absent` operators before persistence.
-
-Evaluate active rules with an `Idempotency-Key` header:
-
-```json
-{
-  "claim_id": "00000000-0000-0000-0000-000000000000",
-  "facts": {"has_title": true, "water_body_present": false}
-}
-```
-
-`POST /api/fra/dss/evaluate` is retained for administrator/test-supplied facts. Normal staff use `POST /api/fra/dss/derive-and-evaluate`, which snapshots title, claim, current verified asset, village socioeconomic, published water-stress, and source-quality facts. Missing or stale observations remain `unknown`; the absence of a row is never treated as proof that an asset is absent. Recommendations retain the exact fact snapshot and sources.
-
-`GET/POST /api/fra/dss/scheme-catalog` manages versioned policy metadata separately from executable conditions. Bundled Tamil Nadu entries for PM-KISAN, MGNREGA, PMAY-G, JJM, and DAJGUA are inactive and non-authoritative until an administrator records an HTTPS source, approving authority, effective date, and review date.
-
-The operational dashboard routes `/api/fra/dashboard/verifier` and `/api/fra/dashboard/planner` use the shared district/block/village filters. Verifier queues require reviewer/admin access. Planner results are privacy-minimized aggregates. These are tables and summaries; the Atlas has not been expanded with satellite rasters or thematic WebGIS controls.
-
-The bundled rules are examples only. An authorized department must approve authoritative scheme rules, effective dates, source references, data definitions, and review procedures.
-
-## Privacy and audit
-
-Normal users do not receive rights-holder external references. Reviewers and administrators can see them in protected claim detail. Satellite source URIs and private documents are not returned by these routes. Mutations create metadata-only audit events with the actor and request ID; raw documents are never copied into audit rows.
-
-Before production, define lawful basis, notices, access restrictions, retention and legal-hold rules, authoritative data ownership, incident response, and independent legal/security/privacy review. See [Privacy and retention](PRIVACY_RETENTION.md) and [Operations](OPERATIONS.md).
-
-## Verification
+Users can submit records within their visibility scope. Reviewer/admin access
+is required for extraction approval, legacy promotion, lifecycle decisions,
+titles, reference publication, asset review, and referrals. Model and scheme
+administration has additional route-specific controls. Production must replace
+the demo access-code and HS256 adapters with the approved identity provider.
 
 ```powershell
+alembic upgrade head
 python -m pytest -q
-node --test tests/land_mapping_ui.test.js
+node --test tests
 python -m compileall -q app scripts
 python -m alembic heads
 docker compose config --quiet
-git diff --check
 ```
 
-The expected Alembic head is `20260902_0005`. Passing local tests demonstrates software behavior with synthetic data; it does not validate remote-sensing accuracy, legal sufficiency, scheme authority, or production integrations.
+The expected Alembic head is `20260906_0013`. Passing tests verifies software
+contracts; it does not validate legal sufficiency, OCR/model accuracy,
+authoritative scheme policy, or production data licensing.
+
+See [`MODEL_ADAPTERS.md`](MODEL_ADAPTERS.md),
+[`PRIVACY_RETENTION.md`](PRIVACY_RETENTION.md), and
+[`OPERATIONS.md`](OPERATIONS.md) for the corresponding integration and
+operational controls.

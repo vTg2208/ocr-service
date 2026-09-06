@@ -11,7 +11,7 @@ Implement the matching protocol in `app/services/model_gateway.py`:
 - `LandCoverClassifier.classify(scene_reference, geometry, context) -> AssetDetectionResult`
 - `AssetDetector.detect(scene_reference, geometry, context) -> AssetDetectionResult`
 
-Every adapter exposes a stable `version`, processing time, confidence in the range 0..1 or `null`, and provenance. Asset features use only the supported classes `agricultural_cover`, `forest_cover`, `water_body`, and `homestead`. `validate_model_output` rejects decision-like keys such as `valid`, `approved`, `eligibility`, and `sanctioned` anywhere in the output.
+Every adapter exposes a stable `version`, processing time, confidence in the range 0..1 or `null`, and provenance. Asset outputs use taxonomy `fra-assets-v1`: `agricultural_land`, `water_body`, `homestead`, `forest_cover`, `road`, `infrastructure`, and `other_asset`. Narrow model labels such as `cropland`, `pond`, `stream`, `borewell`, or `school` must be mapped to these names; the source label is retained as `asset_subtype`. Model registration validates and canonicalizes the label map. The protected `GET /api/fra/assets/taxonomy` endpoint returns the current classes and accepted input aliases. `validate_model_output` rejects decision-like keys such as `valid`, `approved`, `eligibility`, and `sanctioned` anywhere in the output.
 
 The built-in manifest adapters replay visibly synthetic fixtures and explicitly record `pixel_inference: false`. They are development adapters, not trained models.
 
@@ -64,7 +64,7 @@ Historical-evidence processing uses a separately deployed REST model and the sam
 }
 ```
 
-The worker now instantiates the allow-listed Tamil Nadu local entity extractor, an allow-listed REST entity extractor, and an allow-listed REST historical processor. It fails closed on endpoint, host, readiness, or version mismatch. Asset manifests remain restricted to visibly synthetic fixture processing until a separately evaluated asset adapter is implemented and approved; no arbitrary Python entrypoint or artifact import is allowed.
+The worker instantiates the allow-listed Tamil Nadu local entity extractor, an allow-listed REST entity extractor, and an allow-listed REST historical processor. It fails closed on endpoint, host, readiness, or version mismatch. Production asset inference remains `awaiting_user_model`: attach the user's evaluated detector through the registered adapter contract, label map, checksum, metrics, preprocessing definition, and runtime configuration. No arbitrary Python entrypoint, unverified artifact, or synthetic fallback is accepted.
 
 The REST historical response must contain base64 artifact bytes, `statistics`, string `quality_flags`, matching `processor_version` and `model_version`, and non-adjudicative provenance. The service limits decoded artifacts to 25 MB and rejects automated legal conclusions.
 

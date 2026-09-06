@@ -1,4 +1,6 @@
-# Patta-to-Parcel Mapping and Land-Claim Conflict Management
+# Archived cadastral MVP implementation plan
+
+> **Historical record:** This plan describes the pre-AranyaSetu cadastral prototype and its former names. It is superseded by the FRA-centred implementation checklist and current architecture documentation.
 
 > **Superseded claim rule (2026-08-26):** The implemented registry no longer records a second claim as a conflict. It rejects exact-parcel and material polygon-overlap attempts before insertion, keeps the accepted polygon persistent, and links that polygon to its privately stored patta. See `docs/superpowers/specs/2026-08-26-exclusive-land-claims-design.md` for the current behavior. Historical conflict-management notes below are retained only as background.
 
