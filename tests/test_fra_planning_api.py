@@ -12,7 +12,7 @@ from app.api.auth import settings
 from app.db.base import Base
 from app.db.fra_completion_models import FRAVillageProfile
 from app.db.fra_models import DSSRecommendation, FRAClaim, FRAGeometryVersion, RightsHolder, SchemeRuleSet
-from app.db.fra_operational_models import ImageryArtifact
+from app.db.fra_operational_models import ImageryArtifact, SchemeCatalogEntry
 from app.db.models import User
 from app.db.session import get_db
 from app.main import app
@@ -45,7 +45,8 @@ class FRAPlanningAPITests(unittest.TestCase):
             )
             rule = SchemeRuleSet(
                 scheme_code="DEMO-WATER", display_name="Demo Water", version="demo-v1",
-                required_facts_json=[], condition_json={"present": {"fact": "x"}},
+                required_facts_json=["has_active_title"],
+                condition_json={"present": {"fact": "has_active_title"}},
                 recommendation_text="Refer for review", source_reference="demo://rule",
                 created_by=reviewer.id,
             )
@@ -57,6 +58,20 @@ class FRAPlanningAPITests(unittest.TestCase):
                 reference_version="demo-v1", synthetic=True,
             )
             session.add_all([claim, rule, village]); session.flush()
+            session.add(SchemeCatalogEntry(
+                scheme_code="DEMO-WATER", display_name="Water programme planning reference",
+                version="draft-v1", department="Rural Development",
+                description="Candidate convergence reference",
+                source_reference="https://example.gov.in/water",
+                definition_json={
+                    "target_scope": "holder_and_village",
+                    "convergence_prerequisites": [
+                        {"fact": "has_active_title", "label": "Current FRA title evidence"}
+                    ],
+                    "evidence_facts": ["has_active_title"],
+                },
+                authoritative=False, active=False, created_by=admin.id,
+            ))
             geometry = FRAGeometryVersion(claim=claim, version=1, geometry=BOUNDARY, source="survey", boundary_quality="surveyed", created_by=reviewer.id)
             session.add(geometry); session.flush()
             session.add(ImageryArtifact(claim_id=claim.id, geometry_version_id=geometry.id, artifact_type="historical_land_observation:2005", target_year=2005, storage_key="private/evidence.json", content_sha256="a" * 64, processor_version="history-v1", parameters_json={}, statistics_json={"forest_index": .5}, quality_flags_json=["supporting_observation"], provenance_json={"legal_role": "supporting_observation"}, state="completed", verification_state="unverified"))
@@ -85,7 +100,10 @@ class FRAPlanningAPITests(unittest.TestCase):
         return {"Authorization": f"Bearer {token}"}
 
     def test_recommendations_are_advisory_and_referrals_require_reviewer(self):
-        listed = self.client.get("/api/fra/dss/recommendations", headers=self.headers())
+        hidden = self.client.get("/api/fra/dss/recommendations", headers=self.headers())
+        self.assertEqual(hidden.status_code, 200)
+        self.assertEqual(hidden.json()["items"], [])
+        listed = self.client.get("/api/fra/dss/recommendations", headers=self.headers("planning-reviewer"))
         self.assertEqual(listed.status_code, 200, listed.text)
         self.assertTrue(listed.json()["items"][0]["advisory_only"])
         payload = {"department": "Rural Development", "priority": "high", "idempotency_key": "api-ref-1"}
@@ -106,6 +124,26 @@ class FRAPlanningAPITests(unittest.TestCase):
             json={"status": "under_review", "notes": "Assigned", "expected_revision": 0},
         )
         self.assertEqual(updated.status_code, 200, updated.text)
+
+    def test_scheme_convergence_is_claim_scoped_and_exposes_review_dimensions(self):
+        hidden = self.client.get(
+            f"/api/fra/dss/convergence?claim_id={self.claim_id}", headers=self.headers()
+        )
+        self.assertEqual(hidden.status_code, 404)
+        response = self.client.get(
+            f"/api/fra/dss/convergence?claim_id={self.claim_id}",
+            headers=self.headers("planning-reviewer"),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        item = response.json()["items"][0]
+        self.assertEqual(item["convergence_status"], "potentially_eligible")
+        self.assertEqual(item["catalog_status"], "draft_inactive")
+        self.assertEqual(item["missing_prerequisites"], [])
+        self.assertIn("supporting_evidence", item)
+        self.assertIn("reason_for_recommendation", item)
+        self.assertIn("reason_for_rejection", item)
+        self.assertIn("missing_information", item)
+        self.assertFalse(item["official_eligibility_decision"])
 
     def test_printable_village_report_is_private_and_no_store(self):
         response = self.client.get(
@@ -135,12 +173,26 @@ class FRAPlanningAPITests(unittest.TestCase):
         response = self.client.post(
             "/api/fra/dss/derive-and-evaluate",
             headers={**self.headers("planning-reviewer"), "Idempotency-Key": "derive-api-1"},
-            json={"claim_id": self.claim_id, "derivation_version": "tn-facts-v1"},
+            json={"claim_id": self.claim_id, "derivation_version": "fra-dss-facts-v1"},
         )
         self.assertEqual(response.status_code, 201, response.text)
-        self.assertEqual(response.json()["fact_snapshot"]["derivation_version"], "tn-facts-v1")
+        self.assertEqual(response.json()["fact_snapshot"]["derivation_version"], "fra-dss-facts-v1")
         self.assertIn("has_active_title", response.json()["fact_snapshot"]["facts"])
         self.assertTrue(response.json()["recommendations"][0]["advisory_only"])
+
+    def test_fact_contract_exposes_the_exact_rule_vocabulary(self):
+        response = self.client.get(
+            "/api/fra/dss/fact-contract", headers=self.headers()
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["version"], "fra-dss-facts-v1")
+        facts = {item["name"]: item["type"] for item in response.json()["facts"]}
+        self.assertEqual(facts["has_active_title"], "boolean")
+        self.assertEqual(facts["water_source_present"], "boolean")
+        self.assertEqual(facts["agricultural_land_fraction"], "number")
+        self.assertEqual(facts["groundwater_status"], "string")
+        self.assertEqual(facts["road_access"], "boolean")
+        self.assertNotIn("forest_observation", facts)
 
     def test_scheme_catalog_requires_admin_and_retains_approval_provenance(self):
         payload = {"scheme_code": "JJM", "display_name": "Jal Jeevan Mission", "version": "tn-2026", "department": "Rural Development", "description": "Approved planning reference", "effective_from": "2026-08-01", "approving_authority": "Tamil Nadu competent authority", "source_reference": "https://example.gov.in/jjm", "definition": {"reviewed_on": "2026-08-01"}, "authoritative": True, "active": True}
@@ -149,7 +201,7 @@ class FRAPlanningAPITests(unittest.TestCase):
         created = self.client.post("/api/fra/dss/scheme-catalog", headers=self.headers("planning-admin"), json=payload)
         self.assertEqual(created.status_code, 201, created.text)
         self.assertEqual(created.json()["approving_authority"], "Tamil Nadu competent authority")
-        listed = self.client.get("/api/fra/dss/scheme-catalog", headers=self.headers())
+        listed = self.client.get("/api/fra/dss/scheme-catalog?scheme_code=JJM", headers=self.headers())
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json()["items"][0]["scheme_code"], "JJM")
 

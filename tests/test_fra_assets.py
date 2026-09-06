@@ -230,6 +230,32 @@ class FRAAssetTests(unittest.TestCase):
             self.assertEqual(completed.state, "completed")
             self.assertEqual(len(completed.result_json["asset_ids"]), 2)
 
+    def test_two_sessions_cannot_create_two_corrections(self):
+        from app.db.models import AuditEvent
+        with Session(self.engine) as setup:
+            staff, reviewer, village, model = self._seed(setup)
+            job = enqueue_asset_inference(setup, village_id=village.id, claim_id=None,
+                model_version_id=model.id, scene_id="scene", actor_id=staff.id,
+                idempotency_key="concurrent", manifest=asset_manifest())
+            asset = process_asset_inference(setup, job, adapter=ManifestAssetDetector("0.1.0"))[1]
+            asset_id, actor_id = asset.id, reviewer.id
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current, stale = first.get(AssetFeature, asset_id), second.get(AssetFeature, asset_id)
+            review_asset(first, current, outcome="corrected", reviewer_id=actor_id,
+                         reasons=["Field visit"], expected_revision=0, corrected_value={"present": False})
+            first.commit()
+            with self.assertRaises(AssetReviewConflict):
+                review_asset(second, stale, outcome="corrected", reviewer_id=actor_id,
+                             reasons=["Other visit"], expected_revision=0, corrected_value={"present": True})
+            second.rollback()
+        with Session(self.engine) as check:
+            self.assertEqual(check.scalar(select(func.count()).select_from(AssetFeature).where(
+                AssetFeature.supersedes_id == asset_id)), 1)
+            self.assertEqual(check.get(AssetFeature, asset_id).observed_value_json, {"present": True})
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent).where(
+                AuditEvent.action == "fra_asset_reviewed")), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

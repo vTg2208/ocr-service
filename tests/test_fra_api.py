@@ -9,11 +9,13 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.auth import settings
 from app.db.base import Base
+from app.db.fra_completion_models import FRAVillageProfile
 from app.db.fra_models import DSSRecommendation, FRAEvidenceItem, SatelliteObservation
 from app.db.fra_operational_models import SpatialImportBatch, SpatialReferenceFeature
 from app.db.models import AuditEvent, Claim, Document, Parcel, User
 from app.db.session import get_db
 from app.main import app
+from app.services.fra_intake import ensure_intake_for_legacy_claim
 
 
 POLYGON = {
@@ -146,6 +148,52 @@ class FRAAPITests(unittest.TestCase):
         )
         self.assertEqual(invalid.status_code, 422)
 
+    def test_claim_decision_and_evidence_expose_normalized_domain_links(self):
+        with self.factory() as session:
+            village = FRAVillageProfile(
+                state_code="TN", state_name="Tamil Nadu", district_code="TN-07",
+                district_name="Villupuram", block_code="TN-07-01", block_name="Villupuram",
+                village_code="TN-07-01-001", village_name="Arpisampalayam",
+                boundary=MULTIPOLYGON, reference_version="tn-v1",
+            )
+            session.add(village); session.commit(); village_id = str(village.id)
+        holder_id = self.create_holder(external_reference="linked-village-holder").json()["id"]
+        claim = self.client.post(
+            "/api/fra/claims", headers=self.headers(),
+            json={
+                "claim_number": "IFR-VILLAGE-1", "right_type": "IFR",
+                "rights_holder_id": holder_id, "village_id": village_id,
+                "claimed_area_sqm": 1500.5,
+            },
+        )
+        self.assertEqual(claim.status_code, 201, claim.text)
+        self.assertEqual(claim.json()["village_id"], village_id)
+
+        evidence = self.client.post(
+            f"/api/fra/claims/{claim.json()['id']}/evidence", headers=self.headers(),
+            json={
+                "category": "documentary", "source": "claim file",
+                "description": "Pages containing the verification record.",
+                "source_page_start": 2, "source_page_end": 3,
+            },
+        )
+        self.assertEqual(evidence.status_code, 201, evidence.text)
+        self.assertEqual(evidence.json()["source_page_start"], 2)
+        self.assertEqual(evidence.json()["source_page_end"], 3)
+
+        decision = self.client.post(
+            f"/api/fra/claims/{claim.json()['id']}/transitions",
+            headers=self.headers("reviewer"),
+            json={
+                "target_status": "submitted", "authority_level": "frc",
+                "outcome": "submitted", "reasons": [], "decision_date": "2025-06-12",
+                "reference_number": "FRC/2025/42",
+            },
+        )
+        self.assertEqual(decision.status_code, 200, decision.text)
+        self.assertEqual(decision.json()["decision_date"], "2025-06-12")
+        self.assertEqual(decision.json()["reference_number"], "FRC/2025/42")
+
     def test_transition_and_title_require_reviewer_and_map_invalid_state(self):
         claim_id = self.create_claim().json()["id"]
         denied = self.client.post(
@@ -196,11 +244,15 @@ class FRAAPITests(unittest.TestCase):
         title = self.client.post(
             f"/api/fra/claims/{claim_id}/titles",
             headers=self.headers("reviewer"),
-            json={"title_number": "TITLE-API-1", "geometry_version_id": geometry_id},
+            json={
+                "title_number": "TITLE-API-1", "geometry_version_id": geometry_id,
+                "granted_area_sqm": 1250.25,
+            },
         )
         self.assertEqual(title.status_code, 201)
         self.assertEqual(title.json()["version"], 1)
         self.assertTrue(title.json()["active"])
+        self.assertEqual(title.json()["granted_area_sqm"], 1250.25)
 
     def test_evidence_creation_is_audited(self):
         claim_id = self.create_claim().json()["id"]
@@ -237,13 +289,21 @@ class FRAAPITests(unittest.TestCase):
                 claimant=staff, parcel=parcel, document=document, confirmed_fields_json={},
                 status="matched", match_method="exact", idempotency_key="legacy-claim",
             )
-            session.add(legacy); session.commit(); legacy_id = str(legacy.id)
-        payload = {"rights_holder_id": holder_id, "right_type": "IFR"}
-        first = self.client.post(
-            f"/api/fra/claims/promote-legacy/{legacy_id}", headers=self.headers(), json=payload
+            session.add(legacy); session.flush()
+            intake = ensure_intake_for_legacy_claim(session, legacy, actor_id=staff.id)
+            session.commit(); legacy_id, intake_id = str(legacy.id), str(intake.id)
+        reviewed = self.client.patch(
+            f"/api/fra/intake/{intake_id}", headers=self.headers("reviewer"),
+            json={"target_state": "ready_for_promotion", "expected_revision": 0, "reasons": ["Verified"]},
         )
+        self.assertEqual(reviewed.status_code, 200)
+        payload = {"rights_holder_id": holder_id, "right_type": "IFR", "expected_revision": 1}
+        first = self.client.post(
+            f"/api/fra/claims/promote-legacy/{legacy_id}", headers=self.headers("reviewer"), json=payload
+        )
+        payload["expected_revision"] = 2
         second = self.client.post(
-            f"/api/fra/claims/promote-legacy/{legacy_id}", headers=self.headers(), json=payload
+            f"/api/fra/claims/promote-legacy/{legacy_id}", headers=self.headers("reviewer"), json=payload
         )
         self.assertEqual(first.status_code, 201)
         self.assertEqual(first.json()["id"], second.json()["id"])
@@ -371,10 +431,42 @@ class FRAAPITests(unittest.TestCase):
 
     def test_admin_rule_creation_and_advisory_dss_are_validated_and_idempotent(self):
         claim_id = self.create_claim().json()["id"]
+        catalog = self.client.post(
+            "/api/fra/dss/scheme-catalog", headers=self.headers("admin"), json={
+                "scheme_code": "DEMO-WATER", "display_name": "Water support",
+                "version": "approved-2026", "department": "Water Supply",
+                "effective_from": "2026-01-01", "effective_to": "2026-12-31",
+                "approving_authority": "Competent test authority",
+                "source_reference": "https://example.gov.in/water-support",
+                "definition": {"reviewed_on": "2026-01-01"},
+                "authoritative": True, "active": True,
+            },
+        )
+        self.assertEqual(catalog.status_code, 201, catalog.text)
         rule = {
+            "catalog_entry_id": catalog.json()["id"],
             "scheme_code": "DEMO-WATER", "display_name": "Demo Water Support",
-            "version": "demo-v1", "required_facts": ["has_water"],
-            "condition": {"eq": {"fact": "has_water", "value": False}},
+            "version": "demo-v1", "effective_from": "2026-01-01",
+            "effective_to": "2026-12-31", "required_facts": ["water_source_present"],
+            "condition": {"eq": {"fact": "water_source_present", "value": False}},
+            "required_evidence": ["water_source_present"],
+            "required_assets": [],
+            "exclusion_condition": {
+                "eq": {"fact": "claim_status", "value": "rejected"}
+            },
+            "priority_conditions": [{
+                "priority": "high",
+                "condition": {
+                    "eq": {"fact": "water_source_present", "value": False}
+                },
+                "reason": "Verified water gap.",
+            }],
+            "freshness_requirements": {"water_source_present": 365},
+            "recommendation_logic": {
+                "recommended": "Refer for water review.",
+                "not_recommended": "Conditions not met.",
+                "insufficient_data": "Collect current evidence.",
+            },
             "recommendation_text": "Refer for departmental water-support review.",
             "source_reference": "demo://water-support",
         }
@@ -387,11 +479,27 @@ class FRAAPITests(unittest.TestCase):
             self.client.post("/api/fra/dss/rule-sets", headers=self.headers("admin"), json=invalid).status_code,
             422,
         )
+        outdated = dict(
+            rule,
+            required_facts=["has_water"],
+            condition={"eq": {"fact": "has_water", "value": False}},
+        )
+        rejected = self.client.post(
+            "/api/fra/dss/rule-sets",
+            headers=self.headers("admin"),
+            json=outdated,
+        )
+        self.assertEqual(rejected.status_code, 422)
+        self.assertIn("Unsupported DSS fact", rejected.text)
         created = self.client.post(
             "/api/fra/dss/rule-sets", headers=self.headers("admin"), json=rule
         )
         self.assertEqual(created.status_code, 201)
-        evaluation = {"claim_id": claim_id, "facts": {"has_water": False}}
+        self.assertEqual(created.json()["catalog_entry_id"], catalog.json()["id"])
+        self.assertTrue(created.json()["catalog_authoritative"])
+        self.assertEqual(created.json()["required_evidence"], ["water_source_present"])
+        self.assertEqual(created.json()["priority_conditions"][0]["priority"], "high")
+        evaluation = {"claim_id": claim_id, "facts": {"water_source_present": False}}
         self.assertEqual(
             self.client.post(
                 "/api/fra/dss/evaluate",
@@ -416,6 +524,74 @@ class FRAAPITests(unittest.TestCase):
         self.assertTrue(fetched.json()["advisory_only"])
         with self.factory() as session:
             self.assertEqual(session.scalar(select(func.count()).select_from(DSSRecommendation)), 1)
+
+    def test_stale_lifecycle_title_and_geometry_routes_return_409_and_rollback(self):
+        import uuid
+        from app.db.fra_models import FRAClaim, FRADecision, FRAGeometryVersion, FRATitle
+        from app.services.fra_workflow import transition_claim
+        cases = [
+            ("transitions", {"target_status": "superseded", "authority_level": "dlc",
+                             "outcome": "superseded", "reasons": ["Stale decision"]}),
+            ("titles", {"title_number": "STALE-TITLE"}),
+            ("geometries", {"geometry": MULTIPOLYGON, "source": "stale"}),
+        ]
+        original_override = app.dependency_overrides[get_db]
+        for endpoint, payload in cases:
+            with self.subTest(endpoint=endpoint):
+                claim_id = uuid.UUID(self.create_claim(f"STALE-{endpoint}").json()["id"])
+                with self.factory() as setup:
+                    setup.get(FRAClaim, claim_id).status = "granted"
+                    reviewer_id = setup.scalar(select(User).where(User.external_id == "reviewer")).id
+                    setup.commit()
+                with self.factory() as first, self.factory() as second:
+                    current, stale = first.get(FRAClaim, claim_id), second.get(FRAClaim, claim_id)
+                    transition_claim(first, current, target_status="superseded", authority_level="dlc",
+                                     outcome="superseded", reasons=["Current decision"], actor_id=reviewer_id,
+                                     request_id="first")
+                    first.commit()
+                    def stale_db():
+                        yield second
+                    app.dependency_overrides[get_db] = stale_db
+                    try:
+                        response = self.client.post(f"/api/fra/claims/{claim_id}/{endpoint}",
+                                                    headers=self.headers("reviewer"), json=payload)
+                        self.assertEqual(response.status_code, 409, response.text)
+                        self.assertFalse(second.in_transaction())
+                    finally:
+                        app.dependency_overrides[get_db] = original_override
+                with self.factory() as check:
+                    self.assertEqual(check.get(FRAClaim, claim_id).status, "superseded")
+                    self.assertEqual(check.scalar(select(func.count()).select_from(FRADecision).where(
+                        FRADecision.claim_id == claim_id)), 1)
+                    self.assertEqual(check.scalar(select(func.count()).select_from(FRATitle).where(
+                        FRATitle.claim_id == claim_id)), 0)
+                    self.assertEqual(check.scalar(select(func.count()).select_from(FRAGeometryVersion).where(
+                        FRAGeometryVersion.claim_id == claim_id)), 0)
+
+    def test_duplicate_title_api_conflict_preserves_active_title_token_and_audit(self):
+        import uuid
+        from app.db.fra_models import FRAClaim, FRATitle
+        claim_id = uuid.UUID(self.create_claim("DUPLICATE-TITLE-CASE").json()["id"])
+        with self.factory() as setup:
+            setup.get(FRAClaim, claim_id).status = "granted"
+            setup.commit()
+        path = f"/api/fra/claims/{claim_id}/titles"
+        first = self.client.post(path, headers=self.headers("reviewer"),
+                                 json={"title_number": "TITLE-UNIQUE", "metadata": {"source": "first"}})
+        self.assertEqual(first.status_code, 201, first.text)
+        with self.factory() as before:
+            token = before.get(FRAClaim, claim_id).updated_at
+        failed = self.client.post(path, headers=self.headers("reviewer"),
+                                  json={"title_number": "TITLE-UNIQUE", "metadata": {"source": "duplicate"}})
+        self.assertEqual(failed.status_code, 409, failed.text)
+        with self.factory() as check:
+            titles = check.scalars(select(FRATitle).where(FRATitle.claim_id == claim_id)).all()
+            self.assertEqual(len(titles), 1)
+            self.assertEqual((titles[0].version, titles[0].active, titles[0].metadata_json),
+                             (1, True, {"source": "first"}))
+            self.assertEqual(check.get(FRAClaim, claim_id).updated_at, token)
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent).where(
+                AuditEvent.entity_id == claim_id, AuditEvent.action == "fra_title_issued")), 1)
 
 
 if __name__ == "__main__":

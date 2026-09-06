@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base
 from app.db.models import Claim, Document, Parcel, User
-from app.services.conflict_detection import detect_conflicts
+from app.services.cadastral_conflicts import detect_conflicts
 
 
 def geometry(x1, x2):

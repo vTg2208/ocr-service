@@ -9,7 +9,7 @@ from app.db.fra_completion_models import AssetFeature, FRAVillageProfile
 from app.db.fra_models import FRAClaim, FRAGeometryVersion, FRATitle, RightsHolder
 from app.db.fra_operational_models import DSSFactSnapshot, ImageryArtifact, SpatialImportBatch, SpatialReferenceFeature
 from app.db.models import User
-from app.services.dss_facts import derive_facts
+from app.services.dss_facts import DSS_FACT_NAMES, derive_facts
 
 
 GEOMETRY = {"type": "MultiPolygon", "coordinates": [[[[79, 10], [79.1, 10], [79.1, 10.1], [79, 10], [79, 10]]]]}
@@ -35,6 +35,7 @@ class DSSFactsTests(unittest.TestCase):
                 AssetFeature(claim_id=claim.id, asset_class="agricultural_land", observed_value_json={"present": True}, acquired_at=date.today(), confidence=.9, source_type="field", provenance_json={"source_version": "field-v1"}, verification_state="verified", verified_by=reviewer.id),
                 AssetFeature(claim_id=claim.id, asset_class="water_body", observed_value_json={"present": True}, acquired_at=date.today(), confidence=.8, source_type="model", provenance_json={}, verification_state="unverified"),
                 AssetFeature(claim_id=claim.id, asset_class="forest_cover", observed_value_json={"present": True}, acquired_at=date.today() - timedelta(days=900), confidence=.8, source_type="field", provenance_json={}, verification_state="verified", verified_by=reviewer.id),
+                AssetFeature(claim_id=claim.id, asset_class="road", observed_value_json={"present": True}, acquired_at=date.today(), confidence=.9, source_type="field", provenance_json={"source_version": "field-v1"}, verification_state="verified", verified_by=reviewer.id),
             ])
             session.commit(); self.reviewer_id, self.claim_id, self.geometry_id = reviewer.id, claim.id, geometry.id
 
@@ -42,16 +43,19 @@ class DSSFactsTests(unittest.TestCase):
 
     def test_verified_current_sources_are_derived_while_missing_and_stale_remain_unknown(self):
         with Session(self.engine) as session:
-            snapshot = derive_facts(session, session.get(FRAClaim, self.claim_id), "tn-facts-v1", self.reviewer_id, "facts-1")
+            snapshot = derive_facts(session, session.get(FRAClaim, self.claim_id), "fra-dss-facts-v1", self.reviewer_id, "facts-1")
             self.assertIs(snapshot.facts_json["has_active_title"]["value"], True)
             self.assertIs(snapshot.facts_json["agricultural_observation"]["value"], True)
             self.assertEqual(snapshot.facts_json["water_source_present"]["value"], "unknown")
-            self.assertEqual(snapshot.facts_json["forest_observation"]["value"], "unknown")
-            self.assertEqual(snapshot.facts_json["forest_observation"]["reason"], "verified_source_stale")
+            self.assertEqual(snapshot.facts_json["forest_cover_present"]["value"], "unknown")
+            self.assertEqual(snapshot.facts_json["forest_cover_present"]["reason"], "verified_source_stale")
+            self.assertIs(snapshot.facts_json["road_access"]["value"], True)
+            self.assertEqual(snapshot.facts_json["infrastructure_services"]["value"], ["road"])
+            self.assertEqual(set(snapshot.facts_json), set(DSS_FACT_NAMES))
             self.assertNotIn("Private Holder", str(snapshot.facts_json))
             self.assertTrue(snapshot.sources_json["agricultural_observation"]["source_entity_id"])
             self.assertEqual(snapshot.facts_json["village_socioeconomic"]["value"]["households"], 120)
-            self.assertEqual(snapshot.facts_json["water_stress_reference"]["value"]["category"], "high")
+            self.assertEqual(snapshot.facts_json["water_stress_status"]["value"], "high")
             self.assertIn("water_source_present", snapshot.facts_json["source_quality_flags"]["value"]["unknown_facts"])
 
     def test_verified_coverage_can_record_explicit_absence_and_idempotency(self):
@@ -59,8 +63,8 @@ class DSSFactsTests(unittest.TestCase):
             session.add(ImageryArtifact(claim_id=self.claim_id, geometry_version_id=self.geometry_id, artifact_type="current_land_observation", target_year=date.today().year, storage_key="private/fact.json", content_sha256="a" * 64, processor_version="v1", parameters_json={}, statistics_json={"observation_coverage": .91, "water_source_present": False}, quality_flags_json=[], provenance_json={"legal_role": "supporting_observation"}, state="completed", verification_state="verified", reviewed_by=self.reviewer_id, reviewed_at=datetime.now(timezone.utc)))
             session.flush()
             claim = session.get(FRAClaim, self.claim_id)
-            first = derive_facts(session, claim, "tn-facts-v1", self.reviewer_id, "facts-2")
-            second = derive_facts(session, claim, "tn-facts-v1", self.reviewer_id, "facts-2")
+            first = derive_facts(session, claim, "fra-dss-facts-v1", self.reviewer_id, "facts-2")
+            second = derive_facts(session, claim, "fra-dss-facts-v1", self.reviewer_id, "facts-2")
             self.assertIs(first.facts_json["water_source_present"]["value"], False)
             self.assertEqual(first.id, second.id)
             self.assertEqual(session.scalar(select(func.count()).select_from(DSSFactSnapshot)), 1)

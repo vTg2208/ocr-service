@@ -1,4 +1,46 @@
 const test = require('node:test');
+const { browser, flush } = require('./fra_dom_fixture');
+
+const savedGeometry = { type: 'MultiPolygon', coordinates: [[[[79, 10], [79.1, 10], [79.1, 10.1], [79, 10]]]] };
+function caseDetail(id) { return { id, claim_number: `TN-${id}`, status: 'submitted', right_type: 'IFR',
+  rights_holder: { display_name: 'Holder' }, location: {}, geometry_versions: [{ id: `geometry-${id}`, geometry: savedGeometry, version: 1, source: 'survey' }],
+  evidence_items: [], decisions: [], titles: [], audit_timeline: [], allowed_transitions: [] }; }
+async function openCase(ui, id) {
+  ui.emit('fra:open-case', { claimId: id });
+  ui.pending('/api/fra/cases').at(-1).resolve({ items: [{ id, claim_number: `TN-${id}`, right_type: 'IFR', status: 'submitted', location: {} }] });
+  await flush(); ui.pending(`/api/fra/cases/${id}`).at(-1).resolve(caseDetail(id)); await flush();
+}
+
+test('case context changes suppress stale detail and historical responses', async () => {
+  const ui = browser(['cases.js']);
+  await openCase(ui, 'one');
+  const oldHistory = ui.pending('/api/fra/claims/one/historical-evidence')[0];
+  ui.node('#contextDistrict').value = 'Other'; ui.emit('fra:context', {});
+  ui.pending('/api/fra/cases').at(-1).resolve({ items: [] }); await flush();
+  oldHistory.resolve({ artifacts: [{ target_year: 2005, state: 'completed', verification_state: 'verified' }], jobs: [] }); await flush();
+  assert.equal(ui.node('#caseReference').textContent, 'No case selected');
+  assert.doesNotMatch(ui.node('#caseHistoricalEvidence').textContent, /2005/);
+  ui.emit('fra:open-case', { claimId: 'two' });
+  ui.pending('/api/fra/cases').at(-1).resolve({ items: [{ id: 'two', status: 'submitted', location: {} }] }); await flush();
+  const oldDetail = ui.pending('/api/fra/cases/two')[0];
+  ui.emit('fra:context', {}); ui.pending('/api/fra/cases').at(-1).resolve({ items: [] }); await flush();
+  oldDetail.resolve(caseDetail('two')); await flush();
+  assert.equal(ui.node('#caseReference').textContent, 'No case selected');
+});
+
+test('spatial disposition uses the evaluated saved geometry and invalidates edits', async () => {
+  const ui = browser(['cases.js']); await openCase(ui, 'one');
+  assert.equal(ui.node('button').disabled, true, 'A submitted case cannot issue a title');
+  ui.node('#caseSpatialEvaluate').click();
+  ui.pending('/api/fra/claims/one/spatial-evaluation')[0].resolve({ outcome: 'review', claim_findings: [], reference_findings: [] }); await flush();
+  ui.node('#caseSpatialDisposition').value = 'accepted'; ui.node('#caseSpatialDispositionNotes').value = 'Reviewed';
+  ui.node('#caseSpatialDispositionForm').emit('submit');
+  assert.equal(JSON.parse(ui.pending('/api/fra/claims/one/evidence')[0].options.body).provenance.geometry_version_id, 'geometry-one');
+  await ui.node('#caseGeometry').emit('input');
+  await ui.node('#caseSpatialDispositionForm').emit('submit');
+  assert.equal(ui.pending('/api/fra/claims/one/evidence').length, 1);
+  assert.match(ui.node('#caseMessage').textContent, /Save and evaluate/);
+});
 const assert = require('node:assert/strict');
 
 const FRACasesUI = require('../app/static/fra/cases.js');

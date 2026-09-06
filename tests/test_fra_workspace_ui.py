@@ -33,33 +33,61 @@ class WorkspaceParser(HTMLParser):
 
 
 class FRAWorkspaceUITests(unittest.TestCase):
-    def test_workspace_has_a_clear_back_action_to_the_patta_registry(self):
+    def test_workspace_positions_cadastral_tools_as_supporting_evidence(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
 
-        self.assertIn('class="rail-secondary" href="/land-mapping"', html)
+        self.assertIn('class="rail-secondary" href="/cadastral-evidence"', html)
         self.assertIn('class="rail-secondary-icon"', html)
-        self.assertIn("Back to Patta Registry", html)
+        self.assertIn("Cadastral evidence", html)
+        self.assertNotIn("Back to Patta Registry", html)
 
-    def test_workspace_has_seven_sections_shared_context_and_archive_review_regions(self):
+    def test_workspace_keeps_the_internal_processing_pipeline_out_of_the_interface(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertNotIn("data-flow-stage", html)
+        self.assertNotIn("processing lifecycle", html)
+        self.assertNotIn('class="platform-flow"', html)
+        self.assertIn("FRA Spatial Intelligence + DSS", html)
+
+    def test_workspace_has_final_six_sections_shared_context_and_archive_review_regions(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         parser = WorkspaceParser(); parser.feed(html)
 
-        self.assertEqual(parser.nav_sections, ["dashboard", "archive", "cases", "atlas", "assets", "planner", "reports"])
+        self.assertEqual(parser.nav_sections, ["dashboard", "atlas", "cases", "assets", "planner", "reports"])
         self.assertTrue({
             "skipLink", "workspaceNav", "contextDistrict", "contextBlock", "contextVillage",
-            "staffName", "logoutButton", "archiveSearch", "archiveList", "archiveEmpty",
+            "staffName", "logoutButton", "workspaceFilterWidget", "contextFilterToggle",
+            "contextFilterPanel", "contextFilterClose", "contextFilterSummary",
+            "archiveSearch", "archiveList", "archiveEmpty",
             "archiveDetail", "sourceEvidence", "reviewForm", "reviewedFields",
-            "saveReviewButton", "promoteButton", "workspaceStatus",
+            "saveReviewButton", "rejectExtractionButton", "promoteButton", "workspaceStatus",
             "archiveUploadForm", "archiveSourceOffice", "archiveUploadDistrict",
             "archiveFiles", "archiveUploadButton", "archiveUploadResults",
-            "dashboardPanel", "verifierDashboardMetrics", "verifierDashboardQueue",
-            "plannerDashboardMetrics", "plannerDashboardGroups",
+            "archiveTabularForm", "archiveTabularSourceOffice", "archiveTabularDistrict",
+            "archiveTabularFile", "archiveTabularButton", "archiveTabularSummary",
+            "archiveTabularResults",
+            "extractionWarnings",
+            "dashboardPanel", "dashboardScope", "dashboardStatus", "dashboardAttentionTotal",
+            "dashboardAttentionLabel", "dashboardPriorityQueue", "dashboardBottleneck",
+            "dashboardTotalClaims", "dashboardStatusBar", "dashboardGrantedCases",
+            "dashboardPendingCases", "dashboardRejectedCases", "dashboardActiveTitles",
+            "dashboardRightsReadiness", "dashboardSpatializedClaims", "dashboardPlanningReadiness",
         }.issubset(parser.ids))
         self.assertTrue({"nav", "main", "header", "aside"}.issubset(parser.landmarks))
         self.assertNotIn('class="warning-strip"', html)
         self.assertNotIn("Synthetic sample data — not authoritative", html)
         self.assertNotIn("demonstration", html.casefold())
         self.assertNotIn("approved benefit", html.casefold())
+
+    def test_administrative_filters_are_collapsed_into_the_active_workspace_header(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertNotIn('class="context-bar"', html)
+        self.assertEqual(html.count('class="workspace-heading-actions filter-host"'), 6)
+        self.assertIn('class="overview-refresh filter-host"', html)
+        self.assertIn('aria-controls="contextFilterPanel"', html)
+        self.assertIn('id="contextFilterPanel"', html)
+        self.assertIn("Changes apply immediately to the open workspace.", html)
 
     def test_workspace_uses_modular_scripts_and_leaflet(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
@@ -76,14 +104,16 @@ class FRAWorkspaceUITests(unittest.TestCase):
             with self.subTest(icon=icon_name):
                 self.assertIn(f'/static/fra/icons/{icon_name}', html)
                 self.assertTrue((UI_ROOT / "icons" / icon_name).is_file())
-        self.assertEqual(html.count('class="rail-icon"'), 7)
+        self.assertEqual(html.count('class="rail-icon"'), 6)
 
     def test_cases_workspace_exposes_intake_case_and_versioned_casework_controls(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         parser = WorkspaceParser(); parser.feed(html)
 
         required = {
-            "casesPanel", "caseModeIntake", "caseModeCases", "intakeList", "caseList",
+            "casesPanel", "caseModeLegacy", "caseModeIntake", "caseModeCases",
+            "archiveModeLegacy", "archiveModeCases", "archiveModeIntake",
+            "intakeList", "caseList",
             "caseDetail", "caseGeometryForm", "caseEvidenceForm", "caseTransitionForm",
             "caseTitleForm", "caseAuditTimeline",
             "caseGeometryMap", "caseGeometryUpload",
@@ -93,6 +123,19 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn('data-section="cases"', html)
         self.assertIn("/static/fra/cases.js", html)
         self.assertIn("leaflet.draw", html.casefold())
+
+    def test_each_final_workspace_names_its_required_information_groups(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+
+        for label in (
+            "Legacy records", "Native FRA cases", "Evidence", "Lifecycle decisions", "Titles",
+            "Atlas filters", "Mapped records", "Prepare satellite imagery",
+            "Observation register", "Village profiles", "Schemes and eligibility",
+            "Deficiencies and recommendations", "FRA progress", "Spatial statistics",
+            "Asset statistics", "Scheme convergence",
+        ):
+            with self.subTest(label=label):
+                self.assertIn(label, html)
 
     def test_asset_workspace_uses_the_supplied_contact_sheet_and_accessible_legend(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
@@ -116,19 +159,24 @@ class FRAWorkspaceUITests(unittest.TestCase):
         parser = WorkspaceParser(); parser.feed(html)
         self.assertTrue({
             "atlasFilters", "atlasMap", "atlasSummary", "atlasResults", "atlasLayers",
-            "assetInferenceForm", "assetModel", "assetVillage", "assetList", "assetMap",
+            "imageryIngestionForm", "imageryClaim", "imageryIngestionList", "assetList", "assetMap",
+            "villageAssetProfiles", "refreshVillageAssetProfiles",
             "recommendationFilters", "recommendationList", "referralDepartment",
+            "plannerSummary", "plannerCandidateCount", "plannerNotIndicatedCount",
+            "plannerInsufficientCount", "plannerNotEvaluatedCount", "plannerIntervention",
+            "plannerScheme",
             "reportVillage", "reportArchive", "openVillageReport", "openArchiveReport",
         }.issubset(parser.ids))
         self.assertIn("supporting evidence and requires human verification", html)
         self.assertIn("does not approve or sanction benefits", html)
         self.assertIn("Print / Save as PDF", html)
-        self.assertIn("Awaiting trained model", html)
+        self.assertIn("Sentinel-2 Level-2A", html)
+        self.assertNotIn("synthetic-tn-scene", html)
         self.assertIn('placeholder="All tribal groups"', html)
         self.assertIn('placeholder="All years"', html)
-        self.assertIn('value="TN-FRA-WATER-SUPPORT"', html)
-        self.assertIn('<option value="recommended">Recommended</option>', html)
-        self.assertIn('<option value="not_recommended">Not recommended</option>', html)
+        self.assertIn('All schemes', html)
+        self.assertIn('<option value="recommended">Potential candidate</option>', html)
+        self.assertIn('<option value="not_recommended">Not indicated</option>', html)
         self.assertNotIn('<option value="eligible">', html)
         self.assertIn('<option value="submitted">Submitted</option>', html)
         self.assertNotIn('<option value="filed">', html)
@@ -143,13 +191,14 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn("prefers-reduced-motion", css)
         self.assertNotIn("linear-gradient", css)
 
-    def test_desktop_workspace_context_is_inset_but_mobile_remains_edge_to_edge(self):
+    def test_workspace_filter_is_a_responsive_popover_instead_of_a_top_toolbar(self):
         css = (UI_ROOT / "styles.css").read_text(encoding="utf-8")
 
         self.assertIn(".application { min-width: 0; padding-top: var(--space-4); }", css)
-        self.assertIn("margin: 0 var(--space-5)", css)
+        self.assertIn(".context-filter-panel { position: absolute;", css)
+        self.assertIn("width: min(310px, calc(100vw - 40px))", css)
         self.assertIn(".application { padding-top: 0; }", css)
-        self.assertIn(".context-bar { margin: 0;", css)
+        self.assertNotIn(".context-bar", css)
         self.assertNotIn("backdrop-filter", css)
 
     def test_fra_route_redirects_anonymous_and_serves_authenticated_session(self):

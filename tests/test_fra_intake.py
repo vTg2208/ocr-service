@@ -110,6 +110,77 @@ class FRAIntakeTests(unittest.TestCase):
                     gram_sabha_id=None, expected_revision=0, actor_id=reviewer.id,
                 )
 
+    def test_two_sessions_cannot_review_the_same_revision(self):
+        from app.db.models import AuditEvent
+        with Session(self.engine) as setup:
+            reviewer, legacy, holder = self._case(setup)
+            item = ensure_intake_for_legacy_claim(setup, legacy, actor_id=reviewer.id)
+            item_id, actor_id = item.id, reviewer.id
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current = first.get(FRAIntakeItem, item_id)
+            stale = second.get(FRAIntakeItem, item_id)
+            update_intake(first, current, target_state="ready_for_promotion", expected_revision=0,
+                          reasons=["Reviewed"], actor_id=actor_id)
+            first.commit()
+            with self.assertRaises(IntakeConflictError):
+                update_intake(second, stale, target_state="not_fra", expected_revision=0,
+                              reasons=["Different review"], actor_id=actor_id)
+            second.rollback()
+        with Session(self.engine) as check:
+            self.assertEqual(check.get(FRAIntakeItem, item_id).state, "ready_for_promotion")
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent).where(
+                AuditEvent.action == "fra_intake_reviewed")), 1)
+
+    def test_stale_promotion_cannot_duplicate_claim_geometry_or_audit(self):
+        from app.db.fra_models import FRAGeometryVersion
+        from app.db.models import AuditEvent
+        with Session(self.engine) as setup:
+            reviewer, legacy, holder = self._case(setup)
+            item = ensure_intake_for_legacy_claim(setup, legacy, actor_id=reviewer.id)
+            update_intake(setup, item, target_state="ready_for_promotion", expected_revision=0,
+                          reasons=["Reviewed"], actor_id=reviewer.id)
+            item_id, actor_id, holder_id = item.id, reviewer.id, holder.id
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current, stale = first.get(FRAIntakeItem, item_id), second.get(FRAIntakeItem, item_id)
+            promote_intake(first, current, right_type="IFR", rights_holder_id=holder_id,
+                           gram_sabha_id=None, expected_revision=1, actor_id=actor_id)
+            first.commit()
+            with self.assertRaises(IntakeConflictError):
+                promote_intake(second, stale, right_type="IFR", rights_holder_id=holder_id,
+                               gram_sabha_id=None, expected_revision=1, actor_id=actor_id)
+            second.rollback()
+        with Session(self.engine) as check:
+            self.assertEqual(check.scalar(select(func.count()).select_from(FRAClaim)), 1)
+            self.assertEqual(check.scalar(select(func.count()).select_from(FRAGeometryVersion)), 1)
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent).where(
+                AuditEvent.action == "fra_intake_promoted")), 1)
+
+    def test_review_invalidates_previously_ready_promotion(self):
+        from app.db.models import AuditEvent
+        with Session(self.engine) as setup:
+            reviewer, legacy, holder = self._case(setup)
+            item = ensure_intake_for_legacy_claim(setup, legacy, actor_id=reviewer.id)
+            update_intake(setup, item, target_state="ready_for_promotion", expected_revision=0,
+                          reasons=["Reviewed"], actor_id=reviewer.id)
+            item_id, actor_id, holder_id = item.id, reviewer.id, holder.id
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current, stale = first.get(FRAIntakeItem, item_id), second.get(FRAIntakeItem, item_id)
+            update_intake(first, current, target_state="duplicate", expected_revision=1,
+                          reasons=["Existing claim found"], actor_id=actor_id)
+            first.commit()
+            with self.assertRaises(IntakeConflictError):
+                promote_intake(second, stale, right_type="IFR", rights_holder_id=holder_id,
+                               gram_sabha_id=None, expected_revision=1, actor_id=actor_id)
+            second.rollback()
+        with Session(self.engine) as check:
+            self.assertEqual(check.get(FRAIntakeItem, item_id).state, "duplicate")
+            self.assertEqual(check.scalar(select(func.count()).select_from(FRAClaim)), 0)
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent).where(
+                AuditEvent.action == "fra_intake_promoted")), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

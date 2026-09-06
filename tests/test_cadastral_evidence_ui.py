@@ -4,7 +4,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 
-UI_ROOT = Path(__file__).parents[1] / "app" / "static" / "land-mapping"
+UI_ROOT = Path(__file__).parents[1] / "app" / "static" / "cadastral-evidence"
 LOGIN_ROOT = Path(__file__).parents[1] / "app" / "static" / "login"
 BRAND_ROOT = Path(__file__).parents[1] / "app" / "static" / "brand"
 
@@ -32,12 +32,28 @@ class StructureParser(HTMLParser):
 
 
 class LandMappingUITests(unittest.TestCase):
+    def test_cadastral_workspace_positions_patta_as_supporting_fra_evidence(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+        app_js = (UI_ROOT / "app.js").read_text(encoding="utf-8")
+        claimed_js = (UI_ROOT / "claimed-land.js").read_text(encoding="utf-8")
+
+        self.assertIn("Cadastral Evidence", html)
+        self.assertIn("Supporting FRA spatialization", html)
+        self.assertIn("Revenue / Patta document", html)
+        self.assertIn("Return to FRA Platform", html)
+        for primary_copy in (
+            "Patta Mapping", "Upload your patta", "Process another patta",
+            "Patta file", "View original patta", "Choose a patta file first",
+        ):
+            with self.subTest(copy=primary_copy):
+                self.assertNotIn(primary_copy, f"{html}\n{app_js}\n{claimed_js}")
+
     def test_fra_platform_is_a_prominent_icon_link_outside_the_tablist(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
 
         self.assertIn('class="fra-platform-link" href="/fra"', html)
         self.assertIn('src="/static/fra/icons/atlas.png"', html)
-        self.assertIn("Go to FRA Platform", html)
+        self.assertIn("Return to FRA Platform", html)
         self.assertNotIn(">Tamil Nadu FRA platform</a>", html)
         tablist = re.search(r'<nav class="app-tabs".*?>(?P<body>.*?)</nav>', html, re.DOTALL)
         self.assertIsNotNone(tablist)
@@ -64,7 +80,7 @@ class LandMappingUITests(unittest.TestCase):
         self.assertTrue({"loginForm", "accessCode", "loginButton", "loginStatus"}.issubset(parser.ids))
         self.assertIn('inputmode="numeric"', html)
         self.assertIn('maxlength="4"', html)
-        self.assertIn("Authorized registry access", html)
+        self.assertIn("Authorized FRA platform access", html)
         self.assertNotIn("demonstration", html.casefold())
 
     def test_confidence_badge_is_labeled_as_ocr_quality(self):
@@ -122,7 +138,7 @@ class LandMappingUITests(unittest.TestCase):
                 self.assertNotIn("Parcel Ledger", html)
         self.assertTrue((BRAND_ROOT / "aranyasetu-emblem.png").is_file())
 
-    def test_brand_name_precedes_the_cadastral_registry_subtitle(self):
+    def test_brand_name_precedes_the_fra_platform_subtitle(self):
         for page, html_path in (
             ("mapping", UI_ROOT / "index.html"),
             ("login", LOGIN_ROOT / "index.html"),
@@ -132,8 +148,8 @@ class LandMappingUITests(unittest.TestCase):
             self.assertIsNotNone(brand)
             with self.subTest(page=page):
                 body = brand.group("body")
-                self.assertIn("a central cadastral registry", body)
-                self.assertLess(body.index("AranyaSetu"), body.index("a central cadastral registry"))
+                self.assertIn("FRA Spatial Intelligence + DSS", body)
+                self.assertLess(body.index("AranyaSetu"), body.index("FRA Spatial Intelligence + DSS"))
 
     def test_aranyasetu_pages_use_the_emblem_led_green_palette(self):
         for page, css_path in (
@@ -178,8 +194,8 @@ class LandMappingUITests(unittest.TestCase):
         }.issubset(parser.ids))
         self.assertEqual(parser.elements_by_id["claimedLandSearch"]["tag"], "input")
         self.assertEqual(parser.elements_by_id["claimedLandList"]["tag"], "ol")
-        self.assertIn('/static/land-mapping/claimed-land.js?v=', html)
-        self.assertIn('aria-label="Search registered claims"', html)
+        self.assertIn('/static/cadastral-evidence/claimed-land.js?v=', html)
+        self.assertIn('aria-label="Search parcel links"', html)
 
 
 if __name__ == "__main__":

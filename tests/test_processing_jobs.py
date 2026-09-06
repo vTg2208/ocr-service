@@ -1,5 +1,6 @@
 import unittest
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,6 +14,8 @@ from app.services.processing_jobs import (
     complete_job,
     enqueue_job,
     fail_job,
+    heartbeat_job,
+    recover_expired_jobs,
     run_one_job,
 )
 
@@ -119,11 +122,217 @@ class ProcessingJobTests(unittest.TestCase):
                 max_attempts=2,
             )
             claim_next_job(session, worker_id="worker-a")
-            fail_job(session, job, code="provider_down", message="Offline", retriable=True)
+            fail_job(
+                session,
+                job,
+                code="provider_down",
+                message="Offline",
+                retriable=True,
+                retry_base_seconds=0,
+                retry_max_seconds=0,
+            )
             self.assertEqual(job.state, "queued")
             claim_next_job(session, worker_id="worker-b")
-            fail_job(session, job, code="provider_down", message="Offline", retriable=True)
+            fail_job(
+                session,
+                job,
+                code="provider_down",
+                message="Offline",
+                retriable=True,
+                retry_base_seconds=0,
+                retry_max_seconds=0,
+            )
             self.assertEqual(job.state, "failed")
+
+    def test_claim_creates_a_renewable_lease(self):
+        now = datetime(2026, 9, 6, 10, 0, tzinfo=timezone.utc)
+        with self.sessions() as session:
+            staff = self._staff(session)
+            job = enqueue_job(
+                session,
+                task_type="archive_extract",
+                entity_type="archive_record",
+                entity_id=uuid.uuid4(),
+                actor_id=staff.id,
+                idempotency_key="leased-job",
+                payload={},
+            )
+            job.available_at = now
+            claimed = claim_next_job(
+                session, worker_id="worker-a", lease_seconds=60, now=now
+            )
+
+            self.assertEqual(claimed.id, job.id)
+            self.assertIsNotNone(claimed.lease_token)
+            self.assertEqual(claimed.heartbeat_at, now)
+            self.assertEqual(claimed.lease_expires_at, now + timedelta(seconds=60))
+
+            heartbeat_job(
+                session,
+                job_id=job.id,
+                worker_id="worker-a",
+                lease_token=claimed.lease_token,
+                lease_seconds=60,
+                now=now + timedelta(seconds=30),
+            )
+            self.assertEqual(job.heartbeat_at, now + timedelta(seconds=30))
+            self.assertEqual(job.lease_expires_at, now + timedelta(seconds=90))
+
+    def test_expired_worker_lease_requeues_a_stranded_job_with_backoff(self):
+        now = datetime(2026, 9, 6, 10, 0, tzinfo=timezone.utc)
+        with self.sessions() as session:
+            staff = self._staff(session)
+            job = enqueue_job(
+                session,
+                task_type="archive_extract",
+                entity_type="archive_record",
+                entity_id=uuid.uuid4(),
+                actor_id=staff.id,
+                idempotency_key="stranded-job",
+                payload={},
+            )
+            job.available_at = now
+            claim_next_job(session, worker_id="dead-worker", lease_seconds=10, now=now)
+            recovered = recover_expired_jobs(
+                session,
+                now=now + timedelta(seconds=11),
+                retry_base_seconds=15,
+                retry_max_seconds=60,
+            )
+
+            self.assertEqual(recovered, [job.id])
+            self.assertEqual(job.state, "queued")
+            self.assertIsNone(job.worker_id)
+            self.assertIsNone(job.lease_token)
+            self.assertEqual(job.error_code, "worker_lease_expired")
+            self.assertEqual(job.available_at, now + timedelta(seconds=26))
+            self.assertEqual(job.failure_history_json[-1]["worker_id"], "dead-worker")
+
+    def test_expired_lease_exhaustion_marks_job_failed(self):
+        now = datetime(2026, 9, 6, 10, 0, tzinfo=timezone.utc)
+        with self.sessions() as session:
+            staff = self._staff(session)
+            job = enqueue_job(
+                session,
+                task_type="archive_extract",
+                entity_type="archive_record",
+                entity_id=uuid.uuid4(),
+                actor_id=staff.id,
+                idempotency_key="stranded-final-attempt",
+                payload={},
+                max_attempts=1,
+            )
+            job.available_at = now
+            claim_next_job(session, worker_id="dead-worker", lease_seconds=10, now=now)
+            recover_expired_jobs(session, now=now + timedelta(seconds=11))
+
+            self.assertEqual(job.state, "failed")
+            self.assertEqual(job.error_code, "worker_lease_expired")
+            self.assertEqual(job.completed_at, now + timedelta(seconds=11))
+
+    def test_prelease_running_job_is_recovered_instead_of_remaining_stranded(self):
+        now = datetime(2026, 9, 6, 10, 0, tzinfo=timezone.utc)
+        with self.sessions() as session:
+            staff = self._staff(session)
+            job = enqueue_job(
+                session,
+                task_type="archive_extract",
+                entity_type="archive_record",
+                entity_id=uuid.uuid4(),
+                actor_id=staff.id,
+                idempotency_key="prelease-running-job",
+                payload={},
+            )
+            job.state = "running"
+            job.attempts = 1
+            job.worker_id = "legacy-worker"
+            job.lease_token = None
+            job.lease_expires_at = None
+
+            recovered = recover_expired_jobs(
+                session,
+                now=now,
+                retry_base_seconds=0,
+                retry_max_seconds=0,
+            )
+
+            self.assertEqual(recovered, [job.id])
+            self.assertEqual(job.state, "queued")
+            self.assertEqual(job.error_code, "worker_lease_expired")
+
+    def test_retriable_failures_use_bounded_exponential_backoff_and_history(self):
+        now = datetime(2026, 9, 6, 10, 0, tzinfo=timezone.utc)
+        with self.sessions() as session:
+            staff = self._staff(session)
+            job = enqueue_job(
+                session,
+                task_type="asset_inference",
+                entity_type="village",
+                entity_id=uuid.uuid4(),
+                actor_id=staff.id,
+                idempotency_key="backoff-job",
+                payload={},
+                max_attempts=3,
+            )
+            job.available_at = now
+            claim_next_job(session, worker_id="worker-a", now=now)
+            fail_job(
+                session,
+                job,
+                code="provider_down",
+                message="Offline",
+                retriable=True,
+                now=now,
+                retry_base_seconds=10,
+                retry_max_seconds=15,
+            )
+            self.assertEqual(job.available_at, now + timedelta(seconds=10))
+            self.assertEqual(job.failure_history_json[-1]["attempt"], 1)
+
+            claim_next_job(session, worker_id="worker-b", now=now + timedelta(seconds=10))
+            fail_job(
+                session,
+                job,
+                code="provider_down",
+                message="Still offline",
+                retriable=True,
+                now=now + timedelta(seconds=10),
+                retry_base_seconds=10,
+                retry_max_seconds=15,
+            )
+            self.assertEqual(job.available_at, now + timedelta(seconds=25))
+            self.assertEqual(len(job.failure_history_json), 2)
+
+    def test_stale_worker_cannot_complete_a_reclaimed_job(self):
+        now = datetime(2026, 9, 6, 10, 0, tzinfo=timezone.utc)
+        with self.sessions() as session:
+            staff = self._staff(session)
+            job = enqueue_job(
+                session,
+                task_type="archive_extract",
+                entity_type="archive_record",
+                entity_id=uuid.uuid4(),
+                actor_id=staff.id,
+                idempotency_key="fenced-job",
+                payload={},
+            )
+            job.available_at = now
+            first = claim_next_job(session, worker_id="worker-a", lease_seconds=10, now=now)
+            old_token = first.lease_token
+            recover_expired_jobs(
+                session,
+                now=now + timedelta(seconds=11),
+                retry_base_seconds=0,
+                retry_max_seconds=0,
+            )
+            second = claim_next_job(
+                session, worker_id="worker-b", lease_seconds=60, now=now + timedelta(seconds=11)
+            )
+            self.assertNotEqual(second.lease_token, old_token)
+
+            with self.assertRaisesRegex(Exception, "lease"):
+                complete_job(session, second, result={"stale": True}, lease_token=old_token)
+            self.assertEqual(job.state, "running")
 
     def test_run_one_job_rolls_back_partial_handler_rows_before_failure_state(self):
         with self.sessions() as session:

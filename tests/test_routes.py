@@ -5,17 +5,17 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from app.api import routes
+from app.api import document_intelligence_routes as routes
 from app.main import app
 
 
 class OCRRouteTests(unittest.TestCase):
-    def test_image_upload_sends_original_color_image_to_paddle(self):
+    def test_image_upload_preprocesses_document_before_paddle(self):
         class FakeOCREngine:
             @staticmethod
             def extract_text(image):
-                if image.shape != (24, 32, 3):
-                    raise AssertionError("Expected the decoded color image")
+                if image.shape != (48, 64):
+                    raise AssertionError("Expected the prepared document image")
                 return "detected text", 91.5
 
         content = io.BytesIO()
@@ -25,8 +25,8 @@ class OCRRouteTests(unittest.TestCase):
             with patch.object(
                 routes._image_processor,
                 "preprocess",
-                side_effect=AssertionError("PaddleOCR should receive the original color image"),
-            ):
+                return_value=__import__("numpy").zeros((48, 64), dtype="uint8"),
+            ) as preprocess:
                 response = TestClient(app).post(
                     "/ocr",
                     files={"file": ("sample.png", content.getvalue(), "image/png")},
@@ -36,6 +36,7 @@ class OCRRouteTests(unittest.TestCase):
         self.assertEqual(response.json()["text"], "detected text")
         self.assertEqual(response.json()["quality"]["model_confidence"], 91.5)
         self.assertFalse(response.json()["quality"]["confidence_is_text_accuracy"])
+        preprocess.assert_called_once()
 
 
 if __name__ == "__main__":

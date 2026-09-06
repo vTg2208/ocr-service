@@ -87,6 +87,14 @@ class FRAArchiveJobHandlerTests(unittest.TestCase):
                     0.91,
                     "paddle-ta-v1",
                     25,
+                    [{
+                        "page_number": 1,
+                        "confidence": 0.91,
+                        "text": (
+                            "Claim No: TN-IFR-77\nClaimant: Ramu\nDistrict: Salem\n"
+                            "Block: Yercaud\nVillage: Kottur\nRight Type: IFR\nStatus: Pending"
+                        ),
+                    }],
                 ),
             ):
                 result = get_job_handler("archive_extract")(session, job)
@@ -94,6 +102,12 @@ class FRAArchiveJobHandlerTests(unittest.TestCase):
             self.assertEqual(run.standardized_json["claim_number"], "TN-IFR-77")
             self.assertEqual(run.entity_model_version_id, model.id)
             self.assertEqual(run.ocr_model_version, "paddle-ta-v1")
+            self.assertEqual(
+                next(field for field in run.field_reviews if field.field_name == "village").source_page,
+                1,
+            )
+            self.assertEqual(run.provenance_json["ocr_pages"][0]["page_number"], 1)
+            self.assertNotIn("text", run.provenance_json["ocr_pages"][0])
             self.assertEqual(document.ocr_status, "completed")
             self.assertNotIn("stored bytes", str(run.provenance_json))
 

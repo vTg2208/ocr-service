@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base
 from app.db.models import Claim, Document, Parcel, User
-from app.services.claim_eligibility import ClaimUnavailableError, ensure_land_available
+from app.services.cadastral_link_eligibility import ParcelLinkUnavailableError, ensure_parcel_link_available
 
 
 def polygon(x1=0, y1=0, x2=1, y2=1):
@@ -45,8 +45,8 @@ class ClaimEligibilityTests(unittest.TestCase):
     def test_same_parcel_is_unavailable(self):
         with Session(self.engine) as session:
             parcel, claim = self._claimed_parcel(session)
-            with self.assertRaises(ClaimUnavailableError) as raised:
-                ensure_land_available(session, parcel.id)
+            with self.assertRaises(ParcelLinkUnavailableError) as raised:
+                ensure_parcel_link_available(session, parcel.id)
         self.assertEqual(raised.exception.reason, "same_parcel")
         self.assertEqual(raised.exception.blocking_claim_id, claim.id)
 
@@ -59,8 +59,8 @@ class ClaimEligibilityTests(unittest.TestCase):
                 geometry=polygon(1, 1, 3, 3), source="Synthetic test data",
             )
             session.add(candidate); session.flush()
-            with self.assertRaises(ClaimUnavailableError) as raised:
-                ensure_land_available(session, candidate.id, min_sqm=.1, min_percent=1)
+            with self.assertRaises(ParcelLinkUnavailableError) as raised:
+                ensure_parcel_link_available(session, candidate.id, min_sqm=.1, min_percent=1)
         self.assertEqual(raised.exception.reason, "spatial_overlap")
 
     def test_touching_boundary_does_not_block_claim(self):
@@ -72,7 +72,7 @@ class ClaimEligibilityTests(unittest.TestCase):
                 geometry=polygon(1, 0, 2, 1), source="Synthetic test data",
             )
             session.add(candidate); session.flush()
-            self.assertIsNone(ensure_land_available(session, candidate.id, min_sqm=.1, min_percent=1))
+            self.assertIsNone(ensure_parcel_link_available(session, candidate.id, min_sqm=.1, min_percent=1))
 
 
 if __name__ == "__main__":

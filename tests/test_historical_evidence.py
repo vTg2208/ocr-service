@@ -136,5 +136,34 @@ class HistoricalEvidenceTests(unittest.TestCase):
             self.assertEqual(calls[0][0], "https://models.example.org/historical")
             self.assertNotIn("secret=x", repr(processor))
 
+    def test_two_sessions_review_same_artifact_without_losing_evidence(self):
+        from app.db.models import AuditEvent
+        from app.services.historical_evidence import HistoricalReviewConflict, review_historical_artifact
+        with self.factory() as setup:
+            reviewer = User(external_id="historical-reviewer", role="reviewer")
+            setup.add(reviewer)
+            job = self.job(setup)
+            process_historical_evidence_job(setup, job, stac_client=YearSTAC(), processor=Processor(),
+                                            storage=MemoryStorage(), model=setup.get(ModelVersion, self.model_id))
+            artifact = setup.scalar(select(ImageryArtifact))
+            artifact_id, reviewer_id, statistics = artifact.id, reviewer.id, dict(artifact.statistics_json)
+            setup.commit()
+        with self.factory() as first, self.factory() as second:
+            current, stale = first.get(ImageryArtifact, artifact_id), second.get(ImageryArtifact, artifact_id)
+            review_historical_artifact(first, current, verification_state="verified", notes="First review",
+                                       expected_reviewed_at=None, reviewer_id=reviewer_id)
+            first.commit()
+            with self.assertRaises(HistoricalReviewConflict):
+                review_historical_artifact(second, stale, verification_state="rejected", notes="Stale review",
+                                           expected_reviewed_at=None, reviewer_id=reviewer_id)
+            second.rollback()
+        with self.factory() as check:
+            row = check.get(ImageryArtifact, artifact_id)
+            self.assertEqual(row.verification_state, "verified")
+            self.assertEqual(row.statistics_json, statistics)
+            self.assertEqual(row.provenance_json["reviewer_notes"], "First review")
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent).where(
+                AuditEvent.action == "fra_historical_evidence_reviewed")), 1)
+
 
 if __name__ == "__main__": unittest.main()

@@ -89,6 +89,24 @@ class FRAReferenceSpatialTests(unittest.TestCase):
                 [],
             )
 
+    def test_groundwater_reference_is_contextual_evidence(self):
+        with Session(self.engine) as session:
+            self.add_reference(
+                session, "groundwater_stress", "groundwater-stress", OVERLAP
+            )
+            findings = evaluate_reference_intersections(
+                session,
+                CANDIDATE,
+                {"groundwater_stress"},
+                "fra-reference-v2",
+            )
+
+            self.assertEqual(len(findings), 1)
+            self.assertEqual(findings[0].outcome, "context")
+            self.assertEqual(
+                findings[0].reason, "overlaps_groundwater_stress_reference"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

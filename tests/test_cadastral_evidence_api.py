@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api import patta_routes
+from app.api import cadastral_evidence_routes
 from app.db.base import Base
 from app.db.models import AuditEvent, Claim, Document, Parcel, User
 from app.db.session import get_db
@@ -54,8 +54,8 @@ class LandAPITests(unittest.TestCase):
             with self.factory() as session:
                 yield session
         app.dependency_overrides[get_db] = db_override
-        self.old_upload_dir = patta_routes.settings.secure_upload_dir
-        patta_routes.settings.secure_upload_dir = self.temp.name
+        self.old_upload_dir = cadastral_evidence_routes.settings.secure_upload_dir
+        cadastral_evidence_routes.settings.secure_upload_dir = self.temp.name
         with self.factory() as session:
             self.user = User(external_id="alice", display_name="Alice", role="user")
             self.other = User(external_id="bob", display_name="Bob", role="user")
@@ -73,7 +73,7 @@ class LandAPITests(unittest.TestCase):
 
     def tearDown(self):
         app.dependency_overrides.clear()
-        patta_routes.settings.secure_upload_dir = self.old_upload_dir
+        cadastral_evidence_routes.settings.secure_upload_dir = self.old_upload_dir
         self.temp.cleanup()
 
     def headers(self, external_id="alice", role="user", idem=None):
@@ -81,9 +81,9 @@ class LandAPITests(unittest.TestCase):
         token = jwt.encode(
             {
                 "sub": external_id, "iat": now, "exp": now + timedelta(minutes=5),
-                "iss": patta_routes.settings.auth_issuer,
-                "aud": patta_routes.settings.auth_audience,
-            }, patta_routes.settings.auth_secret,
+                "iss": cadastral_evidence_routes.settings.auth_issuer,
+                "aud": cadastral_evidence_routes.settings.auth_audience,
+            }, cadastral_evidence_routes.settings.auth_secret,
             algorithm="HS256",
         )
         value = {"Authorization": f"Bearer {token}"}
@@ -91,29 +91,29 @@ class LandAPITests(unittest.TestCase):
         return value
 
     def process(self, user="alice", idem="upload-1"):
-        with patch("app.api.patta_routes.ocr_endpoint", new=AsyncMock(return_value=ocr_response())):
+        with patch("app.api.cadastral_evidence_routes.ocr_endpoint", new=AsyncMock(return_value=ocr_response())):
             return self.client.post(
-                "/api/pattas/process", headers=self.headers(user, idem=idem),
+                "/api/cadastral-evidence/documents/process", headers=self.headers(user, idem=idem),
                 files={"file": ("patta.png", png_bytes(), "image/png")},
             )
 
     def create_conflict(self, prefix="review"):
         first_doc = self.process(idem=f"{prefix}-upload-a").json()["document_id"]
         fields = {"document_id": first_doc, "state": "Tamil Nadu", "district": "Thanjavur", "taluk": "Kumbakonam", "village": "Example Village", "survey_number": "701", "subdivision_number": "4B", "document_area_sqm": 1200}
-        self.client.post("/api/parcels/resolve", headers=self.headers(), json=fields)
-        self.client.post("/api/claims", headers=self.headers(idem=f"{prefix}-claim-a"), json={"document_id": first_doc, "parcel_id": str(self.parcel_id), "confirmed_fields": fields})
+        self.client.post("/api/cadastral-evidence/parcels/resolve", headers=self.headers(), json=fields)
+        self.client.post("/api/cadastral-evidence/parcel-links", headers=self.headers(idem=f"{prefix}-claim-a"), json={"document_id": first_doc, "parcel_id": str(self.parcel_id), "confirmed_fields": fields})
         second_doc = self.process(user="bob", idem=f"{prefix}-upload-b").json()["document_id"]
         fields["document_id"] = second_doc
-        self.client.post("/api/parcels/resolve", headers=self.headers("bob"), json=fields)
-        return self.client.post("/api/claims", headers=self.headers("bob", idem=f"{prefix}-claim-b"), json={"document_id": second_doc, "parcel_id": str(self.parcel_id), "confirmed_fields": fields})
+        self.client.post("/api/cadastral-evidence/parcels/resolve", headers=self.headers("bob"), json=fields)
+        return self.client.post("/api/cadastral-evidence/parcel-links", headers=self.headers("bob", idem=f"{prefix}-claim-b"), json={"document_id": second_doc, "parcel_id": str(self.parcel_id), "confirmed_fields": fields})
 
     def test_requires_authentication(self):
-        response = self.client.get(f"/api/parcels/{self.parcel_id}")
+        response = self.client.get(f"/api/cadastral-evidence/parcels/{self.parcel_id}")
         self.assertEqual(response.status_code, 401)
 
     def test_rejects_tampered_authentication_token(self):
         response = self.client.get(
-            f"/api/parcels/{self.parcel_id}", headers={"Authorization": "Bearer invalid"}
+            f"/api/cadastral-evidence/parcels/{self.parcel_id}", headers={"Authorization": "Bearer invalid"}
         )
         self.assertEqual(response.status_code, 401)
 
@@ -121,13 +121,13 @@ class LandAPITests(unittest.TestCase):
         token = jwt.encode(
             {
                 "sub": "alice", "iat": datetime.now(timezone.utc),
-                "iss": patta_routes.settings.auth_issuer,
-                "aud": patta_routes.settings.auth_audience,
+                "iss": cadastral_evidence_routes.settings.auth_issuer,
+                "aud": cadastral_evidence_routes.settings.auth_audience,
             },
-            patta_routes.settings.auth_secret, algorithm="HS256",
+            cadastral_evidence_routes.settings.auth_secret, algorithm="HS256",
         )
         response = self.client.get(
-            f"/api/parcels/{self.parcel_id}", headers={"Authorization": f"Bearer {token}"}
+            f"/api/cadastral-evidence/parcels/{self.parcel_id}", headers={"Authorization": f"Bearer {token}"}
         )
         self.assertEqual(response.status_code, 401)
 
@@ -149,18 +149,21 @@ class LandAPITests(unittest.TestCase):
             "taluk": "Kumbakonam", "village": "Example Village", "survey_number": "701",
             "subdivision_number": "4B", "document_area_sqm": 1200,
         }
-        resolution = self.client.post("/api/parcels/resolve", headers=self.headers(), json=corrected)
+        resolution = self.client.post("/api/cadastral-evidence/parcels/resolve", headers=self.headers(), json=corrected)
         self.assertEqual(resolution.json()["status"], "matched")
         claim_payload = {"document_id": first_doc, "parcel_id": str(self.parcel_id), "confirmed_fields": corrected}
-        first_claim = self.client.post("/api/claims", headers=self.headers(idem="claim-a"), json=claim_payload)
+        first_claim = self.client.post("/api/cadastral-evidence/parcel-links", headers=self.headers(idem="claim-a"), json=claim_payload)
         second_doc = self.process(user="bob", idem="upload-b").json()["document_id"]
         corrected["document_id"] = second_doc
-        self.client.post("/api/parcels/resolve", headers=self.headers("bob"), json=corrected)
+        self.client.post("/api/cadastral-evidence/parcels/resolve", headers=self.headers("bob"), json=corrected)
         claim_payload["document_id"] = second_doc; claim_payload["confirmed_fields"] = corrected
-        second_claim = self.client.post("/api/claims", headers=self.headers("bob", idem="claim-b"), json=claim_payload)
+        second_claim = self.client.post("/api/cadastral-evidence/parcel-links", headers=self.headers("bob", idem="claim-b"), json=claim_payload)
         self.assertEqual(first_claim.json()["status"], "matched")
         self.assertEqual(second_claim.status_code, 409)
-        self.assertEqual(second_claim.json()["message"], "This land is already claimed.")
+        self.assertEqual(
+            second_claim.json()["message"],
+            "This parcel already has a supporting cadastral link.",
+        )
         self.assertEqual(second_claim.json()["reason"], "same_parcel")
         self.assertNotIn("claimant_id", second_claim.text)
         self.assertNotIn("blocking_claim_id", second_claim.text)
@@ -170,7 +173,7 @@ class LandAPITests(unittest.TestCase):
         self.assertIsNotNone(rejected)
 
     def test_parcel_endpoint_never_returns_claimant_or_document(self):
-        response = self.client.get(f"/api/parcels/{self.parcel_id}", headers=self.headers())
+        response = self.client.get(f"/api/cadastral-evidence/parcels/{self.parcel_id}", headers=self.headers())
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("claimant", response.text)
         self.assertNotIn("document", response.text)
@@ -182,18 +185,18 @@ class LandAPITests(unittest.TestCase):
             "taluk": "Kumbakonam", "village": "Example Village", "survey_number": "701",
             "subdivision_number": "4B", "document_area_sqm": 1200,
         }
-        self.client.post("/api/parcels/resolve", headers=self.headers(), json=fields)
+        self.client.post("/api/cadastral-evidence/parcels/resolve", headers=self.headers(), json=fields)
         claim = self.client.post(
-            "/api/claims", headers=self.headers(idem="view-patta-claim"),
+            "/api/cadastral-evidence/parcel-links", headers=self.headers(idem="view-patta-claim"),
             json={
                 "document_id": document_id, "parcel_id": str(self.parcel_id),
                 "confirmed_fields": fields,
             },
         ).json()
 
-        denied = self.client.get(f"/api/claims/{claim['claim_id']}/patta")
+        denied = self.client.get(f"/api/cadastral-evidence/parcel-links/{claim['claim_id']}/source-document")
         viewed = self.client.get(
-            f"/api/claims/{claim['claim_id']}/patta", headers=self.headers("bob")
+            f"/api/cadastral-evidence/parcel-links/{claim['claim_id']}/source-document", headers=self.headers("bob")
         )
 
         self.assertEqual(denied.status_code, 401)
@@ -215,9 +218,9 @@ class LandAPITests(unittest.TestCase):
             "taluk": "Kumbakonam", "village": "Example Village", "survey_number": "701",
             "subdivision_number": "4B", "document_area_sqm": 1200,
         }
-        self.client.post("/api/parcels/resolve", headers=self.headers(), json=fields)
+        self.client.post("/api/cadastral-evidence/parcels/resolve", headers=self.headers(), json=fields)
         first = self.client.post(
-            "/api/claims", headers=self.headers(idem="registry-claim-a"),
+            "/api/cadastral-evidence/parcel-links", headers=self.headers(idem="registry-claim-a"),
             json={"document_id": document_id, "parcel_id": str(self.parcel_id), "confirmed_fields": fields},
         ).json()
 
@@ -244,29 +247,32 @@ class LandAPITests(unittest.TestCase):
             session.add(second); session.commit()
             second_id = second.id
 
-        anonymous = self.client.get("/api/claims/registry")
-        response = self.client.get("/api/claims/registry", headers=self.headers())
+        anonymous = self.client.get("/api/cadastral-evidence/parcel-links")
+        response = self.client.get("/api/cadastral-evidence/parcel-links", headers=self.headers())
         payload = response.json()
 
         self.assertEqual(anonymous.status_code, 401)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["summary"], {
+            "parcel_link_count": 2,
+            "linked_official_area_sqm": 3200.0,
             "claimed_parcel_count": 2,
             "claimed_official_area_sqm": 3200.0,
         })
+        self.assertEqual(payload["parcel_links"], payload["claims"])
         self.assertEqual(len(payload["claims"]), 2)
         by_id = {item["claim_id"]: item for item in payload["claims"]}
         self.assertEqual(by_id[first["claim_id"]]["parcel"]["geometry"], GEOMETRY)
         self.assertEqual(
             by_id[str(second_id)]["document"]["view_url"],
-            f"/api/claims/{second_id}/patta",
+            f"/api/cadastral-evidence/parcel-links/{second_id}/source-document",
         )
         self.assertNotIn("claimant_id", response.text)
         self.assertNotIn("storage_key", response.text)
 
     def test_admin_conflicts_rejects_normal_user_and_allows_admin(self):
-        denied = self.client.get("/api/admin/conflicts", headers=self.headers())
-        allowed = self.client.get("/api/admin/conflicts", headers=self.headers("admin", "admin"))
+        denied = self.client.get("/api/cadastral-evidence/admin/conflicts", headers=self.headers())
+        allowed = self.client.get("/api/cadastral-evidence/admin/conflicts", headers=self.headers("admin", "admin"))
         self.assertEqual(denied.status_code, 403)
         self.assertEqual(allowed.status_code, 200)
 
@@ -277,7 +283,21 @@ class LandAPITests(unittest.TestCase):
         self.assertIn('id="fieldForm"', response.text)
         self.assertIn('id="parcelMap"', response.text)
         self.assertIn('id="claimButton"', response.text)
-        self.assertIn('/static/land-mapping/app.js?v=', response.text)
+        self.assertIn('/static/cadastral-evidence/app.js?v=', response.text)
+
+    def test_legacy_named_paths_remain_undocumented_compatibility_aliases(self):
+        redirect = self.client.get("/land-mapping", follow_redirects=False)
+        old_parcel = self.client.get(
+            f"/api/parcels/{self.parcel_id}", headers=self.headers()
+        )
+        old_registry = self.client.get("/api/claims/registry", headers=self.headers())
+        schema_paths = app.openapi()["paths"]
+
+        self.assertEqual((redirect.status_code, redirect.headers["location"]), (308, "/cadastral-evidence"))
+        self.assertEqual(old_parcel.status_code, 200)
+        self.assertEqual(old_registry.status_code, 200)
+        self.assertNotIn("/api/parcels/{parcel_id}", schema_paths)
+        self.assertNotIn("/api/claims/registry", schema_paths)
 
     def test_root_redirects_to_dedicated_login_page(self):
         root = self.client.get("/", follow_redirects=False)
@@ -289,15 +309,15 @@ class LandAPITests(unittest.TestCase):
         self.assertIn('id="loginForm"', login.text)
 
     def test_ui_static_assets_must_revalidate_after_a_deployment(self):
-        response = self.client.get("/static/land-mapping/app.js")
+        response = self.client.get("/static/cadastral-evidence/app.js")
         self.assertEqual(response.status_code, 200)
         self.assertIn("no-cache", response.headers.get("cache-control", ""))
 
     def test_rejected_competing_claim_does_not_create_misleading_conflict_notifications(self):
         response = self.create_conflict("prevented")
         self.assertEqual(response.status_code, 409)
-        alice = self.client.get("/api/notifications/mine", headers=self.headers()).json()
-        bob = self.client.get("/api/notifications/mine", headers=self.headers("bob")).json()
+        alice = self.client.get("/api/cadastral-evidence/notifications/mine", headers=self.headers()).json()
+        bob = self.client.get("/api/cadastral-evidence/notifications/mine", headers=self.headers("bob")).json()
         self.assertEqual((alice, bob), ([], []))
 
 

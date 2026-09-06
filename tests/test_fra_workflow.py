@@ -150,6 +150,93 @@ class FRAWorkflowTests(unittest.TestCase):
                     request_id="title-invalid",
                 )
 
+    def test_stale_lifecycle_cannot_record_a_second_decision(self):
+        from sqlalchemy import func
+        from app.db.fra_models import FRADecision
+        with Session(self.engine) as setup:
+            setup.get(FRAClaim, self.claim_id).status = "submitted"
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current, stale = first.get(FRAClaim, self.claim_id), second.get(FRAClaim, self.claim_id)
+            transition_claim(first, current, target_status="gram_sabha_verified", authority_level="frc",
+                             outcome="verified", reasons=[], actor_id=self.reviewer_id, request_id=None)
+            first.commit()
+            with self.assertRaises(InvalidTransitionError):
+                transition_claim(second, stale, target_status="withdrawn", authority_level="frc",
+                                 outcome="withdrawn", reasons=[], actor_id=self.reviewer_id, request_id=None)
+            second.rollback()
+        with Session(self.engine) as check:
+            self.assertEqual(check.get(FRAClaim, self.claim_id).status, "gram_sabha_verified")
+            self.assertEqual(check.scalar(select(func.count()).select_from(FRADecision)), 1)
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent)), 1)
+
+    def test_stale_granted_claim_cannot_issue_title_after_supersession(self):
+        from sqlalchemy import func
+        from app.db.fra_models import FRATitle
+        with Session(self.engine) as setup:
+            setup.get(FRAClaim, self.claim_id).status = "granted"
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current, stale = first.get(FRAClaim, self.claim_id), second.get(FRAClaim, self.claim_id)
+            list(stale.titles)
+            transition_claim(first, current, target_status="superseded", authority_level="dlc",
+                             outcome="superseded", reasons=["New adjudication"], actor_id=self.reviewer_id, request_id=None)
+            first.commit()
+            with self.assertRaises(TitleIssuanceError):
+                issue_title(second, stale, title_number="STALE", geometry_version_id=None,
+                            issued_by=self.reviewer_id, metadata={}, request_id=None)
+            second.rollback()
+        with Session(self.engine) as check:
+            self.assertEqual(check.scalar(select(func.count()).select_from(FRATitle)), 0)
+
+    def test_stale_title_allocation_conflicts_then_retry_is_consecutive(self):
+        from app.db.fra_models import FRATitle
+        with Session(self.engine) as setup:
+            setup.get(FRAClaim, self.claim_id).status = "granted"
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current, stale = first.get(FRAClaim, self.claim_id), second.get(FRAClaim, self.claim_id)
+            list(stale.titles)
+            issue_title(first, current, title_number="FIRST", geometry_version_id=None,
+                        issued_by=self.reviewer_id, metadata={}, request_id=None)
+            first.commit()
+            with self.assertRaises(TitleIssuanceError):
+                issue_title(second, stale, title_number="SECOND", geometry_version_id=None,
+                            issued_by=self.reviewer_id, metadata={}, request_id=None)
+            second.rollback()
+            second.refresh(stale)
+            issue_title(second, stale, title_number="SECOND", geometry_version_id=None,
+                        issued_by=self.reviewer_id, metadata={}, request_id=None)
+            second.commit()
+        with Session(self.engine) as check:
+            rows = check.scalars(select(FRATitle).order_by(FRATitle.version)).all()
+            self.assertEqual([(row.version, row.active) for row in rows], [(1, False), (2, True)])
+
+    def test_duplicate_title_number_rollback_preserves_active_title_and_token(self):
+        from sqlalchemy import func
+        from sqlalchemy.exc import IntegrityError
+        from app.db.fra_models import FRATitle
+        with Session(self.engine) as setup:
+            claim = setup.get(FRAClaim, self.claim_id)
+            claim.status = "granted"
+            issue_title(setup, claim, title_number="EXISTING", geometry_version_id=None,
+                        issued_by=self.reviewer_id, metadata={}, request_id=None)
+            setup.commit()
+            token = claim.updated_at
+        with Session(self.engine) as session:
+            claim = session.get(FRAClaim, self.claim_id)
+            with self.assertRaises(IntegrityError):
+                issue_title(session, claim, title_number="EXISTING", geometry_version_id=None,
+                            issued_by=self.reviewer_id, metadata={}, request_id=None)
+                session.commit()
+            session.rollback()
+        with Session(self.engine) as check:
+            title = check.scalar(select(FRATitle))
+            self.assertTrue(title.active)
+            self.assertEqual(title.version, 1)
+            self.assertEqual(check.get(FRAClaim, self.claim_id).updated_at, token)
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent)), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,15 +7,15 @@ from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.fra_operational_models import FRAIntakeItem
 from app.db.models import AuditEvent, Claim, ClaimConflict, Document, OCRResult, Parcel, User
-from app.services.claim_eligibility import ClaimUnavailableError
-from app.services.claim_service import ClaimService, ordered_claim_pair
+from app.services.cadastral_link_eligibility import ParcelLinkUnavailableError
+from app.services.cadastral_link_service import CadastralLinkService, ordered_link_pair
 
 
 def polygon(x1=0, y1=0, x2=1, y2=1):
     return {"type": "MultiPolygon", "coordinates": [[[[x1, y1], [x2, y1], [x2, y2], [x1, y2], [x1, y1]]]]}
 
 
-class ClaimServiceTests(unittest.TestCase):
+class CadastralLinkServiceTests(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:")
         Base.metadata.create_all(self.engine)
@@ -57,18 +57,18 @@ class ClaimServiceTests(unittest.TestCase):
 
     def test_orders_conflict_pair_deterministically(self):
         high, low = uuid.UUID(int=2), uuid.UUID(int=1)
-        self.assertEqual(ordered_claim_pair(high, low), (low, high))
+        self.assertEqual(ordered_link_pair(high, low), (low, high))
 
     def test_second_active_claim_is_rejected_without_creating_a_second_claim(self):
         with Session(self.engine) as session:
             self._mark_candidate(session, self.document_a_id)
             self._mark_candidate(session, self.document_b_id)
-            service = ClaimService(session)
+            service = CadastralLinkService(session)
             first = service.submit(
                 claimant_id=self.user_a_id, document_id=self.document_a_id, parcel_id=self.parcel_id,
                 confirmed_fields={"document_area_sqm": 1200}, idempotency_key="claim-a", request_id="r1",
             )
-            with self.assertRaises(ClaimUnavailableError) as raised:
+            with self.assertRaises(ParcelLinkUnavailableError) as raised:
                 service.submit(
                     claimant_id=self.user_b_id, document_id=self.document_b_id, parcel_id=self.parcel_id,
                     confirmed_fields={"document_area_sqm": 1200}, idempotency_key="claim-b", request_id="r2",
@@ -83,7 +83,7 @@ class ClaimServiceTests(unittest.TestCase):
     def test_duplicate_idempotency_key_returns_same_claim_without_duplicate_conflict(self):
         with Session(self.engine) as session:
             self._mark_candidate(session, self.document_a_id)
-            service = ClaimService(session)
+            service = CadastralLinkService(session)
             first = service.submit(
                 claimant_id=self.user_a_id, document_id=self.document_a_id, parcel_id=self.parcel_id,
                 confirmed_fields={}, idempotency_key="same", request_id="r1",
@@ -107,13 +107,13 @@ class ClaimServiceTests(unittest.TestCase):
             second_document = self._document(session, user, "c")
             session.flush()
             self._mark_candidate(session, second_document.id)
-            service = ClaimService(session)
+            service = CadastralLinkService(session)
             first = service.submit(
                 claimant_id=self.user_a_id, document_id=self.document_a_id,
                 parcel_id=self.parcel_id, confirmed_fields={},
                 idempotency_key="first-supporting-document", request_id="r1",
             )
-            with self.assertRaises(ClaimUnavailableError):
+            with self.assertRaises(ParcelLinkUnavailableError):
                 service.submit(
                     claimant_id=self.user_a_id, document_id=second_document.id,
                     parcel_id=self.parcel_id, confirmed_fields={},
@@ -129,7 +129,7 @@ class ClaimServiceTests(unittest.TestCase):
 
     def test_rejects_document_owned_by_another_user_or_unresolved_parcel(self):
         with Session(self.engine) as session:
-            service = ClaimService(session)
+            service = CadastralLinkService(session)
             with self.assertRaises(PermissionError):
                 service.submit(
                     claimant_id=self.user_a_id, document_id=self.document_b_id, parcel_id=self.parcel_id,
@@ -147,7 +147,7 @@ class ClaimServiceTests(unittest.TestCase):
     def test_rolls_back_claim_when_conflict_detector_fails(self):
         with Session(self.engine) as session:
             self._mark_candidate(session, self.document_a_id)
-            service = ClaimService(
+            service = CadastralLinkService(
                 session,
                 eligibility_checker=lambda *_, **__: (_ for _ in ()).throw(RuntimeError("boom")),
             )

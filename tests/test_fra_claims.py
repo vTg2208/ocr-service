@@ -4,10 +4,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
+from app.db.fra_completion_models import FRAVillageProfile
 from app.db.fra_models import FRAClaim, GramSabha, RightsHolder
 from app.db.models import Claim, Document, Parcel, User
 from app.services.fra_claims import (
     FRAClaimValidationError,
+    FRAClaimConflictError,
     add_geometry_version,
     create_claim,
     promote_legacy_claim,
@@ -20,7 +22,7 @@ GEOMETRY = {
 }
 
 
-class FRAClaimServiceTests(unittest.TestCase):
+class FRACadastralLinkServiceTests(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:")
         Base.metadata.create_all(self.engine)
@@ -73,7 +75,7 @@ class FRAClaimServiceTests(unittest.TestCase):
                     submitted_by=self.staff_id,
                 )
 
-    def test_promoting_legacy_claim_reuses_document_parcel_and_is_idempotent(self):
+    def test_direct_legacy_promotion_requires_a_reviewed_intake(self):
         with Session(self.engine) as session:
             parcel = Parcel(
                 state="Tamil Nadu",
@@ -108,28 +110,14 @@ class FRAClaimServiceTests(unittest.TestCase):
             session.add(legacy)
             session.commit()
 
-            first = promote_legacy_claim(
-                session,
-                legacy_claim_id=legacy.id,
-                rights_holder_id=self.individual_id,
-                right_type="IFR",
-                actor_id=self.staff_id,
-            )
-            session.flush()
-            second = promote_legacy_claim(
-                session,
-                legacy_claim_id=legacy.id,
-                rights_holder_id=self.individual_id,
-                right_type="IFR",
-                actor_id=self.staff_id,
-            )
-            session.commit()
-
-            self.assertEqual(first.id, second.id)
-            self.assertEqual(first.document_id, document.id)
-            self.assertEqual(first.parcel_id, parcel.id)
-            self.assertEqual(first.geometry_versions[0].geometry, GEOMETRY)
-            self.assertEqual(first.provenance_json["legacy_confirmed_fields"]["survey_number"], "701")
+            with self.assertRaisesRegex(FRAClaimValidationError, "reviewed FRA intake"):
+                promote_legacy_claim(
+                    session,
+                    legacy_claim_id=legacy.id,
+                    rights_holder_id=self.individual_id,
+                    right_type="IFR",
+                    actor_id=self.staff_id,
+                )
 
     def test_geometry_versions_increment_without_overwriting_history(self):
         with Session(self.engine) as session:
@@ -167,6 +155,59 @@ class FRAClaimServiceTests(unittest.TestCase):
             self.assertEqual((first.version, second.version), (1, 2))
             self.assertEqual(len(claim.geometry_versions), 2)
             self.assertEqual(claim.geometry_versions[0].geometry, GEOMETRY)
+
+    def test_geometry_records_area_overlap_and_administrative_containment(self):
+        with Session(self.engine) as session:
+            village = FRAVillageProfile(
+                state_code="TN", state_name="Tamil Nadu", district_code="D",
+                district_name="Test", block_code="B", block_name="Test",
+                village_code="V", village_name="Test", boundary=GEOMETRY,
+                tribal_groups_json=[], socioeconomic_json={}, provenance_json={"source": "test"},
+                reference_version="v1", synthetic=True,
+            )
+            session.add(village); session.flush()
+            claim = create_claim(
+                session, claim_number="IFR-SPATIAL", right_type="IFR",
+                rights_holder_id=self.individual_id, submitted_by=self.staff_id,
+                village_id=village.id,
+            )
+            version = add_geometry_version(
+                session, claim, geometry=GEOMETRY, source="field survey",
+                provenance={"source": "test"}, boundary_quality="surveyed",
+                actor_id=self.staff_id,
+            )
+            session.flush()
+
+            validation = version.provenance_json["spatial_validation"]
+            self.assertGreater(validation["area_sqm"], 0)
+            self.assertEqual(validation["administrative_containment"], "within_linked_village")
+            self.assertEqual(validation["overlap_outcome"], "allowed")
+
+    def test_stale_geometry_allocation_conflicts_before_insert(self):
+        from sqlalchemy import select
+        from app.db.fra_models import FRAGeometryVersion
+        with Session(self.engine) as setup:
+            claim = create_claim(setup, claim_number="CONCURRENT", right_type="IFR",
+                                 rights_holder_id=self.individual_id, submitted_by=self.staff_id)
+            claim_id = claim.id
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current, stale = first.get(FRAClaim, claim_id), second.get(FRAClaim, claim_id)
+            list(stale.geometry_versions)
+            add_geometry_version(first, current, geometry=GEOMETRY, source="first", provenance={},
+                                 boundary_quality="unknown", actor_id=self.staff_id)
+            first.commit()
+            with self.assertRaisesRegex(FRAClaimConflictError, "changed"):
+                add_geometry_version(second, stale, geometry=GEOMETRY, source="stale", provenance={},
+                                     boundary_quality="unknown", actor_id=self.staff_id)
+            second.rollback()
+            second.refresh(stale)
+            add_geometry_version(second, stale, geometry=GEOMETRY, source="second", provenance={},
+                                 boundary_quality="unknown", actor_id=self.staff_id)
+            second.commit()
+        with Session(self.engine) as check:
+            rows = check.scalars(select(FRAGeometryVersion).order_by(FRAGeometryVersion.version)).all()
+            self.assertEqual([(row.version, row.source) for row in rows], [(1, "first"), (2, "second")])
 
 
 if __name__ == "__main__":

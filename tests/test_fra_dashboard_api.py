@@ -33,6 +33,10 @@ class FRADashboardAPITests(unittest.TestCase):
         verifier = self.client.get("/api/fra/dashboard/verifier", headers=self.headers("dashboard-reviewer")); self.assertEqual(verifier.status_code, 200, verifier.text)
         planner = self.client.get("/api/fra/dashboard/planner?district=District%20A", headers=self.headers("dashboard-staff")); self.assertEqual(planner.status_code, 200, planner.text)
         self.assertEqual(planner.json()["claims_by_status"], {"submitted": 1})
+        self.assertEqual(set(planner.json()).intersection({"fra", "spatial", "development", "dss"}),
+                         {"fra", "spatial", "development", "dss"})
+        self.assertEqual(planner.json()["fra"]["claims"], 1)
+        self.assertEqual(planner.json()["spatial"]["villages_covered"], 1)
         self.assertNotIn("Private A", planner.text); self.assertNotIn("holder", planner.text.casefold())
 
 

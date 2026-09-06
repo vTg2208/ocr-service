@@ -2,8 +2,8 @@ import json
 from types import SimpleNamespace
 import unittest
 
-from app.services.land_enrichment import (
-    LandEnrichmentService,
+from app.services.cadastral_enrichment import (
+    CadastralEnrichmentService,
     build_deterministic_land_result,
 )
 
@@ -103,7 +103,7 @@ class CoordinateAssociationTests(unittest.TestCase):
 
 class LandEnrichmentFallbackTests(unittest.IsolatedAsyncioTestCase):
     async def test_no_llm_returns_deterministic_not_configured_result(self):
-        service = LandEnrichmentService(client=None, model_name="unused")
+        service = CadastralEnrichmentService(client=None, model_name="unused")
         result = await service.extract("207/9 (0.04.00)")
         self.assertEqual(result.status, "not_configured")
         self.assertIsNone(result.records[0].holder)
@@ -124,7 +124,7 @@ class LandEvidenceValidationTests(unittest.IsolatedAsyncioTestCase):
             "evidence_text": "207/9 (0.04.00)",
             "confidence": 0.99,
         }
-        service = LandEnrichmentService(
+        service = CadastralEnrichmentService(
             client=FakeClient(payload),
             model_name="test-model",
         )
@@ -162,7 +162,7 @@ class SharedHolderGroupingTests(unittest.IsolatedAsyncioTestCase):
                 },
             ]
         }
-        service = LandEnrichmentService(
+        service = CadastralEnrichmentService(
             client=FakeClient(payload),
             model_name="test-model",
         )

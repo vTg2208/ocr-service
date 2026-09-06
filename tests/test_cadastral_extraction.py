@@ -1,6 +1,6 @@
 import unittest
 
-from app.services.patta_extraction import extract_normalized_parcel_fields
+from app.services.cadastral_extraction import extract_normalized_parcel_fields
 
 
 class PattaExtractionTests(unittest.TestCase):

@@ -1,8 +1,8 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const ui = require('../app/static/land-mapping/app.js');
-const registry = require('../app/static/land-mapping/claimed-land.js');
+const ui = require('../app/static/cadastral-evidence/app.js');
+const registry = require('../app/static/cadastral-evidence/claimed-land.js');
 
 function fakeDocument() {
   return {
@@ -144,14 +144,14 @@ test('claimed registry view model keeps persisted polygons and selects a request
     claims: [{ claim_id: 'a' }, { claim_id: 'b' }],
   }, 'b');
 
-  assert.equal(model.summaryText, '2 claimed parcels · 3,200 m²');
+  assert.equal(model.summaryText, '2 parcel links · 3,200 m²');
   assert.equal(model.selected.claim_id, 'b');
   assert.equal(model.claims.length, 2);
 });
 
 test('claimed registry view model handles an empty persisted registry', () => {
   const model = registry.registryViewModel({ summary: {}, claims: [] }, null);
-  assert.equal(model.summaryText, 'No claimed parcels');
+  assert.equal(model.summaryText, 'No parcel links');
   assert.equal(model.selected, null);
   assert.deepEqual(model.claims, []);
 });
@@ -187,7 +187,7 @@ test('claimed registry search keeps ledger serials stable across official fields
     assert.equal(model.visibleClaims[0].claim_id, 'claim-614', query);
     assert.equal(model.visibleClaims[0].serialNumber, 2, query);
     assert.equal(model.selected.claim_id, 'claim-614', query);
-    assert.equal(model.resultText, '1 of 2 claims');
+    assert.equal(model.resultText, '1 of 2 parcel links');
   }
 });
 
@@ -200,7 +200,7 @@ test('claimed registry search preserves the map registry when no list entry matc
   assert.equal(model.claims.length, 2);
   assert.deepEqual(model.visibleClaims, []);
   assert.equal(model.selected, null);
-  assert.equal(model.resultText, 'No matching claims');
+  assert.equal(model.resultText, 'No matching parcel links');
 });
 
 test('claim row presentation omits the redundant registry status', () => {

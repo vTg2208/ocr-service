@@ -48,7 +48,7 @@ class TamilNaduSampleDataTests(unittest.TestCase):
             agriculture = session.scalar(select(AssetFeature).where(AssetFeature.source_reference == "tn-sample-scene-2025"))
             self.assertEqual(water.village.village_name, "Kottur")
             self.assertEqual(agriculture.village.village_name, "Kottur")
-            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(DSSRecommendation)), 1)
+            self.assertEqual(session.scalar(select(func.count()).select_from(DSSRecommendation)), 0)
             self.assertEqual(session.scalar(select(func.count()).select_from(SchemeCatalogEntry)), 5)
             self.assertTrue(all(not row.authoritative and not row.active for row in session.scalars(select(SchemeCatalogEntry))))
             visible_archive_values = [
@@ -72,6 +72,7 @@ class TamilNaduSampleDataTests(unittest.TestCase):
                 for row in villages
             ))
             rules = list(session.scalars(select(SchemeRuleSet)))
+            self.assertTrue(all(not row.active and row.catalog_entry_id for row in rules))
             self.assertTrue(all(
                 row.scheme_code and row.display_name and row.version
                 and row.recommendation_text and row.source_reference
@@ -85,265 +86,83 @@ class TamilNaduSampleDataTests(unittest.TestCase):
                     for value in (row.scheme_code, row.display_name, row.version, row.source_reference)
                 ).casefold(),
             )
-            recommendations = list(session.scalars(select(DSSRecommendation)))
-            self.assertTrue(all(row.output_json.get("recommendation") for row in recommendations))
+            self.assertEqual(list(session.scalars(select(DSSRecommendation))), [])
 
-    def test_seed_refreshes_legacy_visible_values_without_duplicate_records(self):
+    def test_seed_retains_reviewed_measurements_and_versioned_history(self):
+        from copy import deepcopy
+        from app.db.fra_operational_models import DSSFactSnapshot
         with Session(self.engine) as session:
-            admin = User(external_id="sample-refresh-admin", display_name="Sample Administrator", role="admin")
+            admin = User(external_id="history-admin", role="admin")
             session.add(admin); session.commit()
             seed_demo(session, actor_id=admin.id); session.commit()
-            counts_before = {
-                model: session.scalar(select(func.count()).select_from(model))
-                for model in (FRAVillageProfile, FRAArchiveRecord, FRAClaim, SchemeRuleSet)
-            }
-            village = session.scalar(select(FRAVillageProfile).where(FRAVillageProfile.village_code == "TN-13-01-001"))
+            asset = session.scalar(select(AssetFeature).where(AssetFeature.asset_class == "water_body"))
+            asset.observed_value_json = {"present": False, "field_note": "Verified absence"}
+            asset.verification_reasons_json = ["Reviewer field visit"]
             record = session.scalar(select(FRAArchiveRecord).where(FRAArchiveRecord.right_type == "IFR"))
-            rule = session.scalar(select(SchemeRuleSet).where(SchemeRuleSet.scheme_code == "TN-FRA-WATER-SUPPORT"))
-            village.village_name = "Kottur Demo"
-            record.legacy_reference = "TN-DEMO-IFR-001"
-            record.claim_number = "TN-DEMO-IFR-001"
-            record.holder_display_name = "Kaveri Demo Household"
-            record.village = "Kottur Demo"
-            record.document.idempotency_key = "tn-demo-archive:TN-DEMO-IFR-001"
-            record.document.original_filename = "TN-DEMO-IFR-001.synthetic.txt"
-            record.provenance_json = {
-                "synthetic": True,
-                "source": "Synthetic final-year project archive pack; not authoritative",
-                "version": "tn-demo-v1",
-            }
-            rule.scheme_code = "DEMO-WATER-SUPPORT"
-            rule.display_name = "Demo Water Support Review"
-            rule.version = "demo-1"
-            rule.source_reference = "demo://water-support/v1"
-            session.commit()
+            record.latest_extraction.raw_text = "Original historical transcription"
+            record.latest_extraction.provenance_json = {"sentinel": "original source"}
+            old_rule = SchemeRuleSet(scheme_code="TN-FRA-WATER-SUPPORT", display_name="Old water rule",
+                version="tn-sample-1", required_facts_json=["has_title"], condition_json={"present": {"fact": "has_title"}},
+                recommendation_text="Old advice", source_reference="synthetic://water-support/v1", created_by=admin.id)
+            session.add(old_rule); session.flush()
+            old_rec = DSSRecommendation(claim_id=record.promoted_claim_id, rule_set=old_rule, rule_version="tn-sample-1",
+                actor_id=admin.id, idempotency_key="old-rec", outcome="recommended",
+                input_json={"facts": {"has_title": True}}, output_json={"sentinel": "original recommendation"})
+            old_snapshot = DSSFactSnapshot(claim_id=record.promoted_claim_id, derivation_version="tn-facts-v1",
+                idempotency_key="old-snapshot", facts_json={"old": {"value": True}}, sources_json={"sentinel": "old"}, created_by=admin.id)
+            session.add_all([old_rec, old_snapshot]); session.commit()
+            before = deepcopy((asset.observed_value_json, asset.verification_reasons_json,
+                record.latest_extraction.raw_text, record.latest_extraction.provenance_json,
+                old_rule.condition_json, old_rec.input_json, old_rec.output_json, old_snapshot.facts_json, old_snapshot.sources_json))
+            report = seed_demo(session, actor_id=admin.id); session.commit()
+            self.assertEqual(report.created, 0)
+            self.assertEqual(before, (asset.observed_value_json, asset.verification_reasons_json,
+                record.latest_extraction.raw_text, record.latest_extraction.provenance_json,
+                old_rule.condition_json, old_rec.input_json, old_rec.output_json, old_snapshot.facts_json, old_snapshot.sources_json))
+            current = list(session.scalars(select(DSSRecommendation).where(DSSRecommendation.rule_version == "tn-sample-4")))
+            self.assertEqual(current, [])
+            candidate_rules = list(session.scalars(select(SchemeRuleSet).where(
+                SchemeRuleSet.version == "tn-sample-4"
+            )))
+            self.assertTrue(all(not row.active and row.catalog_entry_id for row in candidate_rules))
 
-            seed_demo(session, actor_id=admin.id); session.commit()
-
-            self.assertEqual(
-                counts_before,
-                {
-                    model: session.scalar(select(func.count()).select_from(model))
-                    for model in counts_before
-                },
-            )
-            self.assertEqual(village.village_name, "Kottur")
-            self.assertEqual(record.legacy_reference, "TN-FRA-IFR-001")
-            self.assertEqual(record.claim_number, "TN-FRA-IFR-001")
-            self.assertEqual(record.holder_display_name, "Kaveri Household")
-            self.assertEqual(record.village, "Kottur")
-            self.assertEqual(
-                record.document.idempotency_key,
-                "tn-demo-archive:TN-FRA-IFR-001",
-            )
-            self.assertEqual(rule.scheme_code, "TN-FRA-WATER-SUPPORT")
-            self.assertEqual(rule.display_name, "Water Security Support Review")
-            self.assertEqual(rule.version, "tn-sample-1")
-            self.assertEqual(rule.source_reference, "synthetic://water-support/v1")
-
-    def test_seed_refresh_is_scoped_and_removes_legacy_values_from_linked_records(self):
+    def test_seed_preserves_coexisting_legacy_rules_and_assets(self):
         with Session(self.engine) as session:
-            admin = User(external_id="sample-scope-admin", display_name="Sample Administrator", role="admin")
+            if self.engine.dialect.name == "sqlite":
+                session.execute(text("PRAGMA foreign_keys=ON"))
+            admin = User(external_id="coexist-admin", role="admin")
             session.add(admin); session.commit()
             seed_demo(session, actor_id=admin.id); session.commit()
-
-            native = session.scalar(
-                select(FRAClaim).where(FRAClaim.claim_number == "TN-FRA-CFR-NATIVE-001")
-            )
-            promoted = session.scalar(
-                select(FRAClaim).where(FRAClaim.claim_number == "TN-FRA-IFR-001")
-            )
-            record = session.scalar(
-                select(FRAArchiveRecord).where(FRAArchiveRecord.right_type == "IFR")
-            )
-            native.claim_number = "TN-DEMO-CFR-NATIVE-001"
-            native.rights_holder.claimant_category = "synthetic_demo"
-            native.provenance_json = {"synthetic": True, "source": "tn-demo-native"}
-            promoted.decisions[0].authority_level = "synthetic_demo"
-            promoted.decisions[0].outcome = "demo_progression"
-            promoted.decisions[0].request_id = "tn-demo-seed"
-            promoted.geometry_versions[0].boundary_quality = "synthetic_demo"
-            record.latest_extraction.provenance_json = {
-                "adapter": "manifest",
-                "synthetic": True,
-                "document_reference": "TN-DEMO-IFR-001",
-            }
-
-            rule = session.scalar(
-                select(SchemeRuleSet).where(
-                    SchemeRuleSet.scheme_code == "TN-FRA-WATER-SUPPORT"
-                )
-            )
-            unrelated_claim = FRAClaim(
-                claim_number="TN-UNRELATED-001",
-                right_type="IFR",
-                status="draft",
-                rights_holder_id=promoted.rights_holder_id,
-                submitted_by=admin.id,
-                provenance_json={"source": "unrelated"},
-            )
-            session.add(unrelated_claim); session.flush()
-            unrelated = DSSRecommendation(
-                claim_id=unrelated_claim.id,
-                rule_set_id=rule.id,
-                rule_version="historical-1",
-                actor_id=admin.id,
-                idempotency_key="unrelated-history",
-                outcome="not_recommended",
-                input_json={"facts": {"sentinel": True}},
-                output_json={"sentinel": "preserve exactly"},
-            )
-            session.add(unrelated); session.commit()
-            original_output = dict(unrelated.output_json)
-
+            water = session.scalar(select(AssetFeature).where(AssetFeature.asset_class == "water_body"))
+            legacy_asset = AssetFeature(village_id=water.village_id, asset_class="water_body",
+                observed_value_json={"present": False}, source_type="synthetic_manifest", source_reference="tn-demo-scene-2005",
+                provenance_json={"synthetic": True}, verification_state="verified", synthetic=True)
+            legacy_rule = SchemeRuleSet(scheme_code="DEMO-WATER-SUPPORT", display_name="Original rule", version="demo-1",
+                required_facts_json=["has_title"], condition_json={"present": {"fact": "has_title"}},
+                recommendation_text="Original advice", source_reference="demo://water/v1", created_by=admin.id)
+            session.add_all([legacy_asset, legacy_rule]); session.commit()
+            counts = {model: session.scalar(select(func.count()).select_from(model)) for model in (AssetFeature, SchemeRuleSet)}
             seed_demo(session, actor_id=admin.id); session.commit()
+            self.assertEqual(counts, {model: session.scalar(select(func.count()).select_from(model)) for model in counts})
+            self.assertEqual(legacy_asset.observed_value_json, {"present": False})
+            self.assertEqual(legacy_asset.source_reference, "tn-demo-scene-2005")
+            self.assertEqual(legacy_rule.version, "demo-1")
+            self.assertEqual(legacy_rule.recommendation_text, "Original advice")
 
-            exposed_values = [
-                native.claim_number,
-                native.rights_holder.claimant_category,
-                native.provenance_json.get("source"),
-                promoted.decisions[0].authority_level,
-                promoted.decisions[0].outcome,
-                promoted.decisions[0].request_id,
-                promoted.geometry_versions[0].boundary_quality,
-                record.latest_extraction.entity_model_version,
-                record.latest_extraction.provenance_json.get("document_reference"),
-            ]
-            self.assertNotIn("demo", " ".join(exposed_values).casefold())
-            self.assertEqual(unrelated.rule_version, "historical-1")
-            self.assertEqual(unrelated.output_json, original_output)
-
-    def test_seed_handles_coexisting_legacy_and_sample_identifiers(self):
+    def test_seed_rerun_preserves_subsequent_human_lifecycle_decisions(self):
+        from app.services.fra_workflow import transition_claim
         with Session(self.engine) as session:
-            session.execute(text("PRAGMA foreign_keys=ON"))
-            admin = User(external_id="sample-coexist-admin", display_name="Sample Administrator", role="admin")
+            admin = User(external_id="lifecycle-admin", role="admin")
             session.add(admin); session.commit()
             seed_demo(session, actor_id=admin.id); session.commit()
-            baseline_counts = {
-                model: session.scalar(select(func.count()).select_from(model))
-                for model in (
-                    FRAVillageProfile,
-                    FRAArchiveRecord,
-                    FRAClaim,
-                    FRATitle,
-                    AssetFeature,
-                    SchemeRuleSet,
-                )
-            }
-
-            current_claim = session.scalar(
-                select(FRAClaim).where(FRAClaim.claim_number == "TN-FRA-CFR-NATIVE-001")
-            )
-            legacy_claim = FRAClaim(
-                claim_number="TN-DEMO-CFR-NATIVE-001",
-                right_type="CFR",
-                status="submitted",
-                rights_holder_id=current_claim.rights_holder_id,
-                gram_sabha_id=current_claim.gram_sabha_id,
-                submitted_by=admin.id,
-                provenance_json={"synthetic": True, "source": "tn-demo-native"},
-            )
-            session.add(legacy_claim); session.flush()
-            session.add(
-                FRATitle(
-                    claim_id=legacy_claim.id,
-                    version=1,
-                    title_number="TN-DEMO-TITLE-IFR-001",
-                    metadata_json={"synthetic": True},
-                    issued_by=admin.id,
-                )
-            )
-            session.add(
-                SchemeRuleSet(
-                    scheme_code="DEMO-WATER-SUPPORT",
-                    display_name="Demo Water Support Review",
-                    version="demo-1",
-                    required_facts_json=["has_title"],
-                    condition_json={"present": {"fact": "has_title"}},
-                    recommendation_text="Demo recommendation",
-                    source_reference="demo://water-support/v1",
-                    active=True,
-                    created_by=admin.id,
-                )
-            )
-            historical_rule = SchemeRuleSet(
-                scheme_code="TN-FRA-WATER-SUPPORT",
-                display_name="Historical water rule",
-                version="tn-sample-2",
-                required_facts_json=["has_title"],
-                condition_json={"present": {"fact": "has_title"}},
-                recommendation_text="Preserve this version",
-                source_reference="policy://historical-water",
-                active=False,
-                created_by=admin.id,
-            )
-            session.add(historical_rule)
-            water = session.scalar(
-                select(AssetFeature).where(
-                    AssetFeature.source_reference == "tn-sample-scene-2005"
-                )
-            )
-            session.add(
-                AssetFeature(
-                    village_id=water.village_id,
-                    claim_id=legacy_claim.id,
-                    asset_class=water.asset_class,
-                    point_geometry_json=water.point_geometry_json,
-                    observed_value_json={"present": True},
-                    source_type="synthetic_manifest",
-                    source_reference="tn-demo-scene-2005",
-                    provenance_json={"synthetic": True},
-                    verification_state="unverified",
-                    synthetic=True,
-                )
-            )
-            batch = create_import_batch(
-                session,
-                source_label="Legacy synthetic archive",
-                state="TN",
-                actor_id=admin.id,
-                idempotency_key="legacy-coexist-batch",
-                synthetic=True,
-                provenance={"synthetic": True, "source": "legacy sample"},
-            )
-            document = _document(session, admin.id, "TN-DEMO-IFR-001")
-            create_archive_record(
-                session,
-                batch=batch,
-                document_id=document.id,
-                legacy_reference="TN-DEMO-IFR-001",
-                actor_id=admin.id,
-                synthetic=True,
-            )
+            claim = session.scalar(select(FRAClaim).where(FRAClaim.right_type == "CR"))
+            transition_claim(session, claim, target_status="gram_sabha_verified", authority_level="Gram Sabha",
+                             outcome="reviewed", reasons=["Human source review"], actor_id=admin.id, request_id="human-review")
             session.commit()
-
+            decisions = [(row.id, row.from_status, row.to_status, row.reasons_json) for row in claim.decisions]
             seed_demo(session, actor_id=admin.id); session.commit()
-
-            identifiers = [
-                *session.scalars(select(FRAArchiveRecord.legacy_reference)),
-                *session.scalars(select(FRAClaim.claim_number)),
-                *session.scalars(select(FRATitle.title_number)),
-                *session.scalars(select(SchemeRuleSet.scheme_code)),
-                *session.scalars(select(SchemeRuleSet.version)),
-            ]
-            self.assertNotIn("demo", " ".join(identifiers).casefold())
-            expected_counts = dict(baseline_counts)
-            expected_counts[SchemeRuleSet] += 1
-            self.assertEqual(
-                expected_counts,
-                {
-                    model: session.scalar(select(func.count()).select_from(model))
-                    for model in expected_counts
-                },
-            )
-            self.assertEqual(historical_rule.version, "tn-sample-2")
-            self.assertEqual(historical_rule.recommendation_text, "Preserve this version")
-            surviving_water = session.scalar(
-                select(AssetFeature).where(
-                    AssetFeature.source_reference == "tn-sample-scene-2005"
-                )
-            )
-            self.assertEqual(surviving_water.claim_id, current_claim.id)
+            self.assertEqual(claim.status, "gram_sabha_verified")
+            self.assertEqual(decisions, [(row.id, row.from_status, row.to_status, row.reasons_json) for row in claim.decisions])
 
     def test_seed_does_not_evaluate_or_refer_unrelated_rules(self):
         with Session(self.engine) as session:

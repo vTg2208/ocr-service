@@ -45,6 +45,14 @@ class ModelGatewayTests(unittest.TestCase):
             with self.assertRaisesRegex(ModelOutputValidationError, "legal conclusion"):
                 validate_model_output(output)
 
+    def test_model_outputs_reject_nonfinite_numbers_at_any_depth(self):
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ModelOutputValidationError, "finite"):
+                    validate_model_output({"features": [{"measurement": value}]})
+        valid = {"features": [{"measurement": .6, "present": True, "missing": None}]}
+        self.assertIs(validate_model_output(valid), valid)
+
     def test_manifest_asset_adapter_validates_confidence_and_supporting_output(self):
         detector = ManifestAssetDetector("tn-assets-v1")
         result = detector.detect(
@@ -85,7 +93,8 @@ class ModelGatewayTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual(result.features[0]["asset_class"], "pipeline")
+        self.assertEqual(result.features[0]["asset_class"], "infrastructure")
+        self.assertEqual(result.features[0]["value"]["asset_subtype"], "pipeline")
 
     def test_register_and_activate_model_keeps_one_active_version_per_task(self):
         with Session(self.engine) as session:
@@ -123,6 +132,26 @@ class ModelGatewayTests(unittest.TestCase):
                 )
             ).all()
             self.assertEqual(active, [second])
+
+    def test_asset_model_registration_normalizes_and_validates_label_map(self):
+        with Session(self.engine) as session:
+            admin = User(external_id="labels-admin", role="admin")
+            session.add(admin)
+            session.flush()
+            model = register_model(
+                session, task="asset_detection", name="labels", version="1",
+                adapter_type="pytorch", actor_id=admin.id,
+                label_map={"crop": "cropland", "surface_water": "pond"},
+            )
+            self.assertEqual(model.label_map_json, {
+                "crop": "agricultural_land", "surface_water": "water_body",
+            })
+            with self.assertRaisesRegex(ModelRegistrationError, "Unsupported asset class"):
+                register_model(
+                    session, task="asset_detection", name="bad-labels", version="1",
+                    adapter_type="pytorch", actor_id=admin.id,
+                    label_map={"mystery": "unknown_feature"},
+                )
 
     def test_unready_model_cannot_be_activated(self):
         with Session(self.engine) as session:

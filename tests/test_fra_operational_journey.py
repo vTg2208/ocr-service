@@ -57,7 +57,7 @@ class FRAOperationalJourneyTests(unittest.TestCase):
             record = create_archive_record(session, batch=batch, document_id=document.id, legacy_reference="TN-JOURNEY-LEGACY-1", actor_id=reviewer.id, synthetic=False)
             run = process_archive_extraction(session, record, extractor=TamilNaduFRAExtractor("tn-fra-regex-v1"), manifest={"raw_text": raw_text}, raw_text=raw_text, actor_id=reviewer.id)
             review_archive_record(session, record, reviewed_fields=run.standardized_json, reviewer_id=reviewer.id, expected_revision=0)
-            claim = promote_archive_record(session, record, actor_id=reviewer.id)
+            claim = promote_archive_record(session, record, expected_revision=record.revision, actor_id=reviewer.id)
             geometry = add_geometry_version(session, claim, geometry=GEOMETRY, source="reviewed_boundary", provenance={"source": "field register"}, boundary_quality="surveyed", actor_id=reviewer.id)
 
             spatial_batch = SpatialImportBatch(dataset_kind="protected_area", source_authority="Tamil Nadu reference authority", source_version="tn-ref-1", state="published", record_count=1, valid_count=1, created_by=reviewer.id, reviewed_by=reviewer.id, idempotency_key="journey-spatial")
@@ -75,7 +75,7 @@ class FRAOperationalJourneyTests(unittest.TestCase):
 
             rule = SchemeRuleSet(scheme_code="TN-JOURNEY-REVIEW", display_name="Journey planning review", version="v1", required_facts_json=["claim_right_type"], condition_json={"eq": {"fact": "claim_right_type", "value": "IFR"}}, recommendation_text="Refer for a documented departmental review.", source_reference="https://example.gov.in/policy", active=True, created_by=reviewer.id)
             session.add(rule); session.flush()
-            snapshot = derive_facts(session, claim, "tn-facts-v1", reviewer.id, "journey-facts")
+            snapshot = derive_facts(session, claim, "fra-dss-facts-v1", reviewer.id, "journey-facts")
             recommendation = evaluate_rules(session, claim_id=claim.id, facts=fact_values(snapshot), actor_id=reviewer.id, idempotency_key="journey-evaluation", rule_set_ids={rule.id}, fact_snapshot_id=snapshot.id, fact_sources=snapshot.sources_json)[0]
             referral = create_referral(session, recommendation_id=recommendation.id, department="Tribal Welfare", priority="normal", actor_id=reviewer.id, idempotency_key="journey-referral", notes="Advisory referral for human review.")
             self.assertEqual(referral.status, "referred")

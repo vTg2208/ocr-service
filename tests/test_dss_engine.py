@@ -1,5 +1,7 @@
 import json
 import unittest
+import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import create_engine, func, select
@@ -8,7 +10,14 @@ from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.db.fra_models import DSSRecommendation, FRAClaim, RightsHolder, SchemeRuleSet
 from app.db.models import User
-from app.services.dss_engine import InvalidRuleError, evaluate_condition, evaluate_rules, validate_rule_definition
+from app.services.dss_engine import (
+    InvalidRuleError,
+    evaluate_condition,
+    evaluate_rules,
+    validate_rule_definition,
+    validate_rule_fact_contract,
+    validate_rule_configuration,
+)
 
 
 class DSSEngineTests(unittest.TestCase):
@@ -154,6 +163,25 @@ class DSSEngineTests(unittest.TestCase):
         }
         self.assertEqual(validate_rule_definition(condition), condition)
 
+    def test_registered_rules_use_only_declared_canonical_fact_names(self):
+        condition = {
+            "all": [
+                {"eq": {"fact": "has_active_title", "value": True}},
+                {"eq": {"fact": "water_source_present", "value": False}},
+            ]
+        }
+        validate_rule_fact_contract(
+            ["has_active_title", "water_source_present"], condition
+        )
+        with self.assertRaisesRegex(InvalidRuleError, "Unsupported DSS fact"):
+            validate_rule_fact_contract(
+                ["has_title"], {"present": {"fact": "has_title"}}
+            )
+        with self.assertRaisesRegex(InvalidRuleError, "declared"):
+            validate_rule_fact_contract(
+                ["has_active_title"], condition
+            )
+
     def test_presence_operator_does_not_treat_a_missing_row_as_absence(self):
         result = evaluate_condition({"absent": {"fact": "water_source_present"}}, {})
         self.assertIsNone(result.value)
@@ -161,14 +189,127 @@ class DSSEngineTests(unittest.TestCase):
 
     def test_seed_rules_are_explicitly_non_authoritative(self):
         rules = json.loads(Path("data/demo_dss_rules.json").read_text(encoding="utf-8"))
-        self.assertEqual(len(rules), 3)
+        self.assertEqual(len(rules), 5)
+        self.assertEqual(
+            {rule["scheme_code"] for rule in rules},
+            {"PM-KISAN", "MGNREGA", "PMAY-G", "JJM", "DAJGUA"},
+        )
         for rule in rules:
             with self.subTest(code=rule["scheme_code"]):
                 self.assertNotIn("demo", rule["display_name"].casefold())
                 self.assertNotIn("demo", rule["scheme_code"].casefold())
                 self.assertNotIn("demo", rule["version"].casefold())
-                self.assertTrue(rule["source_reference"].startswith("synthetic://"))
+                self.assertTrue(rule["source_reference"].startswith("candidate-convergence://"))
                 self.assertTrue(rule["advisory_only"])
+                validate_rule_fact_contract(
+                    rule["required_facts"], rule["condition"]
+                )
+                validate_rule_configuration(
+                    required_facts=rule["required_facts"],
+                    required_evidence=rule["required_evidence"],
+                    required_assets=rule["required_assets"],
+                    exclusion_condition=rule["exclusion_condition"],
+                    priority_conditions=rule["priority_conditions"],
+                    freshness_requirements=rule["freshness_requirements"],
+                    recommendation_logic=rule["recommendation_logic"],
+                )
+
+    def test_complete_rule_evaluates_evidence_assets_exclusions_freshness_and_priority(self):
+        with Session(self.engine) as session:
+            rule = SchemeRuleSet(
+                scheme_code="COMPLETE-RULE",
+                display_name="Complete advisory rule",
+                version="1",
+                required_facts_json=[
+                    "has_active_title", "water_source_present", "road_access"
+                ],
+                condition_json={"all": [
+                    {"eq": {"fact": "has_active_title", "value": True}},
+                    {"eq": {"fact": "water_source_present", "value": False}},
+                ]},
+                required_evidence_json=["water_source_present"],
+                required_assets_json=["road"],
+                exclusion_condition_json={
+                    "eq": {"fact": "claim_status", "value": "rejected"}
+                },
+                priority_conditions_json=[{
+                    "priority": "high",
+                    "condition": {
+                        "eq": {"fact": "groundwater_status", "value": "critical"}
+                    },
+                    "reason": "Critical groundwater context.",
+                }],
+                freshness_requirements_json={"water_source_present": 30},
+                recommendation_logic_json={
+                    "recommended": "Send for high priority departmental review.",
+                    "not_recommended": "Do not refer under this rule.",
+                    "insufficient_data": "Collect current water evidence.",
+                },
+                recommendation_text="Fallback review text.",
+                source_reference="policy://complete",
+                creator=session.get(User, self.admin_id),
+            )
+            session.add(rule)
+            session.flush()
+            facts = {
+                "has_active_title": True,
+                "water_source_present": False,
+                "road_access": True,
+                "claim_status": "granted",
+                "groundwater_status": "critical",
+            }
+            sources = {
+                "water_source_present": {
+                    "observed_at": datetime.now(timezone.utc).isoformat(),
+                    "verification_state": "verified",
+                }
+            }
+
+            recommended = evaluate_rules(
+                session, claim_id=self.claim_id, facts=facts,
+                actor_id=self.admin_id, idempotency_key="complete-current",
+                rule_set_ids={rule.id}, fact_snapshot_id=uuid.uuid4(),
+                fact_sources=sources,
+            )[0]
+            stale = evaluate_rules(
+                session, claim_id=self.claim_id, facts=facts,
+                actor_id=self.admin_id, idempotency_key="complete-stale",
+                rule_set_ids={rule.id}, fact_snapshot_id=uuid.uuid4(),
+                fact_sources={"water_source_present": {
+                    "observed_at": (
+                        datetime.now(timezone.utc) - timedelta(days=31)
+                    ).isoformat(),
+                    "verification_state": "verified",
+                }},
+            )[0]
+            excluded = evaluate_rules(
+                session, claim_id=self.claim_id,
+                facts={**facts, "claim_status": "rejected"},
+                actor_id=self.admin_id, idempotency_key="complete-excluded",
+                rule_set_ids={rule.id}, fact_snapshot_id=uuid.uuid4(),
+                fact_sources=sources,
+            )[0]
+
+            self.assertEqual(recommended.outcome, "recommended")
+            self.assertEqual(recommended.output_json["priority"], "high")
+            self.assertEqual(
+                recommended.output_json["recommendation"],
+                "Send for high priority departmental review.",
+            )
+            self.assertEqual(recommended.output_json["required_assets"], ["road"])
+            self.assertEqual(stale.outcome, "insufficient_data")
+            self.assertEqual(
+                stale.output_json["recommendation"],
+                "Collect current water evidence.",
+            )
+            self.assertIn(
+                "water_source_present", stale.output_json["missing_inputs"]
+            )
+            self.assertEqual(excluded.outcome, "not_recommended")
+            self.assertEqual(
+                excluded.output_json["recommendation"],
+                "Do not refer under this rule.",
+            )
 
 
 if __name__ == "__main__":

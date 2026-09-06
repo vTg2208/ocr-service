@@ -4,7 +4,11 @@ import uuid
 from app.db.fra_completion_models import ModelVersion
 from app.services.fra_adapter_factory import create_entity_extractor
 from app.services.fra_entity_extraction import TamilNaduFRAExtractor
-from app.services.model_gateway import ManifestFRAEntityExtractor, ModelRegistrationError
+from app.services.model_gateway import (
+    ManifestFRAEntityExtractor,
+    ModelOutputValidationError,
+    ModelRegistrationError,
+)
 
 
 def model(adapter_type, *, configuration=None, status="active", version="1.2.0"):
@@ -41,7 +45,9 @@ class FRAAdapterFactoryTests(unittest.TestCase):
             calls.append((endpoint, payload, timeout))
             return {
                 "fields": {"village": "Kottur"},
-                "field_evidence": {"village": {"text": "Village: Kottur"}},
+                "field_evidence": {"village": {
+                    "text": "Village: Kottur", "source_page": 1, "confidence": 0.8,
+                }},
                 "confidence": 0.8,
                 "model_version": "1.2.0",
                 "processing_time_ms": 12,
@@ -56,10 +62,15 @@ class FRAAdapterFactoryTests(unittest.TestCase):
             }),
             rest_transport=transport,
         )
-        result = extractor.extract("private-record-1", {"raw_text": "Village: Kottur"})
+        result = extractor.extract("private-record-1", {
+            "raw_text": "Village: Kottur",
+            "state_code": "TN",
+            "pages": [{"page_number": 1, "text": "Village: Kottur", "confidence": 0.8}],
+        })
         self.assertEqual(result.fields["village"], "Kottur")
         self.assertEqual(calls[0][0], "https://models.example.org/fra/extract")
         self.assertNotIn("private-record-1", calls[0][1])
+        self.assertEqual(calls[0][1]["pages"][0]["page_number"], 1)
 
         mismatch = create_entity_extractor(
             model("rest", configuration={
@@ -73,6 +84,23 @@ class FRAAdapterFactoryTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ModelRegistrationError, "version mismatch"):
             mismatch.extract("record", {"raw_text": "text"})
+
+    def test_rest_adapter_rejects_fields_without_reviewable_evidence(self):
+        extractor = create_entity_extractor(
+            model("rest", configuration={
+                "endpoint": "https://models.example.org/fra/extract",
+                "allowed_hosts": ["models.example.org"],
+            }),
+            rest_transport=lambda *_args: {
+                "fields": {"village": "Kottur"},
+                "field_evidence": {"village": {"source_page": 0, "confidence": 1.4}},
+                "confidence": 0.8,
+                "model_version": "1.2.0",
+                "processing_time_ms": 1,
+            },
+        )
+        with self.assertRaisesRegex(ModelOutputValidationError, "source_page"):
+            extractor.extract("record", {"raw_text": "Village: Kottur"})
 
     def test_factory_rejects_unready_unsupported_and_arbitrary_python_adapters(self):
         with self.assertRaisesRegex(ModelRegistrationError, "not ready"):
