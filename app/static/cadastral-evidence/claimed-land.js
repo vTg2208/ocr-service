@@ -90,6 +90,9 @@ const ClaimedLandUI = (() => {
     }
 
     function ensureMap() {
+      if (!leaflet) {
+        const mapNode = byId('claimedLandMap'); mapNode.classList.add('map-unavailable'); mapNode.textContent = 'The parcel map could not load. Registry records remain available in the list.'; return false;
+      }
       if (!state.map) {
         state.map = leaflet.map('claimedLandMap').setView([10.96, 79.38], 12);
         leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -98,6 +101,7 @@ const ClaimedLandUI = (() => {
         }).addTo(state.map);
       }
       browserWindow.setTimeout(() => state.map.invalidateSize(), 0);
+      return true;
     }
 
     function displayDate(value) {
@@ -245,7 +249,7 @@ const ClaimedLandUI = (() => {
         return;
       }
 
-      ensureMap();
+      if (!ensureMap()) { renderClaimList(); return; }
       state.layers.forEach((layer) => layer.remove());
       state.layers.clear();
       const bounds = [];

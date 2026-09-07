@@ -3,20 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123c2d">
   <title>AranyaSetu — Cadastral Evidence</title>
-  <link rel="icon" href="/static/brand/aranyasetu-emblem.png">
+  <link rel="icon" href="/static/brand/aranyasetu-mark.webp" type="image/webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <link rel="stylesheet" href="/static/cadastral-evidence/styles.css?v=20260906.2">
+  <link rel="stylesheet" href="/static/cadastral-evidence/styles.css?v=20260907.1">
 </head>
 <body>
+  <a class="skip-link" href="#cadastralMain">Skip to cadastral evidence workspace</a>
   <div class="top-rule"></div>
   <header class="masthead">
     <div class="brand" aria-label="AranyaSetu">
       <span class="brand-emblem" aria-hidden="true">
-        <img src="/static/brand/aranyasetu-emblem.png" alt="">
+        <img src="/static/brand/aranyasetu-mark.webp" alt="" width="192" height="192">
       </span>
       <span class="brand-copy">
         <strong>AranyaSetu</strong>
@@ -30,24 +32,24 @@
     </div>
   </header>
 
-  <main>
+  <main id="cadastralMain" tabindex="-1">
     <section class="evidence-scope" aria-label="Workspace purpose">
       <strong>Cadastral Evidence</strong>
       <span>Supporting FRA spatialization through revenue-document OCR, survey and subdivision matching, and parcel registry links.</span>
     </section>
     <div class="registry-navigation">
-      <nav class="app-tabs" aria-label="Registry sections" role="tablist">
-        <button class="app-tab active" id="newClaimTab" type="button" role="tab" aria-selected="true" aria-controls="newClaimView">Add evidence</button>
-        <button class="app-tab" id="claimedLandTab" type="button" role="tab" aria-selected="false" aria-controls="claimedLandView">Parcel registry</button>
+      <nav class="app-tabs" aria-label="Registry sections">
+        <button class="app-tab active" id="newClaimTab" type="button" aria-pressed="true" aria-controls="newClaimView">Add evidence</button>
+        <button class="app-tab" id="claimedLandTab" type="button" aria-pressed="false" aria-controls="claimedLandView">Parcel registry</button>
       </nav>
       <a class="fra-platform-link" href="/fra">
-        <span class="fra-platform-icon" aria-hidden="true"><img src="/static/fra/icons/atlas.png" alt=""></span>
+        <span class="fra-platform-icon" aria-hidden="true"><img src="/static/fra/icons/atlas.png" alt="" width="30" height="30"></span>
         <span>Return to FRA Platform</span>
         <svg class="fra-platform-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"></path></svg>
       </a>
     </div>
 
-    <section id="newClaimView" role="tabpanel" aria-labelledby="newClaimTab">
+    <section id="newClaimView" aria-labelledby="newClaimTab">
     <nav class="workflow-nav" aria-label="Cadastral evidence workflow">
       <ol class="steps">
         <li class="step active" data-step="1" aria-current="step">
@@ -165,7 +167,7 @@
     </section>
     </section>
 
-    <section class="claimed-land-view" id="claimedLandView" role="tabpanel" aria-labelledby="claimedLandTab" hidden>
+    <section class="claimed-land-view" id="claimedLandView" aria-labelledby="claimedLandTab" hidden>
       <header class="claimed-land-heading">
         <div>
           <p class="section-label">Registered coverage</p>
@@ -213,7 +215,7 @@
 
   <footer>This supporting workspace records document-to-parcel links for FRA spatialization. It does not establish an FRA right or change registered ownership.</footer>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="/static/cadastral-evidence/claimed-land.js?v=20260906.2"></script>
-  <script src="/static/cadastral-evidence/app.js?v=20260906.2"></script>
+  <script src="/static/cadastral-evidence/claimed-land.js?v=20260907.1"></script>
+  <script src="/static/cadastral-evidence/app.js?v=20260907.1"></script>
 </body>
 </html>

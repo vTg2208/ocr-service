@@ -76,7 +76,9 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertTrue({"nav", "main", "header", "aside"}.issubset(parser.landmarks))
         self.assertNotIn('class="warning-strip"', html)
         self.assertNotIn("Synthetic sample data — not authoritative", html)
-        self.assertNotIn("demonstration", html.casefold())
+        self.assertIn('class="environment-notice"', html)
+        self.assertIn("demonstration records", html.casefold())
+        self.assertIn("not official FRA records", html)
         self.assertNotIn("approved benefit", html.casefold())
 
     def test_administrative_filters_are_collapsed_into_the_active_workspace_header(self):
@@ -99,7 +101,7 @@ class FRAWorkspaceUITests(unittest.TestCase):
 
     def test_workspace_navigation_uses_supplied_section_icons(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
-        icon_names = ("archieve.png", "atlas.png", "assets.png", "planner.png", "reports.png")
+        icon_names = ("overview.svg", "cases-nav.webp", "atlas.png", "assets.png", "planner.png", "reports.png")
         for icon_name in icon_names:
             with self.subTest(icon=icon_name):
                 self.assertIn(f'/static/fra/icons/{icon_name}', html)
@@ -170,7 +172,7 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn("supporting evidence and requires human verification", html)
         self.assertIn("does not approve or sanction benefits", html)
         self.assertIn("Print / Save as PDF", html)
-        self.assertIn("Sentinel-2 Level-2A", html)
+        self.assertIn("Sentinel-2 surface reflectance", html)
         self.assertNotIn("synthetic-tn-scene", html)
         self.assertIn('placeholder="All tribal groups"', html)
         self.assertIn('placeholder="All years"', html)

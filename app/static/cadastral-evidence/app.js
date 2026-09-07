@@ -122,7 +122,7 @@ if (typeof document !== 'undefined') (() => {
   const confirmParcel = $('#confirmParcel');
   const claimedLand = ClaimedLandUI.createController({
     fetchImpl: fetch,
-    leaflet: L,
+    leaflet: window.L,
     doc: document,
     browserWindow: window,
     setFeedback: ParcelLedgerUI.setFeedback,
@@ -153,8 +153,8 @@ if (typeof document !== 'undefined') (() => {
     $('#claimedLandView').hidden = !claimed;
     $('#newClaimTab').classList.toggle('active', !claimed);
     $('#claimedLandTab').classList.toggle('active', claimed);
-    $('#newClaimTab').setAttribute('aria-selected', String(!claimed));
-    $('#claimedLandTab').setAttribute('aria-selected', String(claimed));
+    $('#newClaimTab').setAttribute('aria-pressed', String(!claimed));
+    $('#claimedLandTab').setAttribute('aria-pressed', String(claimed));
     if (claimed) claimedLand.load(selectedClaimId);
   }
 
@@ -209,6 +209,11 @@ if (typeof document !== 'undefined') (() => {
   }
 
   function ensureMap() {
+    if (!window.L) {
+      $('#parcelMap').classList.add('map-unavailable');
+      $('#parcelMap').textContent = 'The parcel map could not load. Reload the page before verifying a parcel boundary.';
+      return false;
+    }
     if (!state.map) {
       state.map = L.map('parcelMap').setView([10.96, 79.38], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -217,6 +222,7 @@ if (typeof document !== 'undefined') (() => {
       }).addTo(state.map);
     }
     window.setTimeout(() => state.map.invalidateSize(), 0);
+    return true;
   }
 
   function selectCandidate(candidate) {
@@ -269,16 +275,20 @@ if (typeof document !== 'undefined') (() => {
     ParcelLedgerUI.renderCandidates($('#candidates'), resolution.alternatives, selectCandidate);
 
     if (state.parcel) {
-      ensureMap();
-      const styles = getComputedStyle(document.documentElement);
-      const outline = styles.getPropertyValue('--green-800').trim();
-      const fill = styles.getPropertyValue('--green-600').trim();
-      const layer = L.geoJSON(state.parcel.geometry, {
-        style: { color: outline, weight: 4, fillColor: fill, fillOpacity: .28 },
-      }).addTo(state.map);
-      state.layers.push(layer);
-      state.map.fitBounds(layer.getBounds(), { padding: [28, 28] });
-      confirmParcel.disabled = resolution.status === 'not_found';
+      if (ensureMap()) {
+        const styles = getComputedStyle(document.documentElement);
+        const outline = styles.getPropertyValue('--green-800').trim();
+        const fill = styles.getPropertyValue('--green-600').trim();
+        const layer = L.geoJSON(state.parcel.geometry, {
+          style: { color: outline, weight: 4, fillColor: fill, fillOpacity: .28 },
+        }).addTo(state.map);
+        state.layers.push(layer);
+        state.map.fitBounds(layer.getBounds(), { padding: [28, 28] });
+        confirmParcel.disabled = resolution.status === 'not_found';
+      } else {
+        confirmParcel.disabled = true;
+        ParcelLedgerUI.setFeedback($('#reviewFeedback'), 'warning', 'The official boundary is available, but the map tools did not load. Reload before recording this parcel link.');
+      }
     } else {
       confirmParcel.disabled = true;
       if (state.map) state.map.setView([10.96, 79.38], 13);

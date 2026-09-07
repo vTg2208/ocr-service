@@ -252,6 +252,31 @@ test('asset reviewer controls submit a version-checked human decision', async ()
   });
 });
 
+test('asset rejection requires a reviewer rationale while approval remains concise', () => {
+  assert.throws(
+    () => FRAAssetsUI.reviewPayload({ revision: 4 }, 'rejected'),
+    /Explain why this detection is being rejected/,
+  );
+  assert.deepEqual(FRAAssetsUI.reviewPayload({ revision: 4 }, 'rejected', 'Seasonal shadow was classified as water.'), {
+    outcome: 'rejected', expected_revision: 4,
+    reasons: ['Seasonal shadow was classified as water.'],
+  });
+});
+
+test('imagery preparation defaults to a recent completed observation window', () => {
+  assert.deepEqual(FRAAssetsUI.defaultImageryWindow(new Date('2026-09-07T12:00:00Z')), {
+    startDate: '2026-06-05',
+    endDate: '2026-09-02',
+  });
+});
+
+test('archive reviewer fields expose controlled vocabularies and bounded numeric inputs', () => {
+  assert.deepEqual(FRAArchiveUI.REVIEW_FIELD_CONFIG.right_type.options, ['IFR', 'CR', 'CFR']);
+  assert.equal(FRAArchiveUI.REVIEW_FIELD_CONFIG.latitude.min, -90);
+  assert.equal(FRAArchiveUI.REVIEW_FIELD_CONFIG.longitude.max, 180);
+  assert.equal(FRAArchiveUI.REVIEW_FIELD_CONFIG.decision_date.type, 'date');
+});
+
 test('atlas presents asset features with their class-specific visual', () => {
   const presentation = FRAAtlasUI.featurePresentation(
     { kind: 'asset', asset_class: 'forest_cover', verification_state: 'verified' },
@@ -383,16 +408,16 @@ test('planner renders the complete water convergence result and spatial evidence
   ui.pending('/api/fra/cases')[0].resolve({ items: [] }); await flush();
   const content = ui.node('#recommendationList').textContent;
   assert.match(content, /Jal Jeevan Mission/);
-  assert.match(content, /potentially eligible/);
-  assert.match(content, /water_source_present: verified/);
-  assert.match(content, /groundwater_status: verified/);
-  assert.match(content, /imagery artifact/);
-  assert.match(content, /spatial reference feature/);
-  assert.match(content, /draft inactive/);
-  assert.match(content, /FRA status: granted/);
-  assert.match(content, /Mapped assets: water body; infrastructure/);
-  assert.match(content, /Deficiencies: drinking_water_gap/);
-  assert.match(content, /Recommended intervention: drinking water/);
+  assert.match(content, /Potentially eligible/);
+  assert.match(content, /Verified water source present: Verified/);
+  assert.match(content, /Groundwater condition: Verified/);
+  assert.match(content, /Satellite imagery observation/);
+  assert.match(content, /Published spatial reference/);
+  assert.match(content, /Draft inactive/);
+  assert.match(content, /FRA status: Granted/);
+  assert.match(content, /Mapped assets: Water body; Infrastructure/);
+  assert.match(content, /Information gaps: Household drinking-water access needs attention/);
+  assert.match(content, /Suggested intervention: Drinking water/);
   assert.match(content, /Evidence completeness: 100%/);
   assert.match(content, /Send for human review/);
   assert.equal(ui.node('#plannerCandidateCount').textContent, '1');

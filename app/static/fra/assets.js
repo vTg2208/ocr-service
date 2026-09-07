@@ -36,8 +36,24 @@ const FRAAssetsUI = (() => {
   function preferredClaimId(claims) { if (!Array.isArray(claims) || !claims.length) return ''; return (claims.find((item) => item.geometry_version_count > 0) || claims[0]).id; }
   function profileSummary(profile) { const metrics = profile?.metrics || {}; const hectares = (value) => `${(Number(value || 0) / 10000).toFixed(2)} ha`; return [`Agriculture ${hectares(metrics.agricultural_area_sqm)}`, `Forest ${hectares(metrics.forest_area_sqm)}`, `Water bodies ${Number(metrics.water_body_count || 0)}`, `Homesteads ${Number(metrics.homestead_count || 0)}`, `Within village ${Number(metrics.assets_within_village_count || 0)}`, `Intersect FRA land ${Number(metrics.assets_intersecting_fra_land_count || 0)}`, `Near FRA land ${Number(metrics.assets_near_fra_land_count || 0)}`, `Mapped coverage ${Number(metrics.mapped_asset_coverage_percent || 0).toFixed(1)}%`, `Reviewed ${Number(profile?.verified_asset_count || 0)}`, `Pending ${Number(profile?.pending_asset_count || 0)}`]; }
   function evidenceRows(asset = {}) { const chain = asset.evidence_chain || {}; const model = chain.model || {}; const imagery = chain.imagery || {}; const geometry = chain.geometry || asset.geometry; return [['Asset', [visualFor(chain.asset?.class || asset.asset_class).label, chain.asset?.subtype].filter(Boolean).join(' · ')], ['Imagery', [imagery.reference, imagery.source_type].filter(Boolean).join(' · ') || 'Not recorded'], ['Date', chain.date || 'Not recorded'], ['Model', [model.name, model.version].filter(Boolean).join(' · ') || 'Human or field observation'], ['Confidence', chain.confidence == null ? 'Not recorded' : `${Math.round(Number(chain.confidence) * 100)}%`], ['Geometry', geometry?.type || 'Not recorded']]; }
-  function reviewPayload(asset, outcome) { if (!['verified', 'rejected'].includes(outcome)) throw new Error('Choose approve or reject for this asset review.'); return { outcome, expected_revision: Number(asset?.revision || 0), reasons: [`${outcome === 'verified' ? 'Approved' : 'Rejected'} in the Asset Intelligence reviewer workspace.`] }; }
-  return { assetOptions, evidenceRows, imageryPayload, legalRole, legendClasses, preferredClaimId, profileSummary, reviewPayload, visualFor };
+  function reviewPayload(asset, outcome, notes = '') {
+    if (!['verified', 'rejected'].includes(outcome)) throw new Error('Choose approve or reject for this asset review.');
+    const reason = String(notes || '').trim();
+    if (outcome === 'rejected' && !reason) throw new Error('Explain why this detection is being rejected.');
+    return {
+      outcome,
+      expected_revision: Number(asset?.revision || 0),
+      reasons: [reason || 'Approved in the Asset Intelligence reviewer workspace.'],
+    };
+  }
+  function defaultImageryWindow(now = new Date()) {
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    end.setUTCDate(end.getUTCDate() - 5);
+    const start = new Date(end); start.setUTCDate(start.getUTCDate() - 89);
+    const value = (date) => date.toISOString().slice(0, 10);
+    return { startDate: value(start), endDate: value(end) };
+  }
+  return { assetOptions, defaultImageryWindow, evidenceRows, imageryPayload, legalRole, legendClasses, preferredClaimId, profileSummary, reviewPayload, visualFor };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = FRAAssetsUI;
 
@@ -49,7 +65,10 @@ if (typeof document !== 'undefined') (() => {
   function spriteElement(assetClass, className = '') { const visual = FRAAssetsUI.visualFor(assetClass); const frame = document.createElement('span'); const icon = document.createElement('span'); frame.className = `asset-icon-frame ${className}`.trim(); frame.setAttribute('aria-label', visual.label); icon.className = 'asset-sprite-icon'; icon.style.backgroundPosition = visual.spritePosition; icon.setAttribute('aria-hidden', 'true'); frame.appendChild(icon); return frame; }
   function markerHtml(assetClass) { const visual = FRAAssetsUI.visualFor(assetClass); return `<span class="asset-icon-frame asset-marker-glyph" aria-hidden="true"><span class="asset-sprite-icon" style="background-position:${visual.spritePosition}" aria-hidden="true"></span></span>`; }
   function ensureMap() {
-    if (map || typeof L === 'undefined') return;
+    if (map) return true;
+    if (typeof L === 'undefined') {
+      const mapNode = document.querySelector('#assetMap'); mapNode.classList.add('map-unavailable'); mapNode.textContent = 'The interactive map could not load. Asset observations remain available in the register.'; return false;
+    }
     map = L.map('assetMap').setView([11.1, 78.65], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
     layer = L.geoJSON([], {
@@ -57,6 +76,7 @@ if (typeof document !== 'undefined') (() => {
       pointToLayer: (feature, latlng) => L.marker(latlng, { icon: L.divIcon({ className: 'asset-map-marker', html: markerHtml(feature?.properties?.asset_class), iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18] }) }),
       onEachFeature: (feature, featureLayer) => { const visual = FRAAssetsUI.visualFor(feature?.properties?.asset_class); featureLayer.bindTooltip(visual.label, { direction: 'top' }); },
     }).addTo(map);
+    return true;
   }
   function contextQuery() { const params = new URLSearchParams(); [['district', '#contextDistrict'], ['block', '#contextBlock'], ['village', '#contextVillage']].forEach(([key, selector]) => { const value = document.querySelector(selector)?.value; if (value) params.set(key, value); }); return params.toString(); }
   async function loadReference() {
@@ -77,10 +97,42 @@ if (typeof document !== 'undefined') (() => {
     FRAAssetsUI.legendClasses(items).forEach((assetClass) => { const visual = FRAAssetsUI.visualFor(assetClass); const item = document.createElement('li'); const label = document.createElement('span'); label.textContent = visual.label; item.append(spriteElement(assetClass, 'asset-legend-glyph'), label); legend.appendChild(item); });
     legend.closest('.asset-map-legend').hidden = !legend.children.length;
   }
-  async function reviewAsset(asset, outcome, button, message) { const current = reviewRequests.begin(); try { button.disabled = true; const payload = FRAAssetsUI.reviewPayload(asset, outcome); const reviewed = await FRAApi.request(`/api/fra/assets/${asset.id}/review`, FRAApi.json('POST', payload)); if (!current()) return; message.textContent = `Detection ${reviewed.verification_state.replaceAll('_', ' ')}; reviewer decision recorded.`; await Promise.all([loadAssets(), loadProfiles()]); } catch (error) { if (current()) message.textContent = error.status === 403 ? 'Reviewer or administrator access is required to review detections.' : error.message; } finally { button.disabled = false; } }
+  async function reviewAsset(asset, outcome, controls, notes, message) {
+    let payload;
+    try { payload = FRAAssetsUI.reviewPayload(asset, outcome, notes.value); }
+    catch (error) { message.textContent = error.message; notes.focus(); return; }
+    const current = reviewRequests.begin(); const buttons = controls.querySelectorAll('button');
+    buttons.forEach((button) => { button.disabled = true; }); controls.setAttribute('aria-busy', 'true'); message.textContent = 'Recording reviewer decision…';
+    try {
+      const reviewed = await FRAApi.request(`/api/fra/assets/${asset.id}/review`, FRAApi.json('POST', payload));
+      if (!current()) return;
+      message.textContent = `Detection ${reviewed.verification_state.replaceAll('_', ' ')}; reviewer decision and rationale recorded.`;
+      await Promise.all([loadAssets(), loadProfiles()]);
+    } catch (error) {
+      if (current()) message.textContent = error.status === 403 ? 'Reviewer or administrator access is required to review detections.' : error.message;
+    } finally {
+      controls.removeAttribute('aria-busy'); buttons.forEach((button) => { button.disabled = false; });
+    }
+  }
   function renderAssets(items) {
     list.replaceChildren(); ensureMap(); layer?.clearLayers(); const collection = { type: 'FeatureCollection', features: [] };
-    items.forEach((asset) => { const visual = FRAAssetsUI.visualFor(asset.asset_class); const row = document.createElement('li'); row.className = 'asset-record'; const icon = spriteElement(asset.asset_class, 'asset-record-glyph'); const content = document.createElement('div'); const name = document.createElement('strong'); const meta = document.createElement('small'); const state = document.createElement('span'); name.textContent = visual.label; meta.textContent = `${asset.source_type} · ${asset.confidence == null ? 'human value' : `${Math.round(asset.confidence * 100)}% confidence`}`; const details = document.createElement('details'); const summary = document.createElement('summary'); const evidence = document.createElement('dl'); details.className = 'asset-provenance'; summary.textContent = 'View evidence chain'; evidence.className = 'provenance-chain'; FRAAssetsUI.evidenceRows(asset).forEach(([term, value]) => { const item = document.createElement('div'); const dt = document.createElement('dt'); const dd = document.createElement('dd'); dt.textContent = term; dd.textContent = value; item.append(dt, dd); evidence.appendChild(item); }); details.append(summary, evidence); content.append(name, meta, details); if (asset.verification_state === 'unverified') { const controls = document.createElement('div'); const approve = document.createElement('button'); const reject = document.createElement('button'); const message = document.createElement('p'); controls.className = 'asset-review-controls'; approve.type = reject.type = 'button'; approve.className = 'secondary-action'; reject.className = 'secondary-action danger-action'; approve.textContent = 'Approve detection'; reject.textContent = 'Reject detection'; message.className = 'inline-status'; message.setAttribute('aria-live', 'polite'); approve.addEventListener('click', () => reviewAsset(asset, 'verified', approve, message)); reject.addEventListener('click', () => reviewAsset(asset, 'rejected', reject, message)); controls.append(approve, reject, message); content.appendChild(controls); } state.className = 'record-state'; state.textContent = asset.verification_state; row.append(icon, content, state); list.appendChild(row); if (asset.geometry) collection.features.push({ type: 'Feature', geometry: asset.geometry, properties: { asset_class: asset.asset_class } }); });
+    items.forEach((asset) => {
+      const visual = FRAAssetsUI.visualFor(asset.asset_class); const row = document.createElement('li'); row.className = 'asset-record';
+      const icon = spriteElement(asset.asset_class, 'asset-record-glyph'); const content = document.createElement('div'); const name = document.createElement('strong'); const meta = document.createElement('small'); const state = document.createElement('span');
+      name.textContent = visual.label; meta.textContent = `${asset.source_type} · ${asset.confidence == null ? 'human value' : `${Math.round(asset.confidence * 100)}% confidence`}`;
+      const details = document.createElement('details'); const summary = document.createElement('summary'); const evidence = document.createElement('dl'); details.className = 'asset-provenance'; summary.textContent = 'View evidence chain'; evidence.className = 'provenance-chain';
+      FRAAssetsUI.evidenceRows(asset).forEach(([term, value]) => { const item = document.createElement('div'); const dt = document.createElement('dt'); const dd = document.createElement('dd'); dt.textContent = term; dd.textContent = value; item.append(dt, dd); evidence.appendChild(item); });
+      details.append(summary, evidence); content.append(name, meta, details);
+      if (asset.verification_state === 'unverified') {
+        const controls = document.createElement('div'); const approve = document.createElement('button'); const reject = document.createElement('button'); const notesLabel = document.createElement('label'); const notesTitle = document.createElement('span'); const notes = document.createElement('textarea'); const message = document.createElement('p');
+        controls.className = 'asset-review-controls'; approve.type = reject.type = 'button'; approve.className = 'secondary-action'; reject.className = 'secondary-action danger-action'; approve.textContent = 'Approve detection'; reject.textContent = 'Reject detection';
+        notes.id = `asset-review-notes-${asset.id}`; notes.rows = 2; notes.placeholder = 'Add field observations or explain a rejection'; notesTitle.textContent = 'Review notes'; notesLabel.htmlFor = notes.id; notesLabel.append(notesTitle, notes); message.className = 'inline-status'; message.setAttribute('aria-live', 'polite');
+        approve.addEventListener('click', () => reviewAsset(asset, 'verified', controls, notes, message)); reject.addEventListener('click', () => reviewAsset(asset, 'rejected', controls, notes, message));
+        controls.append(approve, reject, notesLabel, message); content.appendChild(controls);
+      }
+      state.className = 'record-state'; state.textContent = asset.verification_state; row.append(icon, content, state); list.appendChild(row);
+      if (asset.geometry) collection.features.push({ type: 'Feature', geometry: asset.geometry, properties: { asset_class: asset.asset_class } });
+    });
     if (!items.length) { const empty = document.createElement('li'); empty.className = 'empty-row'; empty.textContent = 'No supporting asset observations in this context.'; list.appendChild(empty); }
     renderLegend(items); layer?.addData(collection); try { const bounds = layer?.getBounds(); if (bounds?.isValid()) map.fitBounds(bounds, { padding: [20, 20], maxZoom: 14 }); } catch (_) { /* keep Tamil Nadu extent */ } setTimeout(() => map?.invalidateSize(), 0);
   }
@@ -89,9 +141,12 @@ if (typeof document !== 'undefined') (() => {
   async function loadProfiles() { const current = profileRequests.begin(); try { const suffix = contextQuery(); const data = await FRAApi.request(`/api/fra/assets/village-profiles${suffix ? `?${suffix}` : ''}`); if (current()) renderProfiles(data.items); } catch (error) { if (current()) status.textContent = error.message; } }
   async function submit(event) {
     event.preventDefault(); const current = submissions.begin(); status.textContent = ''; const claimId = claimSelect.value;
-    if (!claimId) { status.textContent = 'Choose a spatial FRA claim.'; return; }
+    if (!claimId) { status.textContent = 'Choose a spatial FRA claim.'; claimSelect.focus(); return; }
+    const button = document.querySelector('#prepareImageryButton'); const idleLabel = button.textContent; button.disabled = true; button.textContent = 'Preparing imagery…'; form.setAttribute('aria-busy', 'true'); status.textContent = 'Finding usable satellite scenes…';
     try { const payload = FRAAssetsUI.imageryPayload({ startDate: document.querySelector('#imageryStartDate').value, endDate: document.querySelector('#imageryEndDate').value, collection: document.querySelector('#imageryCollection').value, bandKeys: document.querySelector('#imageryBandKeys').value, maxCloud: document.querySelector('#imageryMaxCloud').value }); const options = FRAApi.json('POST', payload); options.headers['Idempotency-Key'] = ingestionKey; const job = await FRAApi.request(`/api/fra/claims/${claimId}/imagery-ingestions`, options); if (!current()) return; if (!job.replayed) ingestionKey = crypto.randomUUID(); status.textContent = `Imagery job ${job.job_id} queued for the FRA worker.`; await loadImagery(); } catch (error) { if (current()) status.textContent = error.message; }
+    finally { form.removeAttribute('aria-busy'); button.disabled = false; button.textContent = idleLabel; }
   }
+  const defaultWindow = FRAAssetsUI.defaultImageryWindow(); document.querySelector('#imageryStartDate').value ||= defaultWindow.startDate; document.querySelector('#imageryEndDate').value ||= defaultWindow.endDate;
   form.addEventListener('submit', submit); claimSelect.addEventListener('change', loadImagery); document.querySelector('#refreshImagery').addEventListener('click', loadImagery); document.querySelector('#refreshAssets').addEventListener('click', loadAssets); document.querySelector('#refreshVillageAssetProfiles').addEventListener('click', loadProfiles);
   async function activate() { ensureMap(); if (!initialized) { try { await loadReference(); } catch (error) { if (!document.querySelector('#assetsPanel').hidden) status.textContent = error.message; } } await Promise.all([loadImagery(), loadAssets(), loadProfiles()]); }
   document.addEventListener('fra:section', (event) => { if (event.detail.section === 'assets') activate(); });

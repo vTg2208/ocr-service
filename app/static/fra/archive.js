@@ -9,6 +9,23 @@ const FRAArchiveUI = (() => {
     'longitude', 'coordinates',
   ];
   const REQUIRED_REVIEW_FIELDS = new Set(['holder_name', 'district', 'block', 'village', 'right_type', 'claim_status']);
+  const REVIEW_FIELD_CONFIG = {
+    holder_type: { options: ['individual', 'household', 'community', 'gram_sabha'] },
+    right_type: { options: ['IFR', 'CR', 'CFR'] },
+    claim_status: { options: ['draft', 'submitted', 'gram_sabha_verified', 'sdlc_review', 'dlc_decided', 'granted', 'rejected', 'remanded', 'withdrawn'] },
+    area_unit: { options: ['sqm', 'hectare', 'acre', 'cent'] },
+    gram_sabha_status: { options: ['pending', 'verified', 'rejected', 'remanded'] },
+    sdlc_status: { options: ['pending', 'under_review', 'recommended', 'not_recommended', 'remanded'] },
+    dlc_status: { options: ['pending', 'granted', 'rejected', 'remanded'] },
+    claim_year: { type: 'number', min: 1900, max: new Date().getFullYear() },
+    decision_date: { type: 'date' },
+    claimed_area: { type: 'number', min: 0, step: 'any', inputmode: 'decimal' },
+    claimed_area_sqm: { type: 'number', min: 0, step: 'any', inputmode: 'decimal' },
+    granted_area: { type: 'number', min: 0, step: 'any', inputmode: 'decimal' },
+    granted_area_sqm: { type: 'number', min: 0, step: 'any', inputmode: 'decimal' },
+    latitude: { type: 'number', min: -90, max: 90, step: 'any', inputmode: 'decimal' },
+    longitude: { type: 'number', min: -180, max: 180, step: 'any', inputmode: 'decimal' },
+  };
   function emptyState(allRecords, search) {
     if ((allRecords || []).length && search) return 'No matching records';
     if (!(allRecords || []).length) return 'No archive records';
@@ -55,10 +72,52 @@ const FRAArchiveUI = (() => {
     fieldEvidenceRows(chain).forEach(([term, value]) => { const item = element(doc, 'div'); item.append(element(doc, 'dt', '', term), element(doc, 'dd', '', value)); list.appendChild(item); });
     details.append(summary, list); row.appendChild(details);
   }
+  function reviewControl(key, value, doc) {
+    const config = REVIEW_FIELD_CONFIG[key] || {};
+    const control = doc.createElement(config.options ? 'select' : 'input');
+    control.id = `review-field-${key}`;
+    control.name = key;
+    if (config.options) {
+      const prompt = element(doc, 'option', '', `Select ${key.replaceAll('_', ' ')}`); prompt.value = '';
+      control.appendChild(prompt);
+      config.options.forEach((optionValue) => {
+        const words = optionValue.replaceAll('_', ' '); const optionLabel = optionValue === optionValue.toUpperCase() ? optionValue : `${words[0].toUpperCase()}${words.slice(1)}`;
+        const option = element(doc, 'option', '', optionLabel); option.value = optionValue; control.appendChild(option);
+      });
+      if (value && !config.options.includes(String(value))) {
+        const retained = element(doc, 'option', '', `${value} (source value)`); retained.value = value; control.appendChild(retained);
+      }
+    } else {
+      control.type = config.type || 'text';
+      ['min', 'max', 'step', 'inputmode'].forEach((attribute) => {
+        if (config[attribute] !== undefined) control.setAttribute(attribute, String(config[attribute]));
+      });
+    }
+    control.value = value ?? '';
+    return control;
+  }
   function renderFields(container, values, evidence = {}, fieldReviews = [], doc = document) {
     container.replaceChildren();
     const reviews = new Map((fieldReviews || []).map((item) => [item.field_name, item]));
-    REVIEW_FIELDS.forEach((key) => { const fieldEvidence = evidence?.[key] || {}; const row = element(doc, 'div', `field-row${fieldEvidence.ambiguous || fieldEvidence.validation_error ? ' needs-correction' : ''}`); const label = element(doc, 'label', '', key.replaceAll('_', ' ')); const input = doc.createElement('input'); input.name = key; input.value = values?.[key] ?? ''; if (key === 'claim_year') input.type = 'number'; if (fieldEvidence.ambiguous || fieldEvidence.validation_error) input.placeholder = 'Reviewer correction required'; const metaText = fieldReviewMeta(fieldEvidence); row.append(label, input); if (metaText) row.append(element(doc, 'small', 'field-evidence', metaText)); const chain = reviews.get(key)?.evidence_chain; if (chain) appendEvidenceChain(row, chain, doc); container.appendChild(row); });
+    REVIEW_FIELDS.forEach((key) => {
+      const fieldEvidence = evidence?.[key] || {};
+      const requiresCorrection = fieldEvidence.ambiguous || fieldEvidence.validation_error;
+      const row = element(doc, 'div', `field-row${requiresCorrection ? ' needs-correction' : ''}`);
+      const label = element(doc, 'label', '', key.replaceAll('_', ' '));
+      const control = reviewControl(key, values?.[key], doc);
+      label.htmlFor = control.id;
+      if (REQUIRED_REVIEW_FIELDS.has(key)) {
+        control.required = true;
+        const requiredMark = element(doc, 'span', 'required-mark', 'Required'); requiredMark.setAttribute('aria-hidden', 'true'); label.append(requiredMark);
+      }
+      if (requiresCorrection && control.tagName?.toLowerCase() !== 'select') control.placeholder = 'Reviewer correction required';
+      const metaText = fieldReviewMeta(fieldEvidence);
+      row.append(label, control);
+      if (metaText) row.append(element(doc, 'small', 'field-evidence', metaText));
+      const chain = reviews.get(key)?.evidence_chain;
+      if (chain) appendEvidenceChain(row, chain, doc);
+      container.appendChild(row);
+    });
   }
   function formValues(form) {
     const values = Object.fromEntries(new FormData(form).entries());
@@ -91,6 +150,6 @@ const FRAArchiveUI = (() => {
       item.append(copy, element(doc, 'span', 'record-state', file.status || 'ready')); container.appendChild(item);
     });
   }
-  return { REVIEW_FIELDS, batchSummary, canUploadBatch, canUploadTabular, emptyState, fieldEvidenceRows, fieldReviewMeta, formValues, query, renderBatchFiles, renderFields, renderRecords, tabularSummary };
+  return { REVIEW_FIELDS, REVIEW_FIELD_CONFIG, batchSummary, canUploadBatch, canUploadTabular, emptyState, fieldEvidenceRows, fieldReviewMeta, formValues, query, renderBatchFiles, renderFields, renderRecords, tabularSummary };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = FRAArchiveUI;

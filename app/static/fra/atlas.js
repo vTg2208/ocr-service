@@ -72,7 +72,10 @@ if (typeof document !== 'undefined') (() => {
   function assetMarkerHtml(properties) { const item = presentation(properties); return `<span class="asset-icon-frame asset-marker-glyph" aria-hidden="true"><span class="asset-sprite-icon" style="background-position:${item.spritePosition}" aria-hidden="true"></span></span>`; }
   function assetIcon(properties, className) { const item = presentation(properties); const frame = document.createElement('span'); const glyph = document.createElement('span'); frame.className = `asset-icon-frame ${className}`; frame.setAttribute('aria-label', item.name); glyph.className = 'asset-sprite-icon'; glyph.style.backgroundPosition = item.spritePosition; glyph.setAttribute('aria-hidden', 'true'); frame.appendChild(glyph); return frame; }
   function ensureMap() {
-    if (map || typeof L === 'undefined') return;
+    if (map) return true;
+    if (typeof L === 'undefined') {
+      const mapNode = document.querySelector('#atlasMap'); mapNode.classList.add('map-unavailable'); mapNode.textContent = 'The interactive map could not load. The filtered record list and summary remain available.'; return false;
+    }
     map = L.map('atlasMap', { zoomControl: true }).setView([11.1, 78.65], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
     featureLayer = L.geoJSON([], {
@@ -80,6 +83,7 @@ if (typeof document !== 'undefined') (() => {
       pointToLayer: (feature, latlng) => { const props = feature.properties || {}; if (props.kind === 'asset') return L.marker(latlng, { icon: L.divIcon({ className: 'asset-map-marker', html: assetMarkerHtml(props), iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18] }) }); return L.circleMarker(latlng, { radius: 7, color: colors[props.kind] || '#315a3a', fillOpacity: 0.75 }); },
       onEachFeature: (feature, layer) => { const item = presentation(feature.properties || {}); layer.bindTooltip(item.name, { direction: 'top' }); },
     }).addTo(map);
+    return true;
   }
   function renderSummary(data) {
     summaryNode.replaceChildren();
@@ -118,6 +122,12 @@ if (typeof document !== 'undefined') (() => {
       renderFeatures(features); renderSummary(summary); loaded = true;
     } catch (error) { if (current()) summaryNode.textContent = error.message; }
   }
+  const LAYER_PRESETS = {
+    rights: ['country', 'state', 'district', 'block', 'village', 'claim', 'title'],
+    review: ['state', 'district', 'block', 'village', 'claim', 'title', 'forest_area', 'protected_area', 'cadastral_parcel'],
+    planning: ['state', 'district', 'block', 'village', 'claim', 'title', 'asset', 'satellite_imagery', 'water_body', 'groundwater', 'groundwater_stress', 'water_stress', 'infrastructure'],
+  };
+  document.querySelectorAll('[data-layer-preset]').forEach((button) => button.addEventListener('click', () => { const selected = new Set(LAYER_PRESETS[button.dataset.layerPreset] || []); form.querySelectorAll('input[name="layers"]').forEach((input) => { input.checked = selected.has(input.value); }); form.requestSubmit(); }));
   form.addEventListener('submit', (event) => { event.preventDefault(); load(); });
   document.addEventListener('fra:section', (event) => { if (event.detail.section === 'atlas') { if (!loaded) load(); else { ensureMap(); setTimeout(() => map?.invalidateSize(), 0); } } });
   document.addEventListener('fra:context', () => { loaded = false; requests.invalidate(); if (!document.querySelector('#atlasPanel').hidden) load(); });

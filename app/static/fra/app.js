@@ -20,20 +20,27 @@ if (typeof module !== 'undefined' && module.exports) module.exports = FRAWorkspa
 if (typeof document !== 'undefined') (() => {
   let state = FRAWorkspace.initialState(); let archiveBatchKey = crypto.randomUUID(); let tabularBatchKey = crypto.randomUUID(); const $ = (selector) => document.querySelector(selector); const status = $('#workspaceStatus'); const filterWidget = $('#workspaceFilterWidget'); const filterPanel = $('#contextFilterPanel'); const filterToggle = $('#contextFilterToggle'); const archiveRequests = FRAApi.requestGate(); const recordRequests = FRAApi.requestGate(); const mutations = FRAApi.requestGate();
   function setStatus(message, type = '') { status.textContent = message || ''; status.dataset.type = type; }
-  function setContextFilterOpen(open) { filterPanel.hidden = !open; filterToggle.setAttribute('aria-expanded', String(open)); }
+  function confirmAction(message) { return typeof window.confirm !== 'function' || window.confirm(message); }
+  function setContextFilterOpen(open) { filterPanel.hidden = !open; filterToggle.setAttribute('aria-expanded', String(open)); if (open) setTimeout(() => filterPanel.querySelector('select:not([disabled])')?.focus(), 0); }
   function updateContextFilterPresentation() {
     const selected = [state.context.district, state.context.block, state.context.village].filter(Boolean);
     $('#contextFilterCount').textContent = String(selected.length);
     $('#contextFilterCount').hidden = selected.length === 0;
     $('#contextFilterSummary').textContent = selected.length ? `Showing ${selected.join(' · ')}.` : 'Showing all available Tamil Nadu records.';
   }
-  function showSection(section) {
+  function routeForSection(section) { return section === 'archive' ? '#cases/legacy' : `#${section}`; }
+  function sectionFromLocation() { const requested = location.hash.slice(1); return requested === 'cases/legacy' || requested === 'archive' ? 'archive' : FRAWorkspace.SECTIONS.includes(requested) ? requested : 'dashboard'; }
+  function showSection(section, { historyMode = 'push', moveFocus = true } = {}) {
     state = FRAWorkspace.reduce(state, { type: 'section', value: section });
     const navigationSection = state.section === 'archive' ? 'cases' : state.section;
     document.querySelectorAll('[data-section]').forEach((button) => { const active = button.dataset.section === navigationSection; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
     document.querySelectorAll('[data-panel]').forEach((panel) => { const active = panel.dataset.panel === state.section; panel.hidden = !active; panel.classList.toggle('active', active); });
     const filterHost = document.querySelector(`[data-panel="${state.section}"] .filter-host`); if (filterHost) { filterHost.appendChild(filterWidget); filterWidget.hidden = false; } setContextFilterOpen(false);
-    history.replaceState(null, '', state.section === 'archive' ? '#cases/legacy' : `#${state.section}`); $('#workspaceMain').focus({ preventScroll: true });
+    const route = routeForSection(state.section);
+    if (historyMode === 'replace') history.replaceState({ section: state.section }, '', route);
+    else if (historyMode === 'push' && location.hash !== route) history.pushState({ section: state.section }, '', route);
+    if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+    if (moveFocus) $('#workspaceMain').focus({ preventScroll: true });
     document.dispatchEvent(new CustomEvent('fra:section', { detail: { section: state.section, context: { ...state.context } } }));
   }
   function archiveFilters() { return { district: state.context.district, block: state.context.block, village: state.context.village, right_type: $('#archiveRightType').value, review_state: $('#archiveReviewState').value, query: $('#archiveSearch').value }; }
@@ -75,10 +82,10 @@ if (typeof document !== 'undefined') (() => {
     try { setStatus('Loading the review queue…'); const suffix = FRAArchiveUI.query(archiveFilters()); const result = await FRAApi.request(`/api/fra/archive/records${suffix ? `?${suffix}` : ''}`); if (!current()) return; const preferred = FRAWorkspace.preferredRecord(result.items, selectedId); state = FRAWorkspace.reduce(state, { type: 'archive', value: { records: result.items, selected: preferred, loading: false } }); FRAArchiveUI.renderRecords($('#archiveList'), result.items, preferred?.id, loadRecord); renderArchiveEmpty(result.items); $('#archiveCount').textContent = `${result.items.length} ${result.items.length === 1 ? 'record' : 'records'}`; if (preferred) await loadRecord(preferred); else clearRecord(); } catch (error) { if (current()) setStatus(error.message, 'error'); }
   }
   async function saveReview(event) {
-    event.preventDefault(); if (!state.archive.selected) return; const current = mutations.begin();
-    try { setStatus('Saving reviewer corrections…'); const record = await FRAApi.request(`/api/fra/archive/records/${state.archive.selected.id}/review`, FRAApi.json('POST', { expected_revision: state.archive.selected.revision, reviewed_fields: FRAArchiveUI.formValues(event.currentTarget) })); if (!current()) return; setStatus('Review saved.', 'success'); await loadArchive(); } catch (error) { if (current()) setStatus(error.message, 'error'); }
+    event.preventDefault(); if (!state.archive.selected) return; const current = mutations.begin(); const button = event.submitter || $('#saveReviewButton'); button.disabled = true;
+    try { setStatus('Saving reviewer corrections…'); const record = await FRAApi.request(`/api/fra/archive/records/${state.archive.selected.id}/review`, FRAApi.json('POST', { expected_revision: state.archive.selected.revision, reviewed_fields: FRAArchiveUI.formValues(event.currentTarget) })); if (!current()) return; setStatus('Review saved.', 'success'); await loadArchive(); } catch (error) { if (current()) setStatus(error.message, 'error'); } finally { if (current()) button.disabled = false; }
   }
-  async function promote() { if (!state.archive.selected) return; const current = mutations.begin(); try { setStatus('Promoting the reviewed source record…'); const result = await FRAApi.request(`/api/fra/archive/records/${state.archive.selected.id}/promote`, FRAApi.json('POST', { expected_revision: state.archive.selected.revision })); if (!current()) return; setStatus(`Promoted to FRA claim ${result.claim_number}.`, 'success'); await loadArchive(); } catch (error) { if (current()) setStatus(error.message, 'error'); } }
+  async function promote() { if (!state.archive.selected || !confirmAction(`Create a native FRA claim from ${state.archive.selected.legacy_reference}? Review the extracted fields before continuing.`)) return; const current = mutations.begin(); const button = $('#promoteButton'); button.disabled = true; try { setStatus('Promoting the reviewed source record…'); const result = await FRAApi.request(`/api/fra/archive/records/${state.archive.selected.id}/promote`, FRAApi.json('POST', { expected_revision: state.archive.selected.revision })); if (!current()) return; setStatus(`Promoted to FRA claim ${result.claim_number}.`, 'success'); await loadArchive(); } catch (error) { if (current()) setStatus(error.message, 'error'); } finally { if (current() && state.archive.selected?.review_state === 'reviewed') button.disabled = false; } }
   function selectedArchiveFiles() { return Array.from($('#archiveFiles').files || []); }
   function previewArchiveFiles() {
     const files = selectedArchiveFiles(); FRAArchiveUI.renderBatchFiles($('#archiveUploadResults'), files.map((file) => ({ filename: file.name, status: 'ready' })));
@@ -88,7 +95,7 @@ if (typeof document !== 'undefined') (() => {
     event.preventDefault(); const files = selectedArchiveFiles(); const sourceOffice = $('#archiveSourceOffice').value; const district = $('#archiveUploadDistrict').value; const button = $('#archiveUploadButton');
     if (!FRAArchiveUI.canUploadBatch({ fileCount: files.length, sourceOffice, district })) { $('#archiveUploadSummary').textContent = 'Add source office, district, and at least one file.'; return; }
     const body = new FormData(); files.forEach((file) => body.append('files', file)); body.append('source_office', sourceOffice.trim()); body.append('district', district.trim());
-    button.disabled = true; button.textContent = 'Validating and queueing...'; $('#archiveUploadSummary').textContent = 'Checking file types, malware status, and duplicates...';
+    button.disabled = true; button.textContent = 'Validating and queueing…'; $('#archiveUploadSummary').textContent = 'Checking file types, malware status, and duplicates…';
     try {
       const result = await FRAApi.request('/api/fra/archive/batch-upload', { method: 'POST', headers: { 'Idempotency-Key': archiveBatchKey }, body });
       FRAArchiveUI.renderBatchFiles($('#archiveUploadResults'), result.files); $('#archiveUploadSummary').textContent = FRAArchiveUI.batchSummary(result);
@@ -97,7 +104,7 @@ if (typeof document !== 'undefined') (() => {
     } catch (error) { $('#archiveUploadSummary').textContent = error.message; }
     finally { button.disabled = false; button.textContent = 'Validate and queue files'; }
   }
-  async function rejectExtraction() { if (!state.archive.selected) return; const reason = $('#reviewNotes').value.trim(); if (!reason) { setStatus('Enter reviewer notes before rejecting the extraction.', 'error'); $('#reviewNotes').focus(); return; } const current = mutations.begin(); try { setStatus('Rejecting the extraction…'); await FRAApi.request(`/api/fra/archive/records/${state.archive.selected.id}/reject`, FRAApi.json('POST', { expected_revision: state.archive.selected.revision, reason })); if (!current()) return; setStatus('Extraction rejected with the reviewer reason recorded.', 'success'); await loadArchive(); } catch (error) { if (current()) setStatus(error.message, 'error'); } }
+  async function rejectExtraction() { if (!state.archive.selected) return; const reason = $('#reviewNotes').value.trim(); if (!reason) { setStatus('Enter reviewer notes before rejecting the extraction.', 'error'); $('#reviewNotes').focus(); return; } if (!confirmAction(`Reject the extraction for ${state.archive.selected.legacy_reference}? The reviewer reason will be recorded in the audit trail.`)) return; const current = mutations.begin(); const button = $('#rejectExtractionButton'); button.disabled = true; try { setStatus('Rejecting the extraction…'); await FRAApi.request(`/api/fra/archive/records/${state.archive.selected.id}/reject`, FRAApi.json('POST', { expected_revision: state.archive.selected.revision, reason })); if (!current()) return; setStatus('Extraction rejected with the reviewer reason recorded.', 'success'); await loadArchive(); } catch (error) { if (current()) setStatus(error.message, 'error'); } finally { if (current() && ['needs_review', 'reviewed'].includes(state.archive.selected?.review_state)) button.disabled = false; } }
   function selectedTabularFile() { return $('#archiveTabularFile').files?.[0] || null; }
   function previewTabularFile() {
     const file = selectedTabularFile();
@@ -108,7 +115,7 @@ if (typeof document !== 'undefined') (() => {
     event.preventDefault(); const file = selectedTabularFile(); const sourceOffice = $('#archiveTabularSourceOffice').value; const district = $('#archiveTabularDistrict').value; const button = $('#archiveTabularButton');
     if (!FRAArchiveUI.canUploadTabular({ filename: file?.name, sourceOffice, district })) { $('#archiveTabularSummary').textContent = 'Add source office, district, and one CSV or XLSX register.'; return; }
     const body = new FormData(); body.append('file', file); body.append('source_office', sourceOffice.trim()); body.append('district', district.trim());
-    button.disabled = true; button.textContent = 'Validating and importing...'; $('#archiveTabularSummary').textContent = 'Checking the source, headers, rows, malware status, and duplicates...';
+    button.disabled = true; button.textContent = 'Validating and importing…'; $('#archiveTabularSummary').textContent = 'Checking the source, headers, rows, malware status, and duplicates…';
     try {
       const result = await FRAApi.request('/api/fra/archive/tabular-upload', { method: 'POST', headers: { 'Idempotency-Key': tabularBatchKey }, body });
       const rows = (result.records || []).map((row) => ({ filename: `Row ${row.source_row}`, status: row.status, legacy_reference: row.legacy_reference }));
@@ -140,7 +147,9 @@ if (typeof document !== 'undefined') (() => {
   }
   $('#archiveUploadForm').addEventListener('submit', uploadArchiveBatch); $('#archiveFiles').addEventListener('change', previewArchiveFiles); $('#archiveTabularForm').addEventListener('submit', uploadTabularRegister); $('#archiveTabularFile').addEventListener('change', previewTabularFile);
   document.addEventListener('fra:atlas-drill', (event) => applyAtlasDrill(event.detail));
-  document.querySelectorAll('[data-section]').forEach((button) => button.addEventListener('click', () => showSection(button.dataset.section)));
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  document.querySelectorAll('[data-section]').forEach((link) => link.addEventListener('click', (event) => { event.preventDefault(); showSection(link.dataset.section); }));
+  if (typeof window.addEventListener === 'function') window.addEventListener('popstate', () => showSection(sectionFromLocation(), { historyMode: 'none' }));
   filterToggle.addEventListener('click', () => setContextFilterOpen(filterPanel.hidden));
   $('#contextFilterClose').addEventListener('click', () => { setContextFilterOpen(false); filterToggle.focus(); });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !filterPanel.hidden) { setContextFilterOpen(false); filterToggle.focus(); } });
@@ -149,5 +158,5 @@ if (typeof document !== 'undefined') (() => {
   $('#archiveModeCases').addEventListener('click', () => { showSection('cases'); document.dispatchEvent(new CustomEvent('fra:case-mode', { detail: { mode: 'cases' } })); });
   $('#archiveModeIntake').addEventListener('click', () => { showSection('cases'); document.dispatchEvent(new CustomEvent('fra:case-mode', { detail: { mode: 'intake' } })); });
   $('#archiveFilters').addEventListener('submit', (event) => { event.preventDefault(); loadArchive(); }); $('#refreshArchive').addEventListener('click', loadArchive); $('#reviewForm').addEventListener('submit', saveReview); $('#rejectExtractionButton').addEventListener('click', rejectExtraction); $('#promoteButton').addEventListener('click', promote); $('#contextDistrict').addEventListener('change', updateDependentContext); $('#contextBlock').addEventListener('change', updateBlockContext); $('#contextVillage').addEventListener('change', () => { state = FRAWorkspace.reduce(state, { type: 'context', value: { village: $('#contextVillage').value } }); publishContext(); loadArchive(); }); $('#logoutButton').addEventListener('click', async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.assign('/login'); });
-  FRAWorkspace.ensureBrowserSession(fetch, (url) => window.location.assign(url)).then(async (user) => { if (!user) return; $('#staffName').textContent = user.display_name || 'Registry staff'; const requested = location.hash.slice(1); const view = requested === 'cases/legacy' || requested === 'archive' ? 'archive' : FRAWorkspace.SECTIONS.includes(requested) ? requested : 'dashboard'; showSection(view); await loadVillageOptions(); await loadArchive(); });
+  FRAWorkspace.ensureBrowserSession(fetch, (url) => window.location.assign(url)).then(async (user) => { if (!user) return; $('#staffName').textContent = user.display_name || 'Registry staff'; showSection(sectionFromLocation(), { historyMode: 'replace' }); await loadVillageOptions(); await loadArchive(); });
 })();
