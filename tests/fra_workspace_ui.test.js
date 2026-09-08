@@ -70,7 +70,7 @@ test('atlas query uses the same filters for features and summary', () => {
   assert.equal(FRAAtlasUI.query(filters), 'district=Thanjavur&claimant_category=ST&right_type=IFR&status=granted&min_area_sqm=500');
 });
 
-test('workspace opens on FRA Overview and exposes only the six final top-level workspaces', () => {
+test('workspace opens on the Dashboard and exposes only the six final top-level workspaces', () => {
   assert.equal(FRAWorkspace.initialState().section, 'dashboard');
   assert.deepEqual(FRAWorkspace.SECTIONS, [
     'dashboard', 'atlas', 'cases', 'assets', 'planner', 'reports',

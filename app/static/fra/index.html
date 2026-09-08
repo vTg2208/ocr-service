@@ -16,10 +16,10 @@
     <aside class="navigation-rail">
       <a class="rail-brand" href="/fra" aria-label="AranyaSetu Tamil Nadu FRA Platform">
         <span class="brand-emblem" aria-hidden="true"><img src="/static/brand/aranyasetu-mark.webp" alt="" width="192" height="192"></span>
-        <span><strong>AranyaSetu</strong><small>FRA Spatial Intelligence + DSS</small></span>
+        <span><strong>AranyaSetu</strong><small>Connecting Forest Rights to Development</small></span>
       </a>
       <nav id="workspaceNav" aria-label="FRA workspaces">
-        <a class="rail-link active" href="#dashboard" data-section="dashboard" aria-current="page"><img class="rail-icon" src="/static/fra/icons/overview.svg" alt="" aria-hidden="true" width="48" height="48">FRA Overview</a>
+        <a class="rail-link active" href="#dashboard" data-section="dashboard" aria-current="page"><img class="rail-icon" src="/static/fra/icons/overview.svg" alt="" aria-hidden="true" width="48" height="48">Dashboard</a>
         <a class="rail-link" href="#atlas" data-section="atlas"><img class="rail-icon" src="/static/fra/icons/atlas.png" alt="" aria-hidden="true" width="30" height="30">FRA Atlas</a>
         <a class="rail-link" href="#cases" data-section="cases"><img class="rail-icon" src="/static/fra/icons/cases-nav.webp" alt="" aria-hidden="true" width="96" height="81">Case Management</a>
         <a class="rail-link" href="#assets" data-section="assets"><img class="rail-icon" src="/static/fra/icons/assets.png" alt="" aria-hidden="true" width="30" height="30">Asset Intelligence</a>
@@ -34,7 +34,6 @@
     </aside>
     <div class="application">
       <main id="workspaceMain" tabindex="-1">
-        <aside class="environment-notice" aria-label="Pilot data notice"><strong>Pilot workspace</strong><span>This environment may contain demonstration records. Items marked “synthetic” are samples and are not official FRA records.</span></aside>
         <p class="workspace-status" id="workspaceStatus" role="status" aria-live="polite"></p>
         <div id="workspaceFilterWidget" class="workspace-filter-widget" hidden>
           <button id="contextFilterToggle" class="context-filter-toggle" type="button" aria-expanded="false" aria-haspopup="dialog" aria-controls="contextFilterPanel">
@@ -54,9 +53,9 @@
           </section>
         </div>
         <section class="workspace-panel active overview" id="dashboardPanel" data-panel="dashboard" aria-labelledby="dashboardTitle">
-          <header class="overview-masthead">
-            <div class="overview-title-group"><span class="overview-seal" aria-hidden="true">FRA</span><div><span class="overview-kicker">Programme briefing</span><h1 id="dashboardTitle">FRA Overview</h1><p id="dashboardScope">Tamil Nadu · All available records</p></div></div>
-            <div class="overview-refresh filter-host"><button id="refreshDashboard" class="text-action" type="button">Refresh briefing</button><span id="dashboardStatus" role="status" aria-live="polite">Preparing current position…</span></div>
+          <header class="workspace-title">
+            <div><h1 id="dashboardTitle">Dashboard</h1><p id="dashboardScope">FRA Overview</p></div>
+            <div class="workspace-heading-actions filter-host"><span id="dashboardStatus" role="status" aria-live="polite">Preparing current position…</span><button id="refreshDashboard" class="text-action refresh-action" type="button"><img src="/static/fra/icons/refresh.png" alt="" aria-hidden="true" width="64" height="64"><span>Refresh</span></button></div>
           </header>
 
           <section class="overview-alert" aria-labelledby="priorityBriefingTitle">
