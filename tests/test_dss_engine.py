@@ -150,6 +150,37 @@ class DSSEngineTests(unittest.TestCase):
 
             self.assertEqual([row.rule_set_id for row in results], [self.rule_id])
 
+    def test_equal_registration_timestamps_choose_the_latest_rule_version(self):
+        with Session(self.engine) as session:
+            registered_at = datetime(2026, 9, 15, tzinfo=timezone.utc)
+            for version, rule_id in (("1", uuid.UUID(int=2)), ("2", uuid.UUID(int=1))):
+                session.add(SchemeRuleSet(
+                    id=rule_id,
+                    scheme_code="LATEST-TIE",
+                    display_name="Latest tied rule",
+                    version=version,
+                    required_facts_json=["has_title"],
+                    condition_json={"present": {"fact": "has_title"}},
+                    recommendation_text="Review latest tied rule.",
+                    source_reference=f"policy://latest-tie/{version}",
+                    created_by=self.admin_id,
+                    created_at=registered_at,
+                ))
+            session.flush()
+
+            results = evaluate_rules(
+                session,
+                claim_id=self.claim_id,
+                facts={"has_title": True, "water_body_present": False},
+                actor_id=self.admin_id,
+                idempotency_key="equal-registration-times",
+            )
+
+            tied_result = next(
+                item for item in results if item.rule_set.scheme_code == "LATEST-TIE"
+            )
+            self.assertEqual(tied_result.rule_version, "2")
+
     def test_rule_language_rejects_arbitrary_operator(self):
         with self.assertRaises(InvalidRuleError):
             validate_rule_definition({"exec": "import os"})

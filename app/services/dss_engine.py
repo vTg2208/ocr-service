@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
+import re
 from typing import Any
 
 from sqlalchemy import or_, select
@@ -307,8 +308,21 @@ def _active_rules(session, rule_set_ids=None) -> list[SchemeRuleSet]:
     # Explicit version IDs and stored recommendations remain available for history.
     latest = {}
     for rule in rules:
-        latest.setdefault(rule.scheme_code, rule)
+        selected = latest.get(rule.scheme_code)
+        if selected is None or (
+            rule.created_at == selected.created_at
+            and _version_key(rule.version) > _version_key(selected.version)
+        ):
+            latest[rule.scheme_code] = rule
     return list(latest.values())
+
+
+def _version_key(version: str) -> tuple:
+    return tuple(
+        (1, int(part)) if part.isdigit() else (0, part)
+        for part in re.split(r"(\d+)", str(version).casefold())
+        if part
+    )
 
 
 def _catalog_allows_execution(rule: SchemeRuleSet, today: date) -> bool:
