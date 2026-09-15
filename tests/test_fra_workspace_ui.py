@@ -41,13 +41,14 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertIn("Cadastral evidence", html)
         self.assertNotIn("Back to Patta Registry", html)
 
-    def test_workspace_keeps_the_internal_processing_pipeline_out_of_the_interface(self):
+    def test_workspace_keeps_digitization_details_in_case_documents(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
 
         self.assertNotIn("data-flow-stage", html)
         self.assertNotIn("processing lifecycle", html)
         self.assertNotIn('class="platform-flow"', html)
-        self.assertIn("FRA Spatial Intelligence + DSS", html)
+        self.assertIn('id="newFraRecord"', html)
+        self.assertNotIn('id="caseDigitizationSteps"', html)
 
     def test_workspace_has_final_six_sections_shared_context_and_archive_review_regions(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
@@ -76,9 +77,8 @@ class FRAWorkspaceUITests(unittest.TestCase):
         self.assertTrue({"nav", "main", "header", "aside"}.issubset(parser.landmarks))
         self.assertNotIn('class="warning-strip"', html)
         self.assertNotIn("Synthetic sample data — not authoritative", html)
-        self.assertIn('class="environment-notice"', html)
-        self.assertIn("demonstration records", html.casefold())
-        self.assertIn("not official FRA records", html)
+        self.assertIn("AI extraction assists human review", html)
+        self.assertIn("does not determine legal validity", html)
         self.assertNotIn("approved benefit", html.casefold())
 
     def test_administrative_filters_are_collapsed_into_the_active_workspace_header(self):
@@ -103,6 +103,15 @@ class FRAWorkspaceUITests(unittest.TestCase):
         ):
             self.assertIn(f"/static/fra/{script}", html)
         self.assertIn("leaflet", html.casefold())
+
+    def test_non_case_operational_workspaces_are_marked_under_development(self):
+        html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
+
+        for panel in ("atlasPanel", "assetsPanel", "plannerPanel", "reportsPanel"):
+            with self.subTest(panel=panel):
+                self.assertIn(f'class="workspace-panel development-workspace" id="{panel}"', html)
+        self.assertEqual(html.count('class="under-development-screen"'), 4)
+        self.assertEqual(html.count("Under development</h1>"), 4)
 
     def test_workspace_navigation_uses_supplied_section_icons(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
@@ -135,7 +144,7 @@ class FRAWorkspaceUITests(unittest.TestCase):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
 
         for label in (
-            "Legacy records", "Native FRA cases", "Evidence", "Lifecycle decisions", "Titles",
+            "Legacy records", "All FRA Cases", "Evidence", "Lifecycle decisions", "Titles",
             "Atlas filters", "Mapped records", "Prepare satellite imagery",
             "Observation register", "Village profiles", "Schemes and eligibility",
             "Deficiencies and recommendations", "FRA progress", "Spatial statistics",

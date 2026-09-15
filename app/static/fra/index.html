@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
-  <link rel="stylesheet" href="/static/fra/styles.css?v=20260907.2">
+  <link rel="stylesheet" href="/static/fra/styles.css?v=20260915.3">
 </head>
 <body>
   <a class="skip-link" id="skipLink" href="#workspaceMain">Skip to workspace</a>
@@ -92,7 +92,7 @@
                 </section>
 
                 <section class="analytics-panel rights-panel" aria-labelledby="rightsMixTitle">
-                  <div class="mis-panel-heading"><span id="rightsMixTitle">Claims by right type</span><small>IFR · CR · CFR</small></div>
+                  <div class="mis-panel-heading"><span id="rightsMixTitle">Claims by right type</span></div>
                   <div class="rights-bars">
                     <div><span>IFR</span><div class="bar-track"><i id="dashboardIFRBar"></i></div><strong id="dashboardIFRCount">—</strong></div>
                     <div><span>CR</span><div class="bar-track"><i id="dashboardCRBar"></i></div><strong id="dashboardCRCount">—</strong></div>
@@ -117,24 +117,28 @@
           <p class="overview-legal">Operational summaries support human verification and planning. They do not establish legal validity or approve scheme benefits.</p>
         </section>
         <section class="workspace-panel" id="archivePanel" data-panel="archive" aria-labelledby="archiveTitle" hidden>
-          <header class="workspace-title"><div><h1 id="archiveTitle">Case Management</h1><p>Manage legacy FRA records, native cases, evidence, decisions and titles.</p></div><div class="workspace-heading-actions filter-host"><span id="archiveCount">Loading records</span></div></header>
-          <div class="case-mode-tabs" role="group" aria-label="Case Management view"><button id="archiveModeLegacy" class="active" type="button" aria-pressed="true">Legacy records</button><button id="archiveModeCases" type="button" aria-pressed="false">Native FRA cases</button><button id="archiveModeIntake" type="button" aria-pressed="false">Registry intake</button></div>
-          <section class="archive-upload-sheet" aria-labelledby="archiveUploadTitle">
-            <div class="archive-upload-intro"><span class="section-kicker">Legacy records</span><h2 id="archiveUploadTitle">Import source records</h2><p>Upload scanned records or a CSV/XLSX legacy register. Every accepted document or row enters the review queue; extraction does not decide legal validity.</p></div>
+          <header class="workspace-title"><div><h1 id="archiveTitle">Case Management</h1><p id="archiveSubtitle">Review legacy source records before they become FRA cases.</p></div><div class="workspace-heading-actions filter-host"><span id="archiveCount">Loading records</span></div></header>
+          <div class="case-mode-tabs" role="group" aria-label="Case Management view"><button id="archiveModeCases" type="button" aria-pressed="false">All cases</button><button id="archiveModeLegacy" class="active" type="button" aria-pressed="true">Legacy records</button><button id="archiveModeIntake" type="button" aria-pressed="false">Registry intake</button></div>
+          <button id="archiveUploadBack" class="text-action archive-upload-back" type="button" hidden>&larr; Back to All Cases</button>
+          <ol id="archiveUploadGuide" class="archive-upload-guide" aria-label="FRA record digitization steps" hidden><li><strong>1. Upload</strong><span>Add a scanned FRA document or legacy register.</span></li><li><strong>2. Digitize</strong><span>Scans enter OCR and field extraction; register rows are standardized.</span></li><li><strong>3. Review</strong><span>Check source text, extracted fields and evidence chains.</span></li><li><strong>4. Create case</strong><span>Promote a reviewed record into an FRA case.</span></li></ol>
+          <section id="archiveUploadSheet" class="archive-upload-sheet" aria-labelledby="archiveUploadTitle" hidden>
+            <div class="archive-upload-intro"><span id="archiveUploadKicker" class="section-kicker">New FRA record</span><h2 id="archiveUploadTitle">Upload original FRA records</h2><p id="archiveUploadDescription">Choose scanned PDFs/images or a CSV/XLSX register, and record its source office and district. Accepted scans are queued for OCR and extraction; a reviewer checks the result before a case is created.</p></div>
             <form id="archiveUploadForm" class="archive-upload-form">
-              <label><span>Source office</span><input id="archiveSourceOffice" name="source_office" value="District Tribal Welfare Office" maxlength="255" required></label>
-              <label><span>District</span><input id="archiveUploadDistrict" name="district" value="Salem" maxlength="255" required></label>
+              <h3>Scanned FRA documents</h3>
+              <label><span>Source office</span><input id="archiveSourceOffice" name="source_office" placeholder="Office that supplied the record" maxlength="255" required></label>
+              <label><span>District</span><input id="archiveUploadDistrict" name="district" placeholder="District on the source record" maxlength="255" required></label>
               <label class="archive-file-field"><span>Source files</span><input id="archiveFiles" name="files" type="file" accept=".pdf,.jpg,.jpeg,.png,.bmp,.tif,.tiff" multiple required><small>Up to 20 files; 10 MB per file. PDF or supported scan images.</small></label>
               <button id="archiveUploadButton" class="primary-action" type="submit">Validate and queue files</button>
             </form>
-            <div class="archive-upload-feedback"><p id="archiveUploadSummary" class="inline-status" role="status" aria-live="polite">Choose source files to begin.</p><ol id="archiveUploadResults" class="upload-results" aria-label="Archive upload results"></ol></div>
+            <div class="archive-upload-feedback"><p id="archiveUploadSummary" class="inline-status" role="status" aria-live="polite">Choose source files to begin.</p><ol id="archiveUploadResults" class="upload-results" aria-label="Archive upload results"></ol><button id="archiveReviewQueueLink" class="text-action archive-review-link" type="button" hidden>Open review queue &rarr;</button></div>
             <form id="archiveTabularForm" class="archive-upload-form archive-tabular-form">
-              <label><span>Register source office</span><input id="archiveTabularSourceOffice" name="source_office" value="District Tribal Welfare Office" maxlength="255" required></label>
-              <label><span>Register district</span><input id="archiveTabularDistrict" name="district" value="Salem" maxlength="255" required></label>
+              <h3>Legacy CSV/XLSX register</h3>
+              <label><span>Register source office</span><input id="archiveTabularSourceOffice" name="source_office" placeholder="Office that supplied the register" maxlength="255" required></label>
+              <label><span>Register district</span><input id="archiveTabularDistrict" name="district" placeholder="District covered by the register" maxlength="255" required></label>
               <label class="archive-file-field"><span>Legacy register</span><input id="archiveTabularFile" name="file" type="file" accept=".csv,.xlsx" required><small>One UTF-8 CSV or values-only XLSX file; up to 5,000 rows and 10 MB.</small></label>
               <button id="archiveTabularButton" class="secondary-action" type="submit">Validate and import register</button>
             </form>
-            <div class="archive-upload-feedback archive-tabular-feedback"><p id="archiveTabularSummary" class="inline-status" role="status" aria-live="polite">Choose a CSV or XLSX register to begin.</p><ol id="archiveTabularResults" class="upload-results" aria-label="Tabular import results"></ol></div>
+            <div class="archive-upload-feedback archive-tabular-feedback"><p id="archiveTabularSummary" class="inline-status" role="status" aria-live="polite">Choose a CSV or XLSX register to begin.</p><ol id="archiveTabularResults" class="upload-results" aria-label="Tabular import results"></ol><button id="archiveTabularReviewQueueLink" class="text-action archive-review-link" type="button" hidden>Open review queue &rarr;</button></div>
           </section>
           <div class="archive-layout">
             <aside class="queue-sheet" aria-labelledby="queueTitle">
@@ -146,7 +150,7 @@
                 <button class="secondary-action" type="submit">Apply filters</button>
               </form>
               <ol class="archive-list" id="archiveList" aria-label="Archive records"></ol>
-              <div class="empty-state" id="archiveEmpty" hidden><strong>No archive records</strong><span>Import a Tamil Nadu source batch to begin review.</span></div>
+              <div class="empty-state" id="archiveEmpty" hidden><strong>No archive records</strong><span>Use + New FRA Record in All Cases to upload source records for review.</span></div>
             </aside>
             <article class="evidence-sheet" id="archiveDetail" aria-labelledby="evidenceTitle">
               <header class="sheet-heading"><div><h2 id="evidenceTitle">Source evidence</h2><p id="recordReference">Loading the first archive record.</p></div><span class="record-state" id="recordState">Loading</span></header>
@@ -170,9 +174,9 @@
           </div>
         </section>
         <section class="workspace-panel" id="casesPanel" data-panel="cases" aria-labelledby="casesTitle" hidden>
-          <header class="workspace-title"><div><h1 id="casesTitle">Case Management</h1><p>Manage legacy FRA records, native cases, evidence, decisions and titles.</p></div><div class="workspace-heading-actions filter-host"><span id="caseCount">Loading cases</span></div></header>
+          <header class="workspace-title"><div><h1 id="casesTitle">Case Management</h1><p>Browse FRA cases and open a case to see its information, evidence and history.</p></div><div class="workspace-heading-actions filter-host"><span id="caseCount">Loading cases</span><button id="newFraRecord" class="primary-action" type="button">+ New FRA Record</button></div></header>
           <p id="caseMessage" class="inline-status case-message" role="status" aria-live="polite"></p>
-          <div class="case-mode-tabs" role="group" aria-label="Case Management view"><button id="caseModeLegacy" type="button" aria-pressed="false">Legacy records</button><button id="caseModeCases" class="active" type="button" aria-pressed="true">Native FRA cases</button><button id="caseModeIntake" type="button" aria-pressed="false">Registry intake</button></div>
+          <div class="case-mode-tabs" role="group" aria-label="Case Management view"><button id="caseModeCases" class="active" type="button" aria-pressed="true">All cases</button><button id="caseModeLegacy" type="button" aria-pressed="false">Legacy records</button><button id="caseModeIntake" type="button" aria-pressed="false">Registry intake</button></div>
           <div id="intakeWorkspace" class="case-layout" hidden>
             <aside class="queue-sheet"><header class="sheet-heading"><div><h2>Intake queue</h2><p>Review registry claims before FRA classification.</p></div><span id="intakeCount">Loading</span></header><ol id="intakeList" class="case-list" aria-label="Registry claims awaiting FRA triage"></ol></aside>
             <article class="case-detail-sheet"><header class="sheet-heading"><div><h2 id="intakeReference">Select an intake item</h2><p>Promotion creates a linked native FRA case; it is not a legal decision.</p></div><span id="intakeCurrentState" class="record-state">No selection</span></header>
@@ -185,23 +189,105 @@
               </form>
             </article>
           </div>
-          <div id="nativeCasesWorkspace" class="case-layout">
-            <aside class="queue-sheet"><header class="sheet-heading"><div><h2>Case register</h2><p>Search active and historical FRA casework.</p></div></header><form id="caseFilters" class="case-filters"><label class="wide-field"><span>Search</span><input id="caseSearch" name="query" type="search" placeholder="Claim or rights holder"></label><label><span>Status</span><select id="caseStatus" name="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="gram_sabha_verified">Gram Sabha verified</option><option value="sdlc_review">SDLC review</option><option value="dlc_decided">DLC decided</option><option value="granted">Granted</option><option value="rejected">Rejected</option><option value="remanded">Remanded</option></select></label><label><span>Right type</span><select id="caseRightType" name="right_type"><option value="">All rights</option><option>IFR</option><option>CR</option><option>CFR</option></select></label><button class="secondary-action wide-field" type="submit">Apply filters</button></form><ol id="caseList" class="case-list" aria-label="Native FRA cases"></ol></aside>
-            <article class="case-detail-sheet" id="caseDetail"><header class="sheet-heading"><div><h2 id="caseReference">No case selected</h2><p id="caseLocation">Select a case from the register.</p></div><span id="caseCurrentState" class="record-state">No match</span></header>
-              <section class="case-summary-grid" aria-label="Case summary"><div><span>Rights holder</span><strong id="caseHolder">—</strong></div><div><span>Right type</span><strong id="caseType">—</strong></div><div><span>Claimed area</span><strong id="caseArea">—</strong></div></section>
+          <div id="nativeCasesWorkspace" class="case-browser">
+            <section id="caseListView" class="queue-sheet case-register" aria-label="All FRA cases">
+              <header class="sheet-heading"><div><h2>All FRA Cases</h2><p>Select a case to view its details.</p></div></header>
+              <form id="caseFilters" class="case-filters case-register-filters">
+                <label class="case-search-field"><span>Search cases</span><input id="caseSearch" name="query" type="search" placeholder="Case ID, holder, or location"></label>
+                <label><span>Right type</span><select id="caseRightType" name="right_type"><option value="">All types</option><option>IFR</option><option>CR</option><option>CFR</option></select></label>
+                <label><span>Status</span><select id="caseStatus" name="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="gram_sabha_verified">Gram Sabha verified</option><option value="sdlc_review">SDLC review</option><option value="dlc_decided">DLC decided</option><option value="granted">Granted</option><option value="rejected">Rejected</option><option value="remanded">Remanded</option></select></label>
+                <label><span>District</span><select id="caseDistrict" name="district"><option value="">All districts</option></select></label>
+                <label><span>Village</span><select id="caseVillage" name="village"><option value="">All villages</option></select></label>
+                <button class="secondary-action" type="submit">Apply filters</button>
+              </form>
+              <div class="case-register-table"><div class="case-register-head" aria-hidden="true"><span>Case ID</span><span>Rights holder / community</span><span>Type</span><span>Village</span><span>District</span><span>Status</span><span>Area claimed</span></div><ol id="caseList" class="case-list" aria-label="FRA cases"></ol></div>
+            </section>
+            <div id="caseDetailView" class="case-detail-view" hidden>
+              <button id="backToCases" class="text-action case-back" type="button">&larr; Back to All Cases</button>
+              <article class="case-detail-sheet" id="caseDetail">
+                <header class="sheet-heading"><div><h2 id="caseReference">No case selected</h2><p id="caseLocation">Select a case from the register.</p></div><span id="caseCurrentState" class="record-state">No match</span></header>
+                <nav class="case-detail-tabs" aria-label="Case details"><button type="button" data-case-tab="overview" class="active" aria-pressed="true">Overview</button><button type="button" data-case-tab="claim" aria-pressed="false">Claim information</button><button type="button" data-case-tab="evidence" aria-pressed="false">Documents &amp; evidence</button><button type="button" data-case-tab="history" aria-pressed="false">Decisions / history</button><button type="button" data-case-tab="map" aria-pressed="false">Map</button></nav>
+                <div class="case-overview" data-case-pane="overview">
+                  <section class="case-info-card"><h3>Case overview</h3><dl><div><dt>Rights holder / community</dt><dd id="caseOverviewHolder"></dd></div><div><dt>Holder type</dt><dd id="caseOverviewHolderType"></dd></div><div><dt>Right type</dt><dd id="caseOverviewType"></dd></div><div><dt>Claim number</dt><dd id="caseOverviewNumber"></dd></div><div><dt>Status</dt><dd id="caseOverviewStatus"></dd></div></dl></section>
+                  <section class="case-info-card"><h3>Location</h3><dl><div><dt>District</dt><dd id="caseOverviewDistrict"></dd></div><div><dt>Block</dt><dd id="caseOverviewBlock"></dd></div><div><dt>Village</dt><dd id="caseOverviewVillage"></dd></div></dl></section>
+                  <section class="case-info-card"><h3>Claim information</h3><dl><div><dt>Area claimed</dt><dd id="caseOverviewArea"></dd></div><div><dt>Case created</dt><dd id="caseOverviewCreated"></dd></div><div><dt>Gram Sabha</dt><dd id="caseOverviewGramSabha"></dd></div></dl></section>
+                  <section class="case-info-card"><h3>Status &amp; decision</h3><dl><div><dt>Latest decision</dt><dd id="caseOverviewDecision"></dd></div><div><dt>Active title</dt><dd id="caseOverviewTitle"></dd></div><div><dt>Evidence items</dt><dd id="caseOverviewEvidence"></dd></div></dl></section>
+                </div>
+                <div class="case-facts" data-case-pane="claim" hidden>
+                  <section class="case-info-card"><h3>Claimant / community</h3><dl>
+                    <div><dt>Rights holder / community</dt><dd id="caseHolder">Not recorded</dd></div>
+                    <div><dt>Holder type</dt><dd id="claimHolderType">Not recorded</dd></div>
+                    <div><dt>FRA right type</dt><dd id="caseType">Not recorded</dd></div>
+                  </dl></section>
+                  <section class="case-info-card"><h3>Location</h3><dl>
+                    <div><dt>State</dt><dd id="claimState">Not recorded</dd></div>
+                    <div><dt>District</dt><dd id="claimDistrict">Not recorded</dd></div>
+                    <div><dt>Block</dt><dd id="claimBlock">Not recorded</dd></div>
+                    <div><dt>Village</dt><dd id="claimVillage">Not recorded</dd></div>
+                    <div><dt>Survey / parcel reference</dt><dd id="claimSurvey">Not recorded</dd></div>
+                    <div><dt>Coordinates</dt><dd id="claimCoordinates">Not recorded</dd></div>
+                  </dl></section>
+                  <section class="case-info-card"><h3>Claim</h3><dl>
+                    <div><dt>Claim number</dt><dd id="claimNumber">Not recorded</dd></div>
+                    <div><dt>Claim date / year</dt><dd id="claimDate">Not recorded</dd></div>
+                    <div><dt>Claimed area</dt><dd id="caseArea">Not recorded</dd></div>
+                    <div><dt>Case status</dt><dd id="claimStatus">Not recorded</dd></div>
+                  </dl></section>
+                  <section class="case-info-card"><h3>FRA process</h3><dl>
+                    <div><dt>Gram Sabha</dt><dd id="claimGramSabha">Not recorded</dd></div>
+                    <div><dt>Gram Sabha status</dt><dd id="claimGramSabhaStatus">Not recorded</dd></div>
+                    <div><dt>SDLC status</dt><dd id="claimSDLCStatus">Not recorded</dd></div>
+                    <div><dt>DLC status</dt><dd id="claimDLCStatus">Not recorded</dd></div>
+                    <div><dt>Decision date</dt><dd id="claimDecisionDate">Not recorded</dd></div>
+                    <div><dt>Title number</dt><dd id="claimTitleNumber">Not recorded</dd></div>
+                  </dl><p class="case-fact-note">Legacy status mappings describe record digitization; they are not independent FRA decisions.</p></section>
+                </div>
+                <div class="case-document-workspace" data-case-pane="evidence" hidden>
+                  <section class="case-info-card case-document-card"><h3>Original FRA record</h3><dl>
+                    <div><dt>Document filename</dt><dd id="caseOriginalFilename">Not recorded</dd></div>
+                    <div><dt>Document type</dt><dd id="caseOriginalType">Not recorded</dd></div>
+                    <div><dt>Number of pages</dt><dd id="caseOriginalPages">Not recorded</dd></div>
+                    <div><dt>Upload date</dt><dd id="caseOriginalUploaded">Not recorded</dd></div>
+                    <div><dt>Source office</dt><dd id="caseOriginalOffice">Not recorded</dd></div>
+                    <div><dt>Record-processing status</dt><dd id="caseOriginalProcessing">Not recorded</dd></div>
+                    <div><dt>OCR status</dt><dd id="caseOriginalOCR">Not recorded</dd></div>
+                    <div><dt>Extraction status</dt><dd id="caseOriginalExtraction">Not recorded</dd></div>
+                  </dl><div class="case-document-actions"><button id="caseViewOriginal" class="secondary-action" type="button" disabled>View original document</button><button id="caseViewOCR" class="secondary-action" type="button" disabled>View OCR text</button></div><pre id="caseOCRText" class="case-ocr-text" hidden></pre><p id="caseOriginalNote" class="case-fact-note">The original source file, when available, is preserved separately from OCR text and extracted fields.</p></section>
+                  <section class="case-info-card case-document-card"><h3>Extraction / digitization</h3><dl>
+                    <div><dt>OCR status</dt><dd id="caseDigitizationOCR">Not recorded</dd></div>
+                    <div><dt>Extraction status</dt><dd id="caseDigitizationExtraction">Not recorded</dd></div>
+                    <div><dt>Extraction model / version</dt><dd id="caseDigitizationModel">Not recorded</dd></div>
+                    <div><dt>Overall extraction confidence</dt><dd id="caseDigitizationConfidence">Not recorded</dd></div>
+                  </dl><div class="case-document-actions"><button id="caseViewExtracted" class="secondary-action" type="button" disabled>View extracted fields</button><button id="caseViewChain" class="secondary-action" type="button" disabled>View evidence chain</button></div><div id="caseExtractedFields" class="case-digital-results" hidden></div><div id="caseEvidenceChains" class="case-digital-results" hidden></div><p class="case-fact-note">This progress describes record digitization. AI extraction assists human review; it does not determine legal validity or grant a forest right.</p></section>
+                </div>
               <div class="case-detail-grid">
-                <section class="case-ledger"><div class="section-bar"><h3>Geometry versions</h3><span>Append-only</span></div><ol id="caseGeometryHistory" class="case-timeline"></ol><div id="caseGeometryMap" class="case-geometry-map" role="region" aria-label="Map for drawing or editing the selected FRA claim boundary"></div><form id="caseGeometryForm" class="compact-case-form"><label><span>Upload boundary GeoJSON</span><input id="caseGeometryUpload" name="geometry_file" type="file" accept=".geojson,.json"><small>Polygon, MultiPolygon, or a FeatureCollection containing them.</small></label><label><span>GeoJSON Polygon/MultiPolygon</span><textarea id="caseGeometry" name="geometry" rows="5" required></textarea></label><label><span>Source</span><input id="caseGeometrySource" name="geometry_source" value="staff_digitization" required></label><label><span>Boundary quality</span><select id="caseBoundaryQuality" name="boundary_quality"><option value="staff_digitized">Staff digitized</option><option value="surveyed">Surveyed</option><option value="approximate">Approximate</option></select></label><button class="secondary-action reviewer-case-action" type="submit">Add geometry version</button></form></section>
-                <section class="case-ledger"><div class="section-bar"><h3>Spatial review</h3><span>Supporting checks</span></div><p class="spatial-review-note">Spatial evaluation supports staff review and does not determine legal validity.</p><button id="caseSpatialEvaluate" class="secondary-action spatial-evaluate-action" type="button">Check claim and reference intersections</button><div class="spatial-findings-table"><table><thead><tr><th>Layer</th><th>Finding</th><th>Overlap</th><th>Outcome</th><th>Source</th></tr></thead><tbody id="caseSpatialFindings"><tr><td colspan="5">Run a check for the selected boundary.</td></tr></tbody></table></div><form id="caseSpatialDispositionForm" class="compact-case-form"><label><span>Reviewer disposition</span><select id="caseSpatialDisposition" name="spatial_disposition"><option value="noted">Noted</option><option value="requires_field_verification">Requires field verification</option><option value="resolved_with_source">Resolved with source record</option></select></label><label><span>Reviewer notes</span><textarea id="caseSpatialDispositionNotes" name="spatial_disposition_notes" rows="2" required></textarea></label><button class="secondary-action reviewer-case-action" type="submit">Record as supporting evidence</button></form></section>
-                <section class="case-ledger"><div class="section-bar"><h3>Evidence</h3><span>Supporting record</span></div><ol id="caseEvidenceTimeline" class="case-timeline"></ol><form id="caseEvidenceForm" class="compact-case-form"><label><span>Category</span><select id="caseEvidenceCategory" name="evidence_category"><option value="documentary">Documentary</option><option value="oral_statement">Oral statement</option><option value="physical">Physical</option><option value="map">Map</option></select></label><label><span>Source</span><input id="caseEvidenceSource" name="evidence_source" value="staff_submission" required></label><label><span>Description</span><textarea id="caseEvidenceDescription" name="evidence_description" rows="3" required></textarea></label><button class="secondary-action" type="submit">Add evidence</button></form></section>
-                <section class="case-ledger"><div class="section-bar"><h3>Historical evidence</h3><span id="caseHistoricalJobStatus">Supporting observations</span></div><p class="spatial-review-note">Historical observations require human review and never determine legal validity.</p><ol id="caseHistoricalEvidence" class="case-timeline"><li class="empty-row">Select a case to review.</li></ol><div class="compact-case-form"><label><span>Target years, comma separated</span><input id="caseHistoricalYears" name="historical_years" value="2005, 2010" inputmode="numeric"></label><div class="case-form-actions"><button id="caseHistoricalRequest" class="secondary-action" type="button">Request observations</button><button id="caseHistoricalReport" class="secondary-action" type="button">Open evidence report</button></div></div></section>
-                <section class="case-ledger"><div class="section-bar"><h3>Lifecycle decisions</h3><span>Authorized action</span></div><ol id="caseDecisionTimeline" class="case-timeline"></ol><form id="caseTransitionForm" class="compact-case-form"><label><span>Next status</span><select id="transitionTarget" name="target_status" required><option value="">Choose next status</option></select></label><label><span>Authority level</span><input id="transitionAuthority" name="authority_level" value="Gram Sabha" required></label><label><span>Outcome</span><input id="transitionOutcome" name="outcome" value="reviewed" required></label><label><span>Reasons, separated by semicolons</span><textarea id="transitionReasons" name="reasons" rows="2"></textarea></label><button class="primary-action reviewer-case-action" type="submit">Record transition</button></form></section>
-                <section class="case-ledger"><div class="section-bar"><h3>Titles</h3><span>Versioned grant record</span></div><ol id="caseTitleHistory" class="case-timeline"></ol><form id="caseTitleForm" class="compact-case-form"><label><span>Title number</span><input id="caseTitleNumber" name="title_number" required></label><button class="primary-action reviewer-case-action" type="submit" disabled>Issue title</button></form></section>
-                <section class="case-ledger wide-ledger"><div class="section-bar"><h3>Audit timeline</h3><span>Protected history</span></div><ol id="caseAuditTimeline" class="case-timeline"></ol></section>
+                <section class="case-ledger" data-case-pane="map" hidden><div class="section-bar"><h3>Geometry versions</h3><span>Append-only</span></div><ol id="caseGeometryHistory" class="case-timeline"></ol><div id="caseGeometryMap" class="case-geometry-map" role="region" aria-label="Map for drawing or editing the selected FRA claim boundary"></div><form id="caseGeometryForm" class="compact-case-form"><label><span>Upload boundary GeoJSON</span><input id="caseGeometryUpload" name="geometry_file" type="file" accept=".geojson,.json"><small>Polygon, MultiPolygon, or a FeatureCollection containing them.</small></label><label><span>GeoJSON Polygon/MultiPolygon</span><textarea id="caseGeometry" name="geometry" rows="5" required></textarea></label><label><span>Source</span><input id="caseGeometrySource" name="geometry_source" value="staff_digitization" required></label><label><span>Boundary quality</span><select id="caseBoundaryQuality" name="boundary_quality"><option value="staff_digitized">Staff digitized</option><option value="surveyed">Surveyed</option><option value="approximate">Approximate</option></select></label><button class="secondary-action reviewer-case-action" type="submit">Add geometry version</button></form></section>
+                <section class="case-ledger" data-case-pane="map" hidden><div class="section-bar"><h3>Spatial review</h3><span>Supporting checks</span></div><p class="spatial-review-note">Spatial evaluation supports staff review and does not determine legal validity.</p><button id="caseSpatialEvaluate" class="secondary-action spatial-evaluate-action" type="button">Check claim and reference intersections</button><div class="spatial-findings-table"><table><thead><tr><th>Layer</th><th>Finding</th><th>Overlap</th><th>Outcome</th><th>Source</th></tr></thead><tbody id="caseSpatialFindings"><tr><td colspan="5">Run a check for the selected boundary.</td></tr></tbody></table></div><form id="caseSpatialDispositionForm" class="compact-case-form"><label><span>Reviewer disposition</span><select id="caseSpatialDisposition" name="spatial_disposition"><option value="noted">Noted</option><option value="requires_field_verification">Requires field verification</option><option value="resolved_with_source">Resolved with source record</option></select></label><label><span>Reviewer notes</span><textarea id="caseSpatialDispositionNotes" name="spatial_disposition_notes" rows="2" required></textarea></label><button class="secondary-action reviewer-case-action" type="submit">Record as supporting evidence</button></form></section>
+                <section class="case-ledger wide-ledger case-supporting-documents" data-case-pane="evidence" hidden>
+                  <div class="section-bar"><h3>Supporting documents / evidence</h3><span>Case attachments</span></div>
+                  <ol id="caseEvidenceTimeline" class="case-timeline"></ol>
+                  <details id="caseSupportingUpload" class="case-supporting-upload"><summary>+ Add supporting document</summary>
+                    <form id="caseSupportingUploadForm" class="compact-case-form">
+                      <label><span>Document type</span><select id="caseDocumentType" name="document_type" required><option value="">Choose document type</option><option value="claim_form">FRA Claim Form</option><option value="gram_sabha_record">Gram Sabha record / resolution</option><option value="sdlc_record">SDLC record / decision</option><option value="dlc_record">DLC record / decision</option><option value="title_right_record">Title / right record</option><option value="supporting_evidence">Supporting evidence</option><option value="map_sketch">Map / sketch</option><option value="other">Other</option></select></label>
+                      <label><span>Source</span><input id="caseDocumentSource" name="source" maxlength="100" required placeholder="Office or person providing the document"></label>
+                      <label><span>Description / notes</span><textarea id="caseDocumentDescription" name="description" rows="2" required></textarea></label>
+                      <label><span>PDF or scan/image</span><input id="caseDocumentFile" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.bmp,.tif,.tiff" required><small>The selected original file is stored with this case.</small></label>
+                      <button id="caseSupportingUploadButton" class="primary-action" type="submit">Upload supporting document</button>
+                    </form>
+                  </details>
+                  <details class="case-nonfile-evidence"><summary>Add non-file evidence</summary><form id="caseEvidenceForm" class="compact-case-form"><label><span>Category</span><select id="caseEvidenceCategory" name="evidence_category"><option value="documentary">Documentary</option><option value="oral_statement">Oral statement</option><option value="physical">Physical</option><option value="map">Map</option></select></label><label><span>Source</span><input id="caseEvidenceSource" name="evidence_source" value="staff_submission" required></label><label><span>Description</span><textarea id="caseEvidenceDescription" name="evidence_description" rows="3" required></textarea></label><button class="secondary-action" type="submit">Add evidence</button></form></details>
+                </section>
+                <section class="case-ledger" data-case-pane="evidence" hidden><div class="section-bar"><h3>Historical evidence</h3><span id="caseHistoricalJobStatus">Supporting observations</span></div><p class="spatial-review-note">Historical observations require human review and never determine legal validity.</p><ol id="caseHistoricalEvidence" class="case-timeline"><li class="empty-row">Select a case to review.</li></ol><div class="compact-case-form"><label><span>Target years, comma separated</span><input id="caseHistoricalYears" name="historical_years" value="2005, 2010" inputmode="numeric"></label><div class="case-form-actions"><button id="caseHistoricalRequest" class="secondary-action" type="button">Request observations</button><button id="caseHistoricalReport" class="secondary-action" type="button">Open evidence report</button></div></div></section>
+                <section class="case-ledger" data-case-pane="history" hidden><div class="section-bar"><h3>Lifecycle decisions</h3><span>Authorized action</span></div><ol id="caseDecisionTimeline" class="case-timeline"></ol><form id="caseTransitionForm" class="compact-case-form"><label><span>Next status</span><select id="transitionTarget" name="target_status" required><option value="">Choose next status</option></select></label><label><span>Authority level</span><input id="transitionAuthority" name="authority_level" value="Gram Sabha" required></label><label><span>Outcome</span><input id="transitionOutcome" name="outcome" value="reviewed" required></label><label><span>Reasons, separated by semicolons</span><textarea id="transitionReasons" name="reasons" rows="2"></textarea></label><button class="primary-action reviewer-case-action" type="submit">Record transition</button></form></section>
+                <section class="case-ledger" data-case-pane="history" hidden><div class="section-bar"><h3>Titles</h3><span>Versioned grant record</span></div><ol id="caseTitleHistory" class="case-timeline"></ol><form id="caseTitleForm" class="compact-case-form"><label><span>Title number</span><input id="caseTitleNumber" name="title_number" required></label><button class="primary-action reviewer-case-action" type="submit" disabled>Issue title</button></form></section>
+                <section class="case-ledger wide-ledger" data-case-pane="history" hidden><div class="section-bar"><h3>Audit timeline</h3><span>Protected history</span></div><ol id="caseAuditTimeline" class="case-timeline"></ol></section>
               </div>
-            </article>
+              </article>
+            </div>
           </div>
         </section>
-        <section class="workspace-panel" id="atlasPanel" data-panel="atlas" aria-labelledby="atlasTitle" hidden>
+        <section class="workspace-panel development-workspace" id="atlasPanel" data-panel="atlas" aria-labelledby="atlasDevelopmentTitle" hidden>
+          <div class="under-development-screen"><span class="under-development-mark" aria-hidden="true">⌁</span><p>FRA Atlas</p><h1 id="atlasDevelopmentTitle">Under development</h1></div>
           <header class="workspace-title"><div><h1 id="atlasTitle">FRA Atlas</h1><p>Explore FRA claims and titles with administrative, land, forest, water and infrastructure context.</p></div><div class="workspace-heading-actions filter-host"><span>Reference view</span></div></header>
           <div class="map-workspace">
             <aside class="tool-sheet">
@@ -221,7 +307,8 @@
             <aside class="result-sheet"><div class="section-bar"><h2>Mapped records</h2><span id="atlasFeatureCount">Loading features</span></div><ol id="atlasResults" class="result-list" aria-label="Filtered Atlas features"></ol></aside>
           </div>
         </section>
-        <section class="workspace-panel" id="assetsPanel" data-panel="assets" aria-labelledby="assetsTitle" hidden>
+        <section class="workspace-panel development-workspace" id="assetsPanel" data-panel="assets" aria-labelledby="assetsDevelopmentTitle" hidden>
+          <div class="under-development-screen"><span class="under-development-mark" aria-hidden="true">⌁</span><p>Asset Intelligence</p><h1 id="assetsDevelopmentTitle">Under development</h1></div>
           <header class="workspace-title"><div><h1 id="assetsTitle">Satellite Asset Intelligence</h1><p>Prepare real satellite imagery for spatial FRA records, then review model observations.</p></div><div class="workspace-heading-actions filter-host"><span>Human-in-the-loop</span></div></header>
           <p class="legal-warning">Every model observation is supporting evidence and requires human verification; it does not determine legal validity.</p>
           <div class="asset-workspace">
@@ -243,7 +330,8 @@
             <aside class="result-sheet"><div class="section-bar"><h2>Observation register</h2><button id="refreshAssets" class="text-action" type="button">Refresh</button></div><ol id="assetList" class="result-list" aria-label="Asset observations"></ol><div class="section-bar profile-bar"><h2>Village profiles</h2><button id="refreshVillageAssetProfiles" class="text-action" type="button">Refresh</button></div><ol id="villageAssetProfiles" class="result-list profile-list" aria-label="Village asset profiles"></ol></aside>
           </div>
         </section>
-        <section class="workspace-panel" id="plannerPanel" data-panel="planner" aria-labelledby="plannerTitle" hidden>
+        <section class="workspace-panel development-workspace" id="plannerPanel" data-panel="planner" aria-labelledby="plannerDevelopmentTitle" hidden>
+          <div class="under-development-screen"><span class="under-development-mark" aria-hidden="true">⌁</span><p>DSS Planner</p><h1 id="plannerDevelopmentTitle">Under development</h1></div>
           <header class="workspace-title"><div><h1 id="plannerTitle">DSS Planner</h1><p>Inspect explainable recommendations and manage advisory referrals.</p></div><div class="workspace-heading-actions filter-host"><span>Advisory only</span></div></header>
           <p class="legal-warning">This decision-support workspace does not approve or sanction benefits. A responsible department must independently review every referral.</p>
           <div class="planner-summary" id="plannerSummary" aria-label="Scheme convergence summary">
@@ -271,7 +359,8 @@
             <section class="recommendation-sheet"><div class="section-bar"><h2>Deficiencies and recommendations</h2><span id="recommendationCount">Scheme convergence</span></div><ol id="recommendationList" class="recommendation-list" aria-live="polite"></ol></section>
           </div>
         </section>
-        <section class="workspace-panel" id="reportsPanel" data-panel="reports" aria-labelledby="reportsTitle" hidden>
+        <section class="workspace-panel development-workspace" id="reportsPanel" data-panel="reports" aria-labelledby="reportsDevelopmentTitle" hidden>
+          <div class="under-development-screen"><span class="under-development-mark" aria-hidden="true">⌁</span><p>Reports</p><h1 id="reportsDevelopmentTitle">Under development</h1></div>
           <header class="workspace-title"><div><h1 id="reportsTitle">Reports</h1><p>Open privacy-safe printable case and village reports.</p></div><div class="workspace-heading-actions filter-host"><span>Protected output</span></div></header>
           <div class="report-coverage" aria-label="Report coverage"><span>FRA progress</span><span>Spatial statistics</span><span>Asset statistics</span><span>Scheme convergence</span></div>
           <div class="report-grid">
@@ -287,6 +376,6 @@
   <noscript><p class="noscript-notice">AranyaSetu requires JavaScript for maps and protected FRA workspaces. Enable JavaScript or contact the responsible system administrator.</p></noscript>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="/static/fra/api.js?v=20260905.1"></script><script src="/static/fra/archive.js?v=20260907.1"></script><script src="/static/fra/cases.js?v=20260907.1"></script><script src="/static/fra/assets.js?v=20260907.1"></script><script src="/static/fra/atlas.js?v=20260907.1"></script><script src="/static/fra/planner.js?v=20260907.1"></script><script src="/static/fra/reports.js?v=20260906.1"></script><script src="/static/fra/dashboard.js?v=20260906.3"></script><script src="/static/fra/app.js?v=20260906.5"></script>
+  <script src="/static/fra/api.js?v=20260905.1"></script><script src="/static/fra/archive.js?v=20260915.5"></script><script src="/static/fra/cases.js?v=20260915.4"></script><script src="/static/fra/assets.js?v=20260907.1"></script><script src="/static/fra/atlas.js?v=20260907.1"></script><script src="/static/fra/planner.js?v=20260907.1"></script><script src="/static/fra/reports.js?v=20260906.1"></script><script src="/static/fra/dashboard.js?v=20260906.3"></script><script src="/static/fra/app.js?v=20260915.4"></script>
 </body>
 </html>

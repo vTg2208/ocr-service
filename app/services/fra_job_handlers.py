@@ -89,7 +89,7 @@ def _recognize_archive_document(content: bytes, filename: str):
     return raw_text, float(confidence_percent) / 100, model_version, elapsed_ms, pages
 
 
-def _active_entity_model(session, payload: dict) -> ModelVersion:
+def _active_entity_model(session, payload: dict) -> ModelVersion | None:
     identifier = payload.get("model_version_id")
     if identifier:
         try:
@@ -121,16 +121,19 @@ def _active_entity_model(session, payload: dict) -> ModelVersion:
         )
         if model is not None:
             return model
-    raise JobExecutionError(
-        "model_unavailable",
-        "No active FRA entity model is attached.",
-        retriable=True,
-    )
+    if identifier:
+        raise JobExecutionError(
+            "model_unavailable", "The requested FRA entity model is not active.",
+            retriable=True,
+        )
+    return None
 
 
 def _archive_extract(session, job):
     from app.services.fra_archive import process_archive_extraction
     from app.services.fra_adapter_factory import create_entity_extractor
+    from app.services.fra_document_classification import classify_fra_document
+    from app.services.fra_entity_extraction import TamilNaduFRAExtractor
     from app.services.model_gateway import (
         ManifestFRAEntityExtractor,
         ModelRegistrationError,
@@ -150,12 +153,21 @@ def _archive_extract(session, job):
         entity_model_version_id = None
     else:
         model = _active_entity_model(session, payload)
-        try:
-            extractor = create_entity_extractor(model)
-        except ModelRegistrationError as error:
-            raise JobExecutionError(
-                "model_configuration_invalid", str(error), retriable=False
-            ) from error
+        if model is None:
+            extractor = TamilNaduFRAExtractor("tn-fra-labels-v2")
+        else:
+            if model.adapter_type == "manifest":
+                raise JobExecutionError(
+                    "model_configuration_invalid",
+                    "Synthetic manifest extraction cannot process a real document.",
+                    retriable=False,
+                )
+            try:
+                extractor = create_entity_extractor(model)
+            except ModelRegistrationError as error:
+                raise JobExecutionError(
+                    "model_configuration_invalid", str(error), retriable=False
+                ) from error
         content = _read_archive_document(record)
         raw_text, ocr_confidence, ocr_model_version, _ocr_time_ms, pages = (
             _recognize_archive_document(content, record.document.original_filename)
@@ -165,8 +177,10 @@ def _archive_extract(session, job):
             "ocr_confidence": ocr_confidence,
             "pages": pages,
             "state_code": record.state_code,
+            "intake_kind": (record.provenance_json or {}).get("intake_kind", "legacy"),
         }
-        entity_model_version_id = model.id
+        entity_model_version_id = model.id if model is not None else None
+        classification = classify_fra_document(pages)
     run = process_archive_extraction(
         session,
         record,
@@ -177,6 +191,26 @@ def _archive_extract(session, job):
         entity_model_version_id=entity_model_version_id,
         actor_id=job.requested_by,
     )
+    if not record.synthetic:
+        upload_district = str((record.provenance_json or {}).get("district") or "").strip().casefold()
+        extracted_district = str((run.standardized_json or {}).get("district") or "").strip().casefold()
+        district_mismatch = bool(upload_district and extracted_district and upload_district != extracted_district)
+        record.provenance_json = {
+            **dict(record.provenance_json or {}),
+            "document_classification": classification,
+        }
+        run.provenance_json = {
+            **dict(run.provenance_json or {}),
+            "ocr_source_pages": pages,
+            "document_classification": classification,
+            "warnings": [
+                *list((run.provenance_json or {}).get("warnings", [])),
+                *(["Document type could not be confirmed from OCR; reviewer verification required."]
+                  if classification["document_type"] == "unknown" else []),
+                *(["Extracted district differs from the upload district; verify the source document."]
+                  if district_mismatch else []),
+            ],
+        }
     record.document.ocr_status = "completed"
     return {"extraction_run_id": str(run.id)}
 

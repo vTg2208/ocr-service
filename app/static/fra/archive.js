@@ -1,11 +1,11 @@
 const FRAArchiveUI = (() => {
   const QUERY_ORDER = ['district', 'block', 'village', 'right_type', 'claim_status', 'review_state', 'claim_year', 'query'];
   const REVIEW_FIELDS = [
-    'holder_name', 'holder_type', 'household_name', 'community_name', 'claim_number',
+    'holder_name', 'holder_type', 'household_name', 'community_name', 'gram_sabha_name', 'claim_number', 'claim_date',
     'state', 'state_code', 'district', 'block', 'village', 'survey_number', 'subdivision_number',
     'right_type', 'claim_status', 'claim_year', 'claimed_area', 'claimed_area_sqm',
     'granted_area', 'granted_area_sqm', 'area_unit', 'gram_sabha_status', 'sdlc_status',
-    'dlc_status', 'decision_authority', 'decision_date', 'title_number', 'latitude',
+    'dlc_status', 'decision_authority', 'decision_date', 'decision_status', 'title_number', 'title_status', 'latitude',
     'longitude', 'coordinates',
   ];
   const REQUIRED_REVIEW_FIELDS = new Set(['holder_name', 'district', 'block', 'village', 'right_type', 'claim_status']);
@@ -18,10 +18,11 @@ const FRAArchiveUI = (() => {
     sdlc_status: { options: ['pending', 'under_review', 'recommended', 'not_recommended', 'remanded'] },
     dlc_status: { options: ['pending', 'granted', 'rejected', 'remanded'] },
     claim_year: { type: 'number', min: 1900, max: new Date().getFullYear() },
+    claim_date: { type: 'date' },
     decision_date: { type: 'date' },
-    claimed_area: { type: 'number', min: 0, step: 'any', inputmode: 'decimal' },
+    claimed_area: { type: 'text' },
     claimed_area_sqm: { type: 'number', min: 0, step: 'any', inputmode: 'decimal' },
-    granted_area: { type: 'number', min: 0, step: 'any', inputmode: 'decimal' },
+    granted_area: { type: 'text' },
     granted_area_sqm: { type: 'number', min: 0, step: 'any', inputmode: 'decimal' },
     latitude: { type: 'number', min: -90, max: 90, step: 'any', inputmode: 'decimal' },
     longitude: { type: 'number', min: -180, max: 180, step: 'any', inputmode: 'decimal' },
@@ -41,7 +42,7 @@ const FRAArchiveUI = (() => {
     container.replaceChildren();
     (records || []).forEach((record) => {
       const item = element(doc, 'li', 'archive-record'); const button = element(doc, 'button', record.id === selectedId ? 'active' : ''); button.type = 'button';
-      button.append(element(doc, 'strong', '', record.claim_number || record.legacy_reference), element(doc, 'span', 'record-state', String(record.review_state || 'pending').replaceAll('_', ' ')));
+      button.append(element(doc, 'strong', '', record.claim_number || record.legacy_reference), element(doc, 'span', 'record-state', record.intake_kind === 'new_claim' && record.review_state === 'pending' ? 'Uploaded' : String(record.review_state || 'pending').replaceAll('_', ' ')));
       const meta = element(doc, 'span', 'record-meta');
       meta.append(element(doc, 'small', '', record.holder_display_name || 'Holder pending review'), element(doc, 'small', '', [record.district, record.village].filter(Boolean).join(' · ') || 'Location pending'), element(doc, 'small', '', record.right_type || 'Right pending'));
       button.append(meta); button.addEventListener('click', () => onSelect(record)); item.appendChild(button); container.appendChild(item);
@@ -65,7 +66,7 @@ const FRAArchiveUI = (() => {
     const location = locator.page ? `Page ${locator.page}` : locator.row ? `Row ${locator.row}${locator.header ? ` · ${locator.header}` : ''}` : 'Not recorded';
     const extractionLabel = [extraction.method, extraction.model_version, extraction.confidence == null ? null : `${Math.round(Number(extraction.confidence) * 100)}% confidence`].filter(Boolean).join(' · ') || 'Not recorded';
     const reviewerLabel = reviewer ? [reviewer.display_name, reviewer.review_state, reviewer.reviewed_at].filter(Boolean).join(' · ') : 'Not reviewed';
-    return [['Value', chainValue(chain.value)], ['Source', chainValue(chain.source)], ['Document', chainValue(chain.document?.filename)], ['Page / row', location], ['Extraction', extractionLabel], ['Reviewer', reviewerLabel], ['Final value', chainValue(chain.final_value, 'Pending reviewer approval')]];
+    return [['Value', chainValue(chain.value)], ['Source', chainValue(chain.source)], ['Document', chainValue(chain.document?.filename)], ['Page / row', location], ['Source location', chainValue(locator.bounding_box)], ['OCR text', chainValue(chain.ocr_text)], ['Extraction', extractionLabel], ['Reviewer', reviewerLabel], ['Reviewer correction', chainValue(chain.corrected_value, 'No correction recorded')], ['Final value', chainValue(chain.final_value, 'Pending reviewer approval')]];
   }
   function appendEvidenceChain(row, chain, doc) {
     const details = element(doc, 'details', 'field-provenance'); const summary = element(doc, 'summary', '', 'View evidence chain'); const list = element(doc, 'dl', 'provenance-chain');
@@ -96,9 +97,12 @@ const FRAArchiveUI = (() => {
     control.value = value ?? '';
     return control;
   }
-  function renderFields(container, values, evidence = {}, fieldReviews = [], doc = document) {
+  function renderFields(container, values, evidence = {}, fieldReviews = [], doc = document, intakeKind = 'legacy') {
     container.replaceChildren();
     const reviews = new Map((fieldReviews || []).map((item) => [item.field_name, item]));
+    const requiredFields = intakeKind === 'new_claim'
+      ? new Set(['holder_name', 'holder_type', 'district', 'block', 'village', 'right_type'])
+      : REQUIRED_REVIEW_FIELDS;
     REVIEW_FIELDS.forEach((key) => {
       const fieldEvidence = evidence?.[key] || {};
       const requiresCorrection = fieldEvidence.ambiguous || fieldEvidence.validation_error;
@@ -106,7 +110,7 @@ const FRAArchiveUI = (() => {
       const label = element(doc, 'label', '', key.replaceAll('_', ' '));
       const control = reviewControl(key, values?.[key], doc);
       label.htmlFor = control.id;
-      if (REQUIRED_REVIEW_FIELDS.has(key)) {
+      if (requiredFields.has(key)) {
         control.required = true;
         const requiredMark = element(doc, 'span', 'required-mark', 'Required'); requiredMark.setAttribute('aria-hidden', 'true'); label.append(requiredMark);
       }
@@ -118,6 +122,13 @@ const FRAArchiveUI = (() => {
       if (chain) appendEvidenceChain(row, chain, doc);
       container.appendChild(row);
     });
+    if (intakeKind === 'new_claim') {
+      const rightType = container.querySelector('#review-field-right_type');
+      const gramSabha = container.querySelector('#review-field-gram_sabha_name');
+      const updateRequired = () => { gramSabha.required = ['CR', 'CFR'].includes(rightType.value); };
+      rightType.addEventListener('change', updateRequired);
+      updateRequired();
+    }
   }
   function formValues(form) {
     const values = Object.fromEntries(new FormData(form).entries());

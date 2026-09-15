@@ -356,7 +356,9 @@ def process_archive_extraction(
 def _validated_review_fields(record: FRAArchiveRecord, values: dict) -> dict:
     if not isinstance(values, dict):
         raise ArchiveValidationError("Reviewed fields must be an object.")
-    missing = sorted(field for field in REQUIRED_REVIEW_FIELDS if not _clean(values.get(field)))
+    new_claim = (record.provenance_json or {}).get("intake_kind") == "new_claim"
+    required = (REQUIRED_REVIEW_FIELDS - {"claim_status"} | {"holder_type"}) if new_claim else REQUIRED_REVIEW_FIELDS
+    missing = sorted(field for field in required if not _clean(values.get(field)))
     if missing:
         raise ArchiveValidationError(f"Required reviewed fields are missing: {', '.join(missing)}.")
     profile = get_state_profile(record.state_code)
@@ -366,12 +368,26 @@ def _validated_review_fields(record: FRAArchiveRecord, values: dict) -> dict:
     reviewed["block"] = profile.normalize_block(str(values["block"]))
     reviewed["village"] = profile.normalize_village(str(values["village"]))
     reviewed["right_type"] = _clean(values["right_type"]).upper()
-    reviewed["claim_status"] = _clean(values["claim_status"]).casefold()
+    if new_claim:
+        if _clean(values.get("claim_status")):
+            reviewed["claim_status"] = _clean(values["claim_status"]).casefold()
+        else:
+            reviewed.pop("claim_status", None)
+        reviewed["holder_type"] = _clean(values["holder_type"]).casefold()
+        allowed_holder_types = {"individual", "household"} if reviewed["right_type"] == "IFR" else {"community", "gram_sabha"}
+        if reviewed["holder_type"] not in allowed_holder_types:
+            raise ArchiveValidationError("Holder type is incompatible with the FRA right type.")
+        if reviewed["right_type"] in {"CR", "CFR"} and not _clean(values.get("gram_sabha_name")):
+            raise ArchiveValidationError("Gram Sabha name is required for a CR or CFR claim.")
+        if _clean(values.get("gram_sabha_name")):
+            reviewed["gram_sabha_name"] = _clean(values["gram_sabha_name"])
+    else:
+        reviewed["claim_status"] = _clean(values["claim_status"]).casefold()
     if reviewed["right_type"] not in RIGHT_TYPES:
         raise ArchiveValidationError("Right type must be IFR, CR, or CFR.")
     if values.get("claim_number") is not None:
         reviewed["claim_number"] = _clean(values["claim_number"])
-    normalized_status = LEGACY_STATUS_MAP.get(reviewed["claim_status"])
+    normalized_status = "submitted" if new_claim else LEGACY_STATUS_MAP.get(reviewed["claim_status"])
     if normalized_status is None:
         raise ArchiveValidationError(
             "Claim status is not mapped to the native FRA lifecycle."
@@ -387,7 +403,7 @@ def _validated_review_fields(record: FRAArchiveRecord, values: dict) -> dict:
         normalized_area = _normalized_area(values, prefix)
         if normalized_area is not None:
             reviewed[f"{prefix}_area_sqm"] = normalized_area
-    if reviewed.get("title_number") and normalized_status != "granted":
+    if reviewed.get("title_number") and normalized_status != "granted" and not new_claim:
         raise ArchiveValidationError(
             "A mapped FRA title requires the reviewed legacy status to be granted."
         )
@@ -399,6 +415,9 @@ def _validated_review_fields(record: FRAArchiveRecord, values: dict) -> dict:
         if year < 1900 or year > datetime.now(timezone.utc).year:
             raise ArchiveValidationError("Claim year must be a four-digit year.")
         reviewed["claim_year"] = year
+    if values.get("claim_date") not in (None, ""):
+        reviewed["claim_date"] = _normalized_date(values["claim_date"])
+        reviewed.setdefault("claim_year", int(reviewed["claim_date"][:4]))
     return reviewed
 
 
@@ -438,13 +457,17 @@ def review_archive_record(
             "duplicate_record_ids": duplicate_ids,
         },
     }
-    record.claim_number = reviewed.get("claim_number") or record.legacy_reference
+    record.claim_number = reviewed.get("claim_number") or (
+        f"TN-FRA-{reviewed['right_type']}-{record.id.hex[:8].upper()}"
+        if (record.provenance_json or {}).get("intake_kind") == "new_claim"
+        else record.legacy_reference
+    )
     record.holder_display_name = reviewed["holder_name"]
     record.district = reviewed["district"]
     record.block = reviewed["block"]
     record.village = reviewed["village"]
     record.right_type = reviewed["right_type"]
-    record.claim_status = reviewed["claim_status"]
+    record.claim_status = None if (record.provenance_json or {}).get("intake_kind") == "new_claim" else reviewed["claim_status"]
     record.claim_year = reviewed.get("claim_year")
     record.review_state = "reviewed"
     record.reviewed_by = reviewer_id
@@ -600,9 +623,11 @@ def search_archive(
     )
 
 
-def _gram_sabha_for_record(session, record: FRAArchiveRecord) -> GramSabha:
+def _gram_sabha_for_record(session, record: FRAArchiveRecord, fields: dict | None = None) -> GramSabha:
+    new_claim = (record.provenance_json or {}).get("intake_kind") == "new_claim"
+    name = _clean((fields or {}).get("gram_sabha_name")) if new_claim else f"{record.village} Gram Sabha"
     reference = "|".join(
-        [record.state_code, record.district or "", record.block or "", record.village or ""]
+        [record.state_code, record.district or "", record.block or "", record.village or "", name if new_claim else ""]
     ).casefold()
     external_reference = f"archive-gram-sabha:{hashlib.sha256(reference.encode()).hexdigest()}"
     existing = session.scalar(
@@ -611,7 +636,7 @@ def _gram_sabha_for_record(session, record: FRAArchiveRecord) -> GramSabha:
     if existing is not None:
         return existing
     gram_sabha = GramSabha(
-        name=f"{record.village} Gram Sabha",
+        name=name,
         village=record.village,
         block=record.block,
         district=record.district,
@@ -637,9 +662,11 @@ def _matched_village(session, record: FRAArchiveRecord, fields: dict):
 
 
 def _matched_or_created_holder(
-    session, record: FRAArchiveRecord, fields: dict, gram_sabha: GramSabha
+    session, record: FRAArchiveRecord, fields: dict, gram_sabha: GramSabha | None
 ) -> tuple[RightsHolder, str]:
-    holder_type = "individual" if fields["right_type"] == "IFR" else "community"
+    holder_type = fields["holder_type"] if (record.provenance_json or {}).get("intake_kind") == "new_claim" else (
+        "individual" if fields["right_type"] == "IFR" else "community"
+    )
     location_key = _location_key(record, fields)
     candidates = list(session.scalars(select(RightsHolder).where(
         func.lower(RightsHolder.display_name) == fields["holder_name"].casefold(),
@@ -722,6 +749,7 @@ def promote_archive_record(
         return existing
     if record.review_state != "reviewed":
         raise ArchiveConflictError("Only a reviewed archive record can be promoted.")
+    new_claim = (record.provenance_json or {}).get("intake_kind") == "new_claim"
     fields = _validated_review_fields(record, record.reviewed_fields_json)
     duplicate = session.scalar(select(FRAArchiveRecord).where(
         FRAArchiveRecord.id != record.id,
@@ -732,7 +760,9 @@ def promote_archive_record(
         raise ArchiveConflictError(
             "A duplicate reviewed legacy record has already been mapped to a native FRA claim."
         )
-    claim_number = fields.get("claim_number") or record.legacy_reference
+    claim_number = fields.get("claim_number") or (
+        f"TN-FRA-{fields['right_type']}-{record.id.hex[:8].upper()}" if new_claim else record.legacy_reference
+    )
     existing_number = session.scalar(select(FRAClaim).where(FRAClaim.claim_number == claim_number))
     if existing_number is not None:
         raise ArchiveConflictError(
@@ -740,7 +770,10 @@ def promote_archive_record(
         )
     reserve_revision(session, record, expected_revision=expected_revision, state_field="review_state",
                      conflict=ArchiveConflictError("The archive record changed since it was loaded."))
-    gram_sabha = _gram_sabha_for_record(session, record)
+    gram_sabha = (
+        _gram_sabha_for_record(session, record, fields)
+        if not new_claim or fields["right_type"] in {"CR", "CFR"} else None
+    )
     village = _matched_village(session, record, fields)
     holder, holder_match = _matched_or_created_holder(session, record, fields, gram_sabha)
     parcel, parcel_match = _matched_parcel(session, record, fields)
@@ -755,7 +788,7 @@ def promote_archive_record(
         "parcel_match": parcel_match["status"],
         "parcel_id": str(parcel.id) if parcel else None,
         "parcel_evidence": parcel_match,
-        "source_status": fields["claim_status"],
+        "source_status": fields.get("claim_status"),
         "normalized_status": fields["normalized_claim_status"],
         "claim_year": fields.get("claim_year"),
     }
@@ -774,7 +807,14 @@ def promote_archive_record(
             "source": "fra_archive_promotion",
             "archive_record_id": str(record.id),
             "legacy_reference": record.legacy_reference,
-            "source_claim_status": fields["claim_status"],
+            "source_claim_status": fields.get("claim_status"),
+            "intake_kind": "new_claim" if new_claim else "legacy",
+            **({"reviewed_location": {
+                "state": get_state_profile(record.state_code).name,
+                "district": fields["district"],
+                "block": fields["block"],
+                "village": fields["village"],
+            }} if new_claim else {}),
             "source_provenance": dict(record.provenance_json or {}),
             "legacy_mapping": mapping,
             "synthetic": record.synthetic,
@@ -802,7 +842,19 @@ def promote_archive_record(
             request_id=request_id,
         )
     target_status = fields["normalized_claim_status"]
-    if target_status != "draft":
+    if new_claim:
+        claim.status = "submitted"
+        record_audit(
+            session,
+            actor_id=actor_id,
+            action="fra_claim_intake_submitted",
+            entity_type="fra_claim",
+            entity_id=claim.id,
+            before={"status": "draft"},
+            after={"status": "submitted", "archive_record_id": str(record.id)},
+            request_id=request_id,
+        )
+    elif target_status != "draft":
         decision = FRADecision(
             claim=claim,
             authority_level=fields.get("decision_authority") or "Reviewed legacy FRA record",
@@ -817,7 +869,7 @@ def promote_archive_record(
         )
         claim.status = target_status
         session.add(decision)
-    if fields.get("title_number"):
+    if fields.get("title_number") and not new_claim:
         session.add(FRATitle(
             claim=claim,
             version=1,

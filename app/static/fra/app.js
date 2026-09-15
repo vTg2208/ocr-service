@@ -28,15 +28,24 @@ if (typeof document !== 'undefined') (() => {
     $('#contextFilterCount').hidden = selected.length === 0;
     $('#contextFilterSummary').textContent = selected.length ? `Showing ${selected.join(' · ')}.` : 'Showing all available Tamil Nadu records.';
   }
-  function routeForSection(section) { return section === 'archive' ? '#cases/legacy' : `#${section}`; }
-  function sectionFromLocation() { const requested = location.hash.slice(1); return requested === 'cases/legacy' || requested === 'archive' ? 'archive' : FRAWorkspace.SECTIONS.includes(requested) ? requested : 'dashboard'; }
-  function showSection(section, { historyMode = 'push', moveFocus = true } = {}) {
+  function routeForSection(section, archiveView = 'legacy') { return section === 'archive' ? `#cases/${archiveView}` : `#${section}`; }
+  function sectionFromLocation() { const requested = location.hash.slice(1); return ['cases/legacy', 'cases/upload', 'archive'].includes(requested) ? 'archive' : FRAWorkspace.SECTIONS.includes(requested) ? requested : 'dashboard'; }
+  function archiveViewFromLocation() { return location.hash === '#cases/upload' ? 'upload' : 'legacy'; }
+  function setArchiveView(view) {
+    const upload = view === 'upload'; $('#archivePanel').dataset.workflow = upload ? 'upload' : 'legacy';
+    $('#archiveTitle').textContent = upload ? 'Upload & Digitize' : 'Case Management';
+    $('#archiveSubtitle').textContent = upload ? 'Start with an original FRA source record. Each accepted file enters the existing digitization and human-review workflow.' : 'Review legacy source records before they become FRA cases.';
+    $('#archiveUploadSheet').hidden = !upload;
+    $('#archiveUploadBack').hidden = !upload; $('#archiveUploadGuide').hidden = !upload; $('#archiveCount').hidden = upload;
+  }
+  function showSection(section, { historyMode = 'push', moveFocus = true, archiveView = 'legacy' } = {}) {
     state = FRAWorkspace.reduce(state, { type: 'section', value: section });
+    if (section === 'archive') setArchiveView(archiveView);
     const navigationSection = state.section === 'archive' ? 'cases' : state.section;
     document.querySelectorAll('[data-section]').forEach((button) => { const active = button.dataset.section === navigationSection; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
     document.querySelectorAll('[data-panel]').forEach((panel) => { const active = panel.dataset.panel === state.section; panel.hidden = !active; panel.classList.toggle('active', active); });
     const filterHost = document.querySelector(`[data-panel="${state.section}"] .filter-host`); if (filterHost) { filterHost.appendChild(filterWidget); filterWidget.hidden = false; } setContextFilterOpen(false);
-    const route = routeForSection(state.section);
+    const route = routeForSection(state.section, archiveView);
     if (historyMode === 'replace') history.replaceState({ section: state.section }, '', route);
     else if (historyMode === 'push' && location.hash !== route) history.pushState({ section: state.section }, '', route);
     if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
@@ -46,18 +55,18 @@ if (typeof document !== 'undefined') (() => {
   function archiveFilters() { return { district: state.context.district, block: state.context.block, village: state.context.village, right_type: $('#archiveRightType').value, review_state: $('#archiveReviewState').value, query: $('#archiveSearch').value }; }
   function renderArchiveEmpty(records) {
     const message = FRAArchiveUI.emptyState(records, $('#archiveSearch').value.trim()); $('#archiveEmpty').hidden = !message;
-    if (message) { $('#archiveEmpty').querySelector('strong').textContent = message; $('#archiveEmpty').querySelector('span').textContent = message === 'No matching records' ? 'Clear or change filters to see other Tamil Nadu records.' : 'Import a Tamil Nadu source batch to begin review.'; }
+    if (message) { $('#archiveEmpty').querySelector('strong').textContent = message; $('#archiveEmpty').querySelector('span').textContent = message === 'No matching records' ? 'Clear or change filters to see other Tamil Nadu records.' : 'Use + New FRA Record in All Cases to upload source records for review.'; }
   }
   async function loadRecord(record) {
     const current = recordRequests.begin(); mutations.invalidate(); state = FRAWorkspace.reduce(state, { type: 'archive', value: { selected: null } }); $('#saveReviewButton').disabled = true; $('#rejectExtractionButton').disabled = true; $('#promoteButton').disabled = true;
     try {
       setStatus('Loading archive evidence…'); const detail = await FRAApi.request(`/api/fra/archive/records/${record.id}`); if (!current()) return; state = FRAWorkspace.reduce(state, { type: 'archive', value: { selected: detail } });
-      FRAArchiveUI.renderRecords($('#archiveList'), state.archive.records, detail.id, loadRecord); $('#recordReference').textContent = detail.legacy_reference; $('#recordState').textContent = String(detail.review_state).replaceAll('_', ' ');
+      FRAArchiveUI.renderRecords($('#archiveList'), state.archive.records, detail.id, loadRecord); $('#recordReference').textContent = detail.legacy_reference; $('#recordState').textContent = detail.intake_kind === 'new_claim' && detail.review_state === 'pending' ? 'Uploaded' : String(detail.review_state).replaceAll('_', ' ');
       const latest = detail.extraction_runs.at(-1); $('#rawExtraction').textContent = latest?.raw_text || 'Raw OCR text is restricted or not available.'; $('#modelVersion').textContent = `Model ${latest?.entity_model_version || 'not recorded'}`;
       const provenance = $('#extractionProvenance'); provenance.replaceChildren();
       [['Source', detail.source_document?.source || 'not recorded'], ['Document', detail.source_document?.filename || 'not recorded'], ['Confidence', latest?.confidence == null ? '—' : `${Math.round(latest.confidence * 100)}%`], ['Processing', latest?.processing_time_ms == null ? '—' : `${latest.processing_time_ms} ms`], ['Provenance', latest?.provenance?.adapter || 'not recorded']].forEach(([term, value]) => { const row = document.createElement('div'); const dt = document.createElement('dt'); const dd = document.createElement('dd'); dt.textContent = term; dd.textContent = value; row.append(dt, dd); provenance.appendChild(row); });
       const warnings = latest?.provenance?.warnings || []; $('#extractionWarnings').textContent = warnings.length ? warnings.join(' · ') : 'No extraction warnings recorded.'; $('#extractionWarnings').dataset.state = warnings.length ? 'warning' : 'clear';
-      FRAArchiveUI.renderFields($('#reviewedFields'), detail.reviewed_fields && Object.keys(detail.reviewed_fields).length ? detail.reviewed_fields : latest?.standardized_fields || {}, latest?.field_evidence || {}, latest?.field_reviews || []); const reviewable = Boolean(latest) && ['needs_review', 'reviewed'].includes(detail.review_state); $('#saveReviewButton').disabled = !reviewable; $('#rejectExtractionButton').disabled = !reviewable; $('#promoteButton').disabled = detail.review_state !== 'reviewed'; $('#reviewNotes').value = detail.provenance?.extraction_rejection?.reason || ''; setStatus('');
+      FRAArchiveUI.renderFields($('#reviewedFields'), detail.reviewed_fields && Object.keys(detail.reviewed_fields).length ? detail.reviewed_fields : latest?.standardized_fields || {}, latest?.field_evidence || {}, latest?.field_reviews || [], document, detail.provenance?.intake_kind); const reviewable = Boolean(latest) && ['needs_review', 'reviewed'].includes(detail.review_state); $('#saveReviewButton').disabled = !reviewable; $('#rejectExtractionButton').disabled = !reviewable; $('#promoteButton').disabled = detail.review_state !== 'reviewed'; $('#reviewNotes').value = detail.provenance?.extraction_rejection?.reason || ''; setStatus('');
       document.dispatchEvent(new CustomEvent('fra:archive-selection', { detail: { id: detail.id, legacy_reference: detail.legacy_reference } }));
     } catch (error) { if (current()) setStatus(error.message, 'error'); }
   }
@@ -94,13 +103,13 @@ if (typeof document !== 'undefined') (() => {
   async function uploadArchiveBatch(event) {
     event.preventDefault(); const files = selectedArchiveFiles(); const sourceOffice = $('#archiveSourceOffice').value; const district = $('#archiveUploadDistrict').value; const button = $('#archiveUploadButton');
     if (!FRAArchiveUI.canUploadBatch({ fileCount: files.length, sourceOffice, district })) { $('#archiveUploadSummary').textContent = 'Add source office, district, and at least one file.'; return; }
-    const body = new FormData(); files.forEach((file) => body.append('files', file)); body.append('source_office', sourceOffice.trim()); body.append('district', district.trim());
+    const body = new FormData(); files.forEach((file) => body.append('files', file)); body.append('source_office', sourceOffice.trim()); body.append('district', district.trim()); body.append('intake_kind', $('#archivePanel').dataset.workflow === 'upload' ? 'new_claim' : 'legacy');
     button.disabled = true; button.textContent = 'Validating and queueing…'; $('#archiveUploadSummary').textContent = 'Checking file types, malware status, and duplicates…';
     try {
       const result = await FRAApi.request('/api/fra/archive/batch-upload', { method: 'POST', headers: { 'Idempotency-Key': archiveBatchKey }, body });
       FRAArchiveUI.renderBatchFiles($('#archiveUploadResults'), result.files); $('#archiveUploadSummary').textContent = FRAArchiveUI.batchSummary(result);
       if (!result.replayed) archiveBatchKey = crypto.randomUUID();
-      if (result.accepted) { $('#archiveFiles').value = ''; await loadArchive(); }
+      if (result.accepted) { $('#archiveFiles').value = ''; $('#archiveReviewQueueLink').hidden = false; await loadArchive(); }
     } catch (error) { $('#archiveUploadSummary').textContent = error.message; }
     finally { button.disabled = false; button.textContent = 'Validate and queue files'; }
   }
@@ -121,7 +130,7 @@ if (typeof document !== 'undefined') (() => {
       const rows = (result.records || []).map((row) => ({ filename: `Row ${row.source_row}`, status: row.status, legacy_reference: row.legacy_reference }));
       FRAArchiveUI.renderBatchFiles($('#archiveTabularResults'), rows); $('#archiveTabularSummary').textContent = FRAArchiveUI.tabularSummary(result);
       if (!result.replayed) tabularBatchKey = crypto.randomUUID();
-      if (result.accepted) { $('#archiveTabularFile').value = ''; await loadArchive(); }
+      if (result.accepted) { $('#archiveTabularFile').value = ''; $('#archiveTabularReviewQueueLink').hidden = false; await loadArchive(); }
     } catch (error) { $('#archiveTabularSummary').textContent = error.message; }
     finally { button.disabled = false; button.textContent = 'Validate and import register'; }
   }
@@ -149,14 +158,17 @@ if (typeof document !== 'undefined') (() => {
   document.addEventListener('fra:atlas-drill', (event) => applyAtlasDrill(event.detail));
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   document.querySelectorAll('[data-section]').forEach((link) => link.addEventListener('click', (event) => { event.preventDefault(); showSection(link.dataset.section); }));
-  if (typeof window.addEventListener === 'function') window.addEventListener('popstate', () => showSection(sectionFromLocation(), { historyMode: 'none' }));
+  if (typeof window.addEventListener === 'function') window.addEventListener('popstate', () => showSection(sectionFromLocation(), { historyMode: 'none', archiveView: archiveViewFromLocation() }));
   filterToggle.addEventListener('click', () => setContextFilterOpen(filterPanel.hidden));
   $('#contextFilterClose').addEventListener('click', () => { setContextFilterOpen(false); filterToggle.focus(); });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !filterPanel.hidden) { setContextFilterOpen(false); filterToggle.focus(); } });
   document.addEventListener('click', (event) => { if (!filterPanel.hidden && !filterWidget.contains(event.target)) setContextFilterOpen(false); });
-  document.addEventListener('fra:open-legacy-records', () => showSection('archive'));
+  document.addEventListener('fra:open-legacy-records', () => showSection('archive', { archiveView: 'legacy' }));
+  document.addEventListener('fra:open-new-record', () => showSection('archive', { archiveView: 'upload' }));
+  $('#archiveUploadBack').addEventListener('click', () => showSection('cases'));
+  ['#archiveReviewQueueLink', '#archiveTabularReviewQueueLink'].forEach((selector) => $(selector).addEventListener('click', () => { showSection('archive', { archiveView: 'legacy' }); $('#queueTitle').scrollIntoView?.({ behavior: 'smooth', block: 'start' }); }));
   $('#archiveModeCases').addEventListener('click', () => { showSection('cases'); document.dispatchEvent(new CustomEvent('fra:case-mode', { detail: { mode: 'cases' } })); });
   $('#archiveModeIntake').addEventListener('click', () => { showSection('cases'); document.dispatchEvent(new CustomEvent('fra:case-mode', { detail: { mode: 'intake' } })); });
   $('#archiveFilters').addEventListener('submit', (event) => { event.preventDefault(); loadArchive(); }); $('#refreshArchive').addEventListener('click', loadArchive); $('#reviewForm').addEventListener('submit', saveReview); $('#rejectExtractionButton').addEventListener('click', rejectExtraction); $('#promoteButton').addEventListener('click', promote); $('#contextDistrict').addEventListener('change', updateDependentContext); $('#contextBlock').addEventListener('change', updateBlockContext); $('#contextVillage').addEventListener('change', () => { state = FRAWorkspace.reduce(state, { type: 'context', value: { village: $('#contextVillage').value } }); publishContext(); loadArchive(); }); $('#logoutButton').addEventListener('click', async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.assign('/login'); });
-  FRAWorkspace.ensureBrowserSession(fetch, (url) => window.location.assign(url)).then(async (user) => { if (!user) return; $('#staffName').textContent = user.display_name || 'Registry staff'; showSection(sectionFromLocation(), { historyMode: 'replace' }); await loadVillageOptions(); await loadArchive(); });
+  FRAWorkspace.ensureBrowserSession(fetch, (url) => window.location.assign(url)).then(async (user) => { if (!user) return; $('#staffName').textContent = user.display_name || 'Registry staff'; showSection(sectionFromLocation(), { historyMode: 'replace', archiveView: archiveViewFromLocation() }); await loadVillageOptions(); await loadArchive(); });
 })();

@@ -99,6 +99,8 @@ def _record_summary(record: FRAArchiveRecord) -> dict:
         "claim_status": record.claim_status,
         "claim_year": record.claim_year,
         "review_state": record.review_state,
+        "intake_kind": (record.provenance_json or {}).get("intake_kind", "legacy"),
+        "document_type": (record.provenance_json or {}).get("document_classification", {}).get("document_type"),
         "revision": record.revision,
         "synthetic": record.synthetic,
         "promoted_claim_id": str(record.promoted_claim_id) if record.promoted_claim_id else None,
@@ -133,7 +135,9 @@ def _field_evidence_chain(record, run, field, *, privileged: bool) -> dict:
             "page": field.source_page or evidence.get("source_page"),
             "row": evidence.get("source_row"),
             "header": evidence.get("source_header"),
+            "bounding_box": evidence.get("source_bounding_box"),
         },
+        "ocr_text": evidence.get("text"),
         "extraction": {
             "method": field.extraction_method,
             "model_version": run.entity_model_version,
@@ -155,6 +159,7 @@ async def upload_batch(
     files: list[UploadFile] = File(...),
     source_office: str = Form(..., min_length=1, max_length=255),
     district: str = Form(..., min_length=1, max_length=255),
+    intake_kind: str = Form("legacy"),
     idempotency_key: str = Header(..., alias="Idempotency-Key", max_length=255),
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -179,6 +184,7 @@ async def upload_batch(
             files=uploads,
             source_office=source_office,
             district=district,
+            intake_kind=intake_kind,
             actor_id=user.id,
             idempotency_key=idempotency_key,
             storage=create_storage(settings),
@@ -378,7 +384,11 @@ def get_record(
             "field_evidence": dict(run.field_evidence_json or {}),
             "confidence": float(run.overall_confidence) if run.overall_confidence is not None else None,
             "processing_time_ms": run.processing_time_ms,
-            "provenance": dict(run.provenance_json or {}),
+            "provenance": (
+                dict(run.provenance_json or {}) if privileged
+                else {key: value for key, value in (run.provenance_json or {}).items()
+                      if key != "ocr_source_pages"}
+            ),
             "created_at": run.created_at.isoformat(),
             **({"raw_text": run.raw_text} if privileged else {}),
             **({
@@ -415,6 +425,7 @@ def get_record(
             "content_type": record.document.content_type,
             "sha256": record.document.sha256,
             "source": record.batch.source_label,
+            "document_type": (record.provenance_json or {}).get("document_classification", {}).get("document_type"),
         },
         "provenance": dict(record.provenance_json or {}),
         "extraction_runs": extractions,

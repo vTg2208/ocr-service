@@ -144,6 +144,22 @@ class FRAArchiveAPITests(unittest.TestCase):
         self.assertEqual(first.json()["files"][0]["legacy_reference"], "TN-IFR-12")
         self.assertTrue(second.json()["replayed"])
         self.assertEqual(storage.calls, 1)
+        new_claim = {
+            **request,
+            "headers": {**self.headers(), "Idempotency-Key": "tn-new-claim-upload-1"},
+            "data": {**request["data"], "intake_kind": "new_claim"},
+            "files": [("files", ("new-fra-claim.pdf", b"%PDF-1.4\n2 0 obj\n%%EOF", "application/pdf"))],
+        }
+        with patch("app.api.fra_archive_routes.create_storage", return_value=storage):
+            uploaded = self.client.post("/api/fra/archive/batch-upload", **new_claim)
+        self.assertEqual(uploaded.status_code, 202, uploaded.text)
+        self.assertEqual(uploaded.json()["accepted"], 1)
+        detail = self.client.get(
+            f"/api/fra/archive/records/{uploaded.json()['files'][0]['record_id']}",
+            headers=self.headers(),
+        )
+        self.assertEqual(detail.json()["intake_kind"], "new_claim")
+        self.assertEqual(detail.json()["review_state"], "pending")
 
     def test_tabular_upload_creates_one_review_record_per_csv_row_and_is_idempotent(self):
         class Storage:

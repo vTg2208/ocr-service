@@ -24,6 +24,7 @@ FIELD_LABELS = {
         "Claimant", "Claimant Name", "Rights Holder", "Holder Name",
         "கோரிக்கையாளர்", "உரிமையாளர் பெயர்", "உரிமையாளர்கள் பெயர்",
     ),
+    "holder_type": ("Holder Type", "Claimant Type", "Applicant Type"),
     "household_name": ("Household", "Household Name", "குடும்பத்தின் பெயர்"),
     "community_name": ("Community", "Community Name", "சமூகத்தின் பெயர்"),
     "district": ("District", "மாவட்டம்"),
@@ -38,9 +39,11 @@ FIELD_LABELS = {
         "Right Type", "Rights Type", "Claim Type", "FRA Right", "உரிமை வகை",
         "கோரிக்கை வகை",
     ),
+    "claim_date": ("Claim Date", "Application Date", "Date of Claim"),
     "claimed_area": ("Claimed Area", "Area Claimed", "கோரிய பரப்பளவு"),
     "granted_area": ("Granted Area", "Area Granted", "அனுமதிக்கப்பட்ட பரப்பளவு"),
     "claim_status": ("Claim Status", "Application Status", "Status", "நிலை"),
+    "gram_sabha_name": ("Gram Sabha Name", "Name of Gram Sabha"),
     "gram_sabha_status": (
         "Gram Sabha", "Gram Sabha Status", "Gram Sabha Decision", "கிராம சபை நிலை",
         "கிராம சபை முடிவு",
@@ -52,10 +55,12 @@ FIELD_LABELS = {
         "முடிவு அதிகாரம்", "தீர்மான அதிகாரம்",
     ),
     "decision_date": ("Decision Date", "Order Date", "முடிவு தேதி", "ஆணை தேதி"),
+    "decision_status": ("Decision Status", "Decision Outcome"),
     "title_number": (
         "FRA Title No", "FRA Title Number", "RoFR No", "RoFR Number",
         "வன உரிமை பட்டா எண்", "வன உரிமை ஆவண எண்",
     ),
+    "title_status": ("Title Status", "Right Record Status"),
     "coordinates": (
         "Coordinates", "Latitude Longitude", "Lat Long", "அட்சரேகை தீர்க்கரேகை",
     ),
@@ -140,8 +145,15 @@ def _area_sqm(value: str) -> float | None:
 
 def _normalized_value(field: str, value: str):
     cleaned = _clean(value)
-    if field in {"claim_status", "gram_sabha_status", "sdlc_status", "dlc_status"}:
+    if field in {"claim_status", "gram_sabha_status", "sdlc_status", "dlc_status", "decision_status", "title_status"}:
         return cleaned.casefold() or None
+    if field == "holder_type":
+        aliases = {
+            "individual": "individual", "person": "individual",
+            "household": "household", "family": "household",
+            "community": "community", "gram sabha": "gram_sabha",
+        }
+        return aliases.get(cleaned.casefold().replace("_", " "))
     if field == "right_type":
         key = re.sub(r"[^A-Z]", "", cleaned.upper())
         aliases = {
@@ -151,7 +163,7 @@ def _normalized_value(field: str, value: str):
             "COMMUNITYFORESTRESOURCERIGHT": "CFR", "COMMUNITYFORESTRESOURCERIGHTS": "CFR",
         }
         return aliases.get(key)
-    if field == "decision_date":
+    if field in {"claim_date", "decision_date"}:
         for pattern in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y"):
             try:
                 return datetime.strptime(cleaned, pattern).date().isoformat()
@@ -250,26 +262,49 @@ def _is_label(text: str) -> bool:
 
 def _plausible_layout_value(field: str, text: str) -> bool:
     value = _clean(text)
-    if not value or len(value) > 255 or _is_label(value):
+    if not value or len(value) > 255 or not any(character.isalnum() for character in value) or _is_label(value):
         return False
     if field == "survey_number":
         return bool(re.fullmatch(r"[A-Za-z0-9./-]{1,40}", value) and any(char.isdigit() for char in value))
     if field == "subdivision_number":
         return bool(re.fullmatch(r"[A-Za-z0-9./-]{1,40}", value))
-    if field in {"claim_year", "latitude", "longitude", "coordinates", "decision_date", "right_type"}:
+    if field in {"claim_year", "claim_date", "latitude", "longitude", "coordinates", "decision_date", "right_type", "holder_type"}:
         return _normalized_value(field, value) is not None
     return True
+
+
+def _form_a_label_field(text: str) -> str | None:
+    cleaned = re.sub(r"^\s*[.']?\s*\d+[.\s-]*", "", _clean(text)).casefold()
+    if re.fullmatch(r"name of (?:the )?(?:claimant|daimant)\s*:?", cleaned):
+        return "holder_name"
+    if re.fullmatch(r"name of vi[lt]+age\s*:?", cleaned):
+        return "village"
+    if re.fullmatch(r"(?:taluk|takuk|tehsil|block)\s*:?", cleaned):
+        return "block"
+    if re.fullmatch(r"district\s*:?", cleaned):
+        return "district"
+    if re.fullmatch(r"total extent (?:claimed|caimed)\s*[:.\s]*", cleaned):
+        return "claimed_area"
+    return None
+
+
+def _form_a_page(page: dict) -> bool:
+    return bool(re.search(r"\bform\s*[- ]?\s*a\b", page["text"], re.I)
+                or re.search(r"\bclaim\s+form\s+for\b[^\n]{0,80}\bforest\s+righ\w+\b", page["text"], re.I))
 
 
 def _layout_candidates(page: dict) -> list[tuple[str, dict]]:
     lines = [line for line in page.get("lines", []) if line.get("bounding_box")]
     results = []
+    form_a = _form_a_page(page)
     for label in lines:
         label_text = _clean(label["text"])
         field = next(
             (name for name, pattern in LABEL_ONLY_PATTERNS.items() if pattern.match(label_text)),
             None,
         )
+        if field is None and form_a:
+            field = _form_a_label_field(label_text)
         if field is None:
             continue
         left, top, right, bottom = label["bounding_box"]
@@ -301,10 +336,52 @@ def _layout_candidates(page: dict) -> list[tuple[str, dict]]:
             "line": None,
             "source_page": page["page_number"],
             "confidence": confidence,
-            "extraction_method": "fra_layout_ner",
+            "extraction_method": "fra_form_a_layout" if form_a and _form_a_label_field(label_text) else "fra_layout_ner",
             "label_bounding_box": label["bounding_box"],
             "source_bounding_box": selected["bounding_box"],
         }))
+    if form_a:
+        options = []
+        for line in lines:
+            match = re.search(r"\((IFR|CR|CFR)\)", line["text"], re.I)
+            if match:
+                options.append((match.group(1).upper(), line))
+        marks = [line for line in lines if _clean(line["text"]) in {"√", "✓", "✔"}]
+        selected = []
+        for right_type, option in options:
+            left, top, _right, bottom = option["bounding_box"]
+            for mark in marks:
+                mark_left, mark_top, mark_right, mark_bottom = mark["bounding_box"]
+                if 0 <= left - mark_right <= 100 and abs((top + bottom) - (mark_top + mark_bottom)) <= max(bottom - top, mark_bottom - mark_top):
+                    selected.append((right_type, option, mark))
+        if len(selected) == 1:
+            right_type, option, mark = selected[0]
+            results.append(("right_type", {
+                "raw_value": right_type,
+                "text": f"{mark['text']} {option['text']}",
+                "line": None,
+                "source_page": page["page_number"],
+                "confidence": round(min(option.get("confidence") or 1.0, mark.get("confidence") or 1.0) * 0.75, 5),
+                "extraction_method": "fra_form_a_checkbox",
+                "source_bounding_box": option["bounding_box"],
+                "mark_bounding_box": mark["bounding_box"],
+            }))
+        survey_header = next((line for line in lines if re.fullmatch(r"survey\s+no\.?", _clean(line["text"]), re.I)), None)
+        total_label = next((line for line in lines if re.search(r"total extent (?:claimed|caimed)", line["text"], re.I)), None)
+        if survey_header and total_label:
+            header_left, _top, header_right, header_bottom = survey_header["bounding_box"]
+            table_bottom = total_label["bounding_box"][1]
+            for line in lines:
+                value = _clean(line["text"])
+                left, top, right, _bottom = line["bounding_box"]
+                if header_bottom <= top < table_bottom and max(0, min(right, header_right) - max(left, header_left)) > 0 and re.fullmatch(r"\d+[/-]\w+", value):
+                    results.append(("survey_number", {
+                        "raw_value": value, "text": value, "line": None,
+                        "source_page": page["page_number"],
+                        "confidence": round((line.get("confidence") or 1.0) * 0.75, 5),
+                        "extraction_method": "fra_form_a_table",
+                        "source_bounding_box": line["bounding_box"],
+                    }))
     return results
 
 
@@ -321,7 +398,10 @@ class TamilNaduFRAExtractor:
             raise ModelOutputValidationError("A document reference is required.")
         if not isinstance(manifest, dict):
             raise ModelOutputValidationError("Extraction input must be an object.")
-        return self._extract_pages(_page_inputs(manifest), document_reference=document_reference)
+        return self._extract_pages(
+            _page_inputs(manifest), document_reference=document_reference,
+            intake_kind=manifest.get("intake_kind", "legacy"),
+        )
 
     def extract_text(
         self,
@@ -336,7 +416,7 @@ class TamilNaduFRAExtractor:
             document_reference=document_reference,
         )
 
-    def _extract_pages(self, pages: list[dict], *, document_reference: str) -> EntityExtractionResult:
+    def _extract_pages(self, pages: list[dict], *, document_reference: str, intake_kind: str = "legacy") -> EntityExtractionResult:
         started = time.perf_counter()
         candidates: dict[str, list[dict]] = {field: [] for field in PATTERNS}
         for page in pages:
@@ -408,6 +488,9 @@ class TamilNaduFRAExtractor:
                 "text": selected["text"],
                 "line": selected["line"],
                 "source_page": selected["source_page"],
+                "source_bounding_box": selected.get("source_bounding_box"),
+                "label_bounding_box": selected.get("label_bounding_box"),
+                "mark_bounding_box": selected.get("mark_bounding_box"),
                 "source_value": selected["raw_value"],
                 "confidence": selected["confidence"],
                 "extraction_method": selected.get("extraction_method", "fra_label_ner"),
@@ -443,6 +526,14 @@ class TamilNaduFRAExtractor:
                         "extraction_method": "coordinate_pair_parser",
                         "derived_value": value,
                     }
+
+        if fields.get("claim_date") and not fields.get("claim_year"):
+            fields["claim_year"] = int(fields["claim_date"][:4])
+            evidence["claim_year"] = {
+                **evidence["claim_date"],
+                "extraction_method": "date_year_parser",
+                "derived_from": "claim_date",
+            }
 
         for source_field, normalized_field in (
             ("claimed_area", "claimed_area_sqm"),
@@ -485,7 +576,13 @@ class TamilNaduFRAExtractor:
                 fields[field] = normalizer(str(fields[field]))
 
         validate_model_output(fields)
-        missing = [field for field in REQUIRED_REVIEW_FIELDS if not fields.get(field)]
+        required = (
+            tuple(field for field in REQUIRED_REVIEW_FIELDS if field != "claim_status")
+            + ("holder_type",)
+            + (("gram_sabha_name",) if fields.get("right_type") in {"CR", "CFR"} else ())
+            if intake_kind == "new_claim" else REQUIRED_REVIEW_FIELDS
+        )
+        missing = [field for field in required if not fields.get(field)]
         for field in missing:
             if field not in ambiguous_fields and field not in invalid_fields:
                 warnings.append(f"Missing {field}")

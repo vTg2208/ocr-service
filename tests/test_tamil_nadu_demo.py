@@ -1,4 +1,6 @@
 import unittest
+import json
+from pathlib import Path
 
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session
@@ -8,13 +10,16 @@ from app.db.fra_completion_models import AssetFeature, DSSReferral, FRAArchiveRe
 from app.db.fra_models import (
     DSSRecommendation,
     FRAClaim,
+    FRAEvidenceItem,
     FRATitle,
+    GramSabha,
     RightsHolder,
     SchemeRuleSet,
 )
 from app.db.models import User
-from app.db.fra_operational_models import SchemeCatalogEntry
+from app.db.fra_operational_models import ImageryArtifact, SchemeCatalogEntry
 from app.services.fra_archive import create_archive_record, create_import_batch
+from app.services.fra_atlas import import_village_profiles
 from scripts.seed_tamil_nadu_fra_demo import _document, seed_demo
 
 
@@ -37,18 +42,18 @@ class TamilNaduSampleDataTests(unittest.TestCase):
 
             self.assertGreater(first.created, 0)
             self.assertEqual(second.created, 0)
-            self.assertEqual(session.scalar(select(func.count()).select_from(FRAVillageProfile)), 3)
+            self.assertEqual(session.scalar(select(func.count()).select_from(FRAVillageProfile)), 15)
             records = list(session.scalars(select(FRAArchiveRecord)))
             self.assertEqual({row.right_type for row in records}, {"IFR", "CR", "CFR"})
             self.assertTrue(all(row.synthetic and row.state_code == "TN" for row in records))
             self.assertGreaterEqual(session.scalar(select(func.count()).select_from(FRAClaim)), 3)
             self.assertGreaterEqual(session.scalar(select(func.count()).select_from(FRATitle)), 1)
-            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(AssetFeature)), 2)
+            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(AssetFeature)), 90)
             water = session.scalar(select(AssetFeature).where(AssetFeature.source_reference == "tn-sample-scene-2005"))
             agriculture = session.scalar(select(AssetFeature).where(AssetFeature.source_reference == "tn-sample-scene-2025"))
             self.assertEqual(water.village.village_name, "Kottur")
             self.assertEqual(agriculture.village.village_name, "Kottur")
-            self.assertEqual(session.scalar(select(func.count()).select_from(DSSRecommendation)), 0)
+            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(DSSRecommendation)), 45)
             self.assertEqual(session.scalar(select(func.count()).select_from(SchemeCatalogEntry)), 5)
             self.assertTrue(all(not row.authoritative and not row.active for row in session.scalars(select(SchemeCatalogEntry))))
             visible_archive_values = [
@@ -86,7 +91,95 @@ class TamilNaduSampleDataTests(unittest.TestCase):
                     for value in (row.scheme_code, row.display_name, row.version, row.source_reference)
                 ).casefold(),
             )
-            self.assertEqual(list(session.scalars(select(DSSRecommendation))), [])
+            self.assertTrue(all(
+                (row.output_json or {}).get("advisory_only") is True
+                for row in session.scalars(select(DSSRecommendation))
+            ))
+
+    def test_every_seeded_village_has_complete_workspace_coverage(self):
+        with Session(self.engine) as session:
+            admin = User(external_id="coverage-admin", display_name="Coverage Administrator", role="admin")
+            session.add(admin); session.commit()
+
+            seed_demo(session, actor_id=admin.id); session.commit()
+
+            villages = list(session.scalars(
+                select(FRAVillageProfile).order_by(FRAVillageProfile.village_code)
+            ))
+            self.assertGreaterEqual(len(villages), 15)
+            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(FRAArchiveRecord)), 50)
+            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(FRAClaim)), 45)
+            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(FRATitle)), 12)
+            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(AssetFeature)), 90)
+            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(DSSRecommendation)), 45)
+            self.assertGreaterEqual(session.scalar(select(func.count()).select_from(DSSReferral)), 15)
+
+            for village in villages:
+                with self.subTest(village=village.village_name):
+                    self.assertGreaterEqual(len(village.claims), 3)
+                    self.assertTrue(all(claim.geometry_versions for claim in village.claims))
+                    self.assertTrue(all(claim.evidence_items for claim in village.claims))
+                    self.assertTrue(all(claim.dss_recommendations for claim in village.claims))
+                    self.assertTrue(all(
+                        session.scalar(
+                            select(func.count()).select_from(ImageryArtifact).where(
+                                ImageryArtifact.claim_id == claim.id
+                            )
+                        )
+                        for claim in village.claims
+                    ))
+                    self.assertGreaterEqual(len(village.assets), 6)
+                    self.assertIsNotNone(village.asset_profile)
+
+    def test_seed_populates_a_preexisting_tamil_nadu_village(self):
+        with Session(self.engine) as session:
+            admin = User(external_id="existing-village-admin", role="admin")
+            session.add(admin); session.commit()
+            payload = json.loads(
+                (Path(__file__).parents[1] / "data" / "real" / "arpisampalaiyam_village.geojson")
+                .read_text(encoding="utf-8")
+            )
+            import_village_profiles(session, payload, actor_id=admin.id)
+            village = session.scalar(select(FRAVillageProfile).where(
+                FRAVillageProfile.village_name == "Arpisampalaiyam"
+            ))
+            gram_sabha = GramSabha(
+                name="Arpisampalaiyam Gram Sabha", village="Arpisampalaiyam",
+                block="Kandamangalam", district="Villupuram", state="Tamil Nadu",
+                external_reference="tn-pilot-arpisampalaiyam-gs",
+                metadata_json={"synthetic": True},
+            )
+            holder = RightsHolder(
+                display_name="Arpisampalaiyam Forest Collective", holder_type="community",
+                claimant_category="ST", external_reference="tn-pilot-arpisampalaiyam-holder",
+                gram_sabha=gram_sabha, metadata_json={"synthetic": True},
+            )
+            pilot_claim = FRAClaim(
+                claim_number="TN-PILOT-CFR-SYNTHETIC-001", right_type="CFR",
+                status="submitted", rights_holder=holder, gram_sabha=gram_sabha,
+                village=village, submitted_by=admin.id,
+                provenance_json={"synthetic": True, "source": "fra_archive_promotion"},
+            )
+            session.add(pilot_claim); session.commit()
+
+            seed_demo(session, actor_id=admin.id); session.commit()
+
+            self.assertGreaterEqual(len(village.claims), 4)
+            self.assertGreaterEqual(len(village.assets), 6)
+            self.assertIsNotNone(village.asset_profile)
+            self.assertGreaterEqual(
+                session.scalar(select(func.count()).select_from(FRAEvidenceItem).where(
+                    FRAEvidenceItem.claim_id == pilot_claim.id
+                )),
+                1,
+            )
+            self.assertGreaterEqual(
+                session.scalar(select(func.count()).select_from(ImageryArtifact).where(
+                    ImageryArtifact.claim_id == pilot_claim.id
+                )),
+                1,
+            )
+            self.assertGreaterEqual(len(pilot_claim.dss_recommendations), 1)
 
     def test_seed_retains_reviewed_measurements_and_versioned_history(self):
         from copy import deepcopy
@@ -120,7 +213,7 @@ class TamilNaduSampleDataTests(unittest.TestCase):
                 record.latest_extraction.raw_text, record.latest_extraction.provenance_json,
                 old_rule.condition_json, old_rec.input_json, old_rec.output_json, old_snapshot.facts_json, old_snapshot.sources_json))
             current = list(session.scalars(select(DSSRecommendation).where(DSSRecommendation.rule_version == "tn-sample-4")))
-            self.assertEqual(current, [])
+            self.assertGreaterEqual(len(current), 45)
             candidate_rules = list(session.scalars(select(SchemeRuleSet).where(
                 SchemeRuleSet.version == "tn-sample-4"
             )))

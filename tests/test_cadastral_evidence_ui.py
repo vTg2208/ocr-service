@@ -129,14 +129,14 @@ class LandMappingUITests(unittest.TestCase):
     def test_aranyasetu_brand_uses_the_supplied_static_emblem(self):
         mapping_html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
         login_html = (LOGIN_ROOT / "index.html").read_text(encoding="utf-8")
-        emblem_path = "/static/brand/aranyasetu-emblem.png"
+        emblem_path = "/static/brand/aranyasetu-mark.webp"
 
         for page, html in (("mapping", mapping_html), ("login", login_html)):
             with self.subTest(page=page):
                 self.assertIn("AranyaSetu", html)
                 self.assertIn(f'src="{emblem_path}"', html)
                 self.assertNotIn("Parcel Ledger", html)
-        self.assertTrue((BRAND_ROOT / "aranyasetu-emblem.png").is_file())
+        self.assertTrue((BRAND_ROOT / "aranyasetu-mark.webp").is_file())
 
     def test_brand_name_precedes_the_fra_platform_subtitle(self):
         for page, html_path in (

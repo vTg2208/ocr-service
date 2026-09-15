@@ -158,6 +158,62 @@ class TamilNaduFRAEntityExtractionTests(unittest.TestCase):
         self.assertEqual(result.field_evidence["survey_number"]["extraction_method"], "fra_layout_ner")
         self.assertEqual(result.field_evidence["survey_number"]["source_page"], 1)
 
+    def test_numbered_form_a_layout_uses_boxes_and_keeps_multiple_parcels_ambiguous(self):
+        def line(text, box):
+            return {"text": text, "confidence": 0.95, "bounding_box": box}
+
+        lines = [
+            line("Form - A", [900, 0, 1000, 25]),
+            line("CLAIM FORM FOR INDMDUAL FOREST RIGHI", [300, 40, 750, 70]),
+            line("1. Name of the daimant", [100, 100, 320, 130]),
+            line(":", [510, 105, 525, 120]),
+            line("M. Ramu", [540, 100, 700, 130]),
+            line("7. Name of Vitlage", [100, 200, 300, 230]),
+            line("Kottur", [540, 200, 650, 230]),
+            line("Takuk", [100, 250, 210, 280]),
+            line("Yercaud", [540, 250, 650, 280]),
+            line("10. District", [100, 300, 230, 330]),
+            line("Salem", [540, 300, 650, 330]),
+            line("Survey No.", [210, 400, 320, 430]),
+            line("178/1", [220, 450, 290, 480]),
+            line("178/2", [220, 500, 290, 530]),
+            line("Total extent caimed", [100, 600, 350, 630]),
+            line("2.10 hectares", [410, 600, 590, 630]),
+            line("√", [560, 700, 590, 730]),
+            line("Individual Forest Right (IFR)", [610, 700, 900, 730]),
+            line("Community Right (CR)", [610, 740, 850, 770]),
+            line("Community Forest Resource Right (CFR)", [610, 780, 950, 810]),
+        ]
+        result = self.extractor.extract("form-a-scan", {
+            "intake_kind": "new_claim",
+            "pages": [{"page_number": 1, "text": "\n".join(item["text"] for item in lines),
+                       "confidence": 0.95, "lines": lines}],
+        })
+        self.assertEqual(result.fields["holder_name"], "M. Ramu")
+        self.assertEqual(result.fields["village"], "Kottur")
+        self.assertEqual(result.fields["block"], "Yercaud")
+        self.assertEqual(result.fields["district"], "Salem")
+        self.assertEqual(result.fields["right_type"], "IFR")
+        self.assertEqual(result.fields["claimed_area_sqm"], 21000)
+        self.assertIsNone(result.fields["survey_number"])
+        self.assertTrue(result.field_evidence["survey_number"]["ambiguous"])
+        self.assertEqual(result.field_evidence["holder_name"]["source_page"], 1)
+        self.assertEqual(result.field_evidence["holder_name"]["source_bounding_box"], [540, 100, 700, 130])
+
+    def test_form_a_option_list_without_checkmark_does_not_invent_right_type(self):
+        lines = [
+            {"text": "Form - A", "confidence": 0.9, "bounding_box": [10, 10, 80, 30]},
+            {"text": "Individual Forest Right (IFR)", "confidence": 0.9, "bounding_box": [100, 80, 350, 100]},
+            {"text": "Community Right (CR)", "confidence": 0.9, "bounding_box": [100, 110, 300, 130]},
+        ]
+        result = self.extractor.extract("unmarked-form-a", {
+            "intake_kind": "new_claim",
+            "pages": [{"page_number": 1, "text": "\n".join(item["text"] for item in lines),
+                       "confidence": 0.9, "lines": lines}],
+        })
+        self.assertIsNone(result.fields.get("right_type"))
+        self.assertIn("Missing right_type", result.warnings)
+
 
 if __name__ == "__main__":
     unittest.main()

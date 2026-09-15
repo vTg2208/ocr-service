@@ -28,6 +28,9 @@ def claim_location(claim):
         return {"state": sabha.state, "district": sabha.district, "block": sabha.block, "village": sabha.village}
     if claim.parcel is not None:
         return parcel_location(claim.parcel)
+    reviewed = (claim.provenance_json or {}).get("reviewed_location")
+    if isinstance(reviewed, dict):
+        return {key: reviewed.get(key) for key in ("state", "district", "block", "village")}
     return {"state": None, "district": None, "block": None, "village": None}
 
 

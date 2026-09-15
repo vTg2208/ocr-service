@@ -1,6 +1,9 @@
 import unittest
 import uuid
+import base64
+import tempfile
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 import jwt
 from fastapi.testclient import TestClient
@@ -18,6 +21,7 @@ from app.db.session import get_db
 from app.main import app
 from app.services.audit import record_audit
 from app.services.fra_claims import create_claim
+from app.services.storage import LocalPrivateStorage
 
 
 class FRACaseAPITests(unittest.TestCase):
@@ -107,6 +111,47 @@ class FRACaseAPITests(unittest.TestCase):
         self.assertEqual(body["audit_timeline"][-1]["action"], "fra_case_test_event")
         self.assertNotIn("private://hidden", detail.text)
         self.assertNotIn("private_uri", detail.text)
+
+    def test_supporting_scan_upload_is_case_linked_and_viewable_only_to_case_staff(self):
+        image = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/"
+            "lQAAAABJRU5ErkJggg=="
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            storage = LocalPrivateStorage(directory)
+            with patch("app.api.fra_case_routes.create_storage", return_value=storage), patch(
+                "app.api.fra_case_routes.ClamAVScanner"
+            ):
+                uploaded = self.client.post(
+                    f"/api/fra/cases/{self.first_id}/supporting-documents",
+                    headers=self.headers("case-owner"),
+                    data={
+                        "document_type": "gram_sabha_record",
+                        "source": "Gram Sabha office",
+                        "description": "Proceedings scan",
+                    },
+                    files={"file": ("proceedings.png", image, "image/png")},
+                )
+                self.assertEqual(uploaded.status_code, 201, uploaded.text)
+                document_id = uploaded.json()["document_id"]
+                detail = self.client.get(
+                    f"/api/fra/cases/{self.first_id}", headers=self.headers("case-owner")
+                ).json()
+                item = detail["evidence_items"][0]
+                self.assertEqual(item["document_type"], "gram_sabha_record")
+                self.assertEqual(item["document"]["filename"], "proceedings.png")
+                original = self.client.get(
+                    f"/api/fra/cases/{self.first_id}/documents/{document_id}",
+                    headers=self.headers("case-owner"),
+                )
+                self.assertEqual(original.status_code, 200)
+                self.assertEqual(original.content, image)
+                self.assertEqual(original.headers["cache-control"], "private, no-store")
+                denied = self.client.get(
+                    f"/api/fra/cases/{self.first_id}/documents/{document_id}",
+                    headers=self.headers("case-other"),
+                )
+                self.assertEqual(denied.status_code, 404)
 
     def test_case_reference_lists_support_case_and_intake_forms(self):
         holders = self.client.get(
