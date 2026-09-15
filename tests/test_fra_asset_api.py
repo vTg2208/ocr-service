@@ -1,16 +1,18 @@
+import json
 import unittest
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import jwt
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.auth import settings
 from app.db.base import Base
-from app.db.fra_completion_models import AssetFeature, FRAVillageProfile, ModelVersion
+from app.db.fra_completion_models import AssetFeature, FRAVillageProfile, ModelVersion, ProcessingJob
+from app.db.fra_models import FRAClaim, FRAGeometryVersion, RightsHolder
 from app.db.models import User
 from app.db.session import get_db
 from app.main import app
@@ -99,10 +101,11 @@ class FRAAssetAPITests(unittest.TestCase):
                 asset_class="water_body",
                 point_geometry_json={"type": "Point", "coordinates": [79.11, 10.71]},
                 observed_value_json={"present": True},
+                acquired_at=date(2026, 1, 15),
                 confidence=0.7,
                 source_type="model",
                 source_reference="private://scene-pixels",
-                provenance_json={"synthetic": True},
+                provenance_json={"synthetic": True, "model_name": "tn-assets", "model_version": "0.1.0"},
                 verification_state="unverified",
                 synthetic=True,
             )
@@ -115,6 +118,13 @@ class FRAAssetAPITests(unittest.TestCase):
         self.assertEqual(listed.status_code, 200)
         self.assertNotIn("private://scene-pixels", listed.text)
         self.assertIn("supporting evidence", listed.json()["warning"])
+        chain = listed.json()["items"][0]["evidence_chain"]
+        self.assertEqual(chain["asset"]["class"], "water_body")
+        self.assertEqual(chain["imagery"]["reference"], "[private source redacted]")
+        self.assertEqual(chain["date"], "2026-01-15")
+        self.assertEqual(chain["model"], {"name": "tn-assets", "version": "0.1.0", "inference_run_id": None})
+        self.assertEqual(chain["confidence"], 0.7)
+        self.assertEqual(chain["geometry"]["type"], "Point")
         denied = self.client.post(
             f"/api/fra/assets/{asset_id}/review",
             headers=self.headers(),
@@ -128,6 +138,37 @@ class FRAAssetAPITests(unittest.TestCase):
         )
         self.assertEqual(reviewed.status_code, 200, reviewed.text)
         self.assertEqual(reviewed.json()["verification_state"], "verified")
+
+    def test_nonfinite_inference_payload_returns_422_without_creating_job(self):
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.subTest(value=value):
+                manifest = asset_manifest()
+                manifest["features"][0]["value"] = {"measurement": value}
+                response = self.client.post("/api/fra/assets/inference-jobs",
+                    headers={**self.headers(), "Content-Type": "application/json"},
+                    content=json.dumps({"village_id": self.village_id, "model_version_id": self.model_id,
+                        "scene_id": "invalid-measurement", "idempotency_key": "nonfinite",
+                        "manifest": manifest}))
+                self.assertEqual(response.status_code, 422, response.text)
+                self.assertIn("finite", response.text)
+        with self.factory() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(ProcessingJob)), 0)
+
+    def test_nonfinite_correction_returns_422_without_changing_asset(self):
+        with self.factory() as session:
+            asset = AssetFeature(village_id=uuid.UUID(self.village_id), asset_class="water_body",
+                                 observed_value_json={"present": True}, source_type="field")
+            session.add(asset)
+            session.commit()
+            identifier = asset.id
+        response = self.client.post(f"/api/fra/assets/{identifier}/review",
+            headers={**self.headers("asset-api-reviewer"), "Content-Type": "application/json"},
+            content=json.dumps({"outcome": "corrected", "expected_revision": 0,
+                                "corrected_value": {"measurement": float("nan")}, "reasons": ["Correction"]}))
+        self.assertEqual(response.status_code, 422, response.text)
+        with self.factory() as session:
+            self.assertEqual(session.get(AssetFeature, identifier).revision, 0)
+            self.assertEqual(session.scalar(select(func.count()).select_from(AssetFeature)), 1)
 
     def test_inactive_model_is_explicitly_unavailable(self):
         with self.factory() as session:
@@ -146,6 +187,98 @@ class FRAAssetAPITests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 503)
+
+    def test_taxonomy_endpoint_exposes_the_model_and_atlas_contract(self):
+        response = self.client.get("/api/fra/assets/taxonomy", headers=self.headers())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["version"], "fra-assets-v1")
+        self.assertEqual(
+            {item["name"] for item in response.json()["classes"]},
+            {"agricultural_land", "water_body", "homestead", "forest_cover",
+             "road", "infrastructure", "other_asset"},
+        )
+        self.assertEqual(response.json()["input_aliases"]["cropland"], "agricultural_land")
+        invalid = self.client.get(
+            "/api/fra/assets?asset_class=unmapped_detector_class", headers=self.headers()
+        )
+        self.assertEqual(invalid.status_code, 422)
+
+    def test_reviewer_rebuilds_scoped_village_profiles_with_private_sources_redacted(self):
+        with self.factory() as session:
+            session.add(AssetFeature(
+                village_id=uuid.UUID(self.village_id), asset_class="water_body",
+                observed_value_json={"present": True, "asset_subtype": "pond"},
+                source_type="model", source_reference="private://scene-1",
+                verification_state="verified", provenance_json={"model_version": "1"},
+            ))
+            session.commit()
+        denied = self.client.post(
+            "/api/fra/assets/village-profiles/rebuild", headers=self.headers()
+        )
+        self.assertEqual(denied.status_code, 403)
+        rebuilt = self.client.post(
+            "/api/fra/assets/village-profiles/rebuild",
+            headers=self.headers("asset-api-reviewer"),
+        )
+        self.assertEqual(rebuilt.status_code, 200, rebuilt.text)
+        self.assertEqual(rebuilt.json()["items"][0]["metrics"]["water_body_count"], 1)
+        self.assertNotIn("private://scene-1", rebuilt.text)
+        listed = self.client.get(
+            "/api/fra/assets/village-profiles?district=Thanjavur", headers=self.headers()
+        )
+        self.assertEqual(len(listed.json()["items"]), 1)
+
+    def test_owner_reads_claim_to_village_satellite_asset_context(self):
+        with self.factory() as session:
+            staff = session.scalar(
+                select(User).where(User.external_id == "asset-api-staff")
+            )
+            village = session.get(FRAVillageProfile, uuid.UUID(self.village_id))
+            holder = RightsHolder(
+                display_name="Asset context holder", holder_type="individual"
+            )
+            claim = FRAClaim(
+                claim_number="TN-ASSET-CONTEXT-1", right_type="IFR",
+                status="submitted", rights_holder=holder, village=village,
+                submitted_by=staff.id, provenance_json={},
+            )
+            geometry = FRAGeometryVersion(
+                claim=claim, version=1, geometry=BOUNDARY,
+                source="reviewed", provenance_json={}, boundary_quality="reviewed",
+                created_by=staff.id,
+            )
+            session.add_all([claim, geometry])
+            session.flush()
+            session.add(AssetFeature(
+                claim=claim, asset_class="water_body",
+                point_geometry_json={"type": "Point", "coordinates": [79.11, 10.71]},
+                observed_value_json={"present": True}, source_type="model",
+                source_reference="private://scene", verification_state="verified",
+                provenance_json={},
+            ))
+            session.commit()
+            claim_id = str(claim.id)
+
+        self.assertEqual(
+            self.client.get(
+                f"/api/fra/assets/claims/{claim_id}/spatial-context"
+            ).status_code,
+            401,
+        )
+        response = self.client.get(
+            f"/api/fra/assets/claims/{claim_id}/spatial-context",
+            headers=self.headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["village"]["id"], self.village_id)
+        self.assertEqual(response.json()["intersecting_asset_count"], 1)
+        self.assertEqual(
+            response.json()["assets"][0]["relation"], "intersects_fra_land"
+        )
+        self.assertNotIn("private://scene", response.text)
+        self.assertIn("do not determine", response.json()["warning"])
 
 
 if __name__ == "__main__":

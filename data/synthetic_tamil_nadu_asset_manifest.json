@@ -13,7 +13,7 @@
     "tn-scene-2025": {
       "acquired_at": "2025-01-15",
       "features": [
-        {"asset_class": "agricultural_cover", "geometry": {"type": "MultiPolygon", "coordinates": [[[[79.103, 10.703], [79.111, 10.703], [79.111, 10.711], [79.103, 10.711], [79.103, 10.703]]]]}, "value": {"coverage_fraction": 0.31}, "confidence": 0.77},
+        {"asset_class": "agricultural_land", "geometry": {"type": "MultiPolygon", "coordinates": [[[[79.103, 10.703], [79.111, 10.703], [79.111, 10.711], [79.103, 10.711], [79.103, 10.703]]]]}, "value": {"coverage_fraction": 0.31}, "confidence": 0.77},
         {"asset_class": "homestead", "geometry": {"type": "Point", "coordinates": [79.108, 10.708]}, "value": {"present": true}, "confidence": 0.69}
       ]
     }

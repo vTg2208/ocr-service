@@ -29,9 +29,12 @@ def _filters(
     block: str | None,
     village: str | None,
     tribal_group: str | None,
+    claimant_category: str | None,
     right_type: str | None,
     status: str | None,
     year: int | None,
+    min_area_sqm: float | None,
+    max_area_sqm: float | None,
     layers: str,
 ) -> AtlasFilters:
     selected = tuple(item.strip() for item in layers.split(",") if item.strip())
@@ -42,9 +45,12 @@ def _filters(
             block=block,
             village=village,
             tribal_group=tribal_group,
+            claimant_category=claimant_category,
             right_type=right_type,
             status=status,
             year=year,
+            min_area_sqm=min_area_sqm,
+            max_area_sqm=max_area_sqm,
             layers=selected,
         )
     except UnsupportedStateError as error:
@@ -62,10 +68,13 @@ def _query_filters(
     block: str | None = None,
     village: str | None = None,
     tribal_group: str | None = None,
+    claimant_category: str | None = None,
     right_type: str | None = None,
     status: str | None = None,
     year: int | None = None,
-    layers: str = "village,claim,title,asset",
+    min_area_sqm: float | None = None,
+    max_area_sqm: float | None = None,
+    layers: str = "country,state,district,block,village,claim,title,asset,satellite_imagery,historical_imagery,forest_area,protected_area,cadastral_parcel,water_body,infrastructure,forest_compartment,groundwater,groundwater_stress,water_stress",
 ) -> AtlasFilters:
     return _filters(
         state=state,
@@ -73,9 +82,12 @@ def _query_filters(
         block=block,
         village=village,
         tribal_group=tribal_group,
+        claimant_category=claimant_category,
         right_type=right_type,
         status=status,
         year=year,
+        min_area_sqm=min_area_sqm,
+        max_area_sqm=max_area_sqm,
         layers=layers,
     )
 
@@ -86,7 +98,9 @@ def get_atlas_features(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return atlas_features(db, filters, privileged=user.role in {"reviewer", "admin"})
+    return atlas_features(
+        db, filters, privileged=user.role in {"reviewer", "admin"}, actor_id=user.id
+    )
 
 
 @router.get("/atlas/summary")
@@ -145,9 +159,12 @@ def get_villages(
         block=block,
         village=village,
         tribal_group=tribal_group,
+        claimant_category=None,
         right_type=None,
         status=None,
         year=None,
+        min_area_sqm=None,
+        max_area_sqm=None,
         layers="village",
     )
     return {"items": [_village_dict(item) for item in list_villages(db, filters)]}

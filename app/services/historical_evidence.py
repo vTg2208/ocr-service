@@ -15,6 +15,7 @@ from app.db.fra_models import FRAClaim
 from app.db.fra_operational_models import ImageryArtifact, ImagerySceneRecord
 from app.db.models import User
 from app.services.audit import record_audit
+from app.services.concurrency import as_utc, conditional_update, next_timestamp
 from app.services.model_gateway import ModelRegistrationError, validate_model_output
 from app.services.processing_jobs import enqueue_job
 from app.services.stac_imagery import STACProviderError
@@ -318,5 +319,44 @@ def process_historical_evidence_job(
 __all__ = [
     "HistoricalEvidenceError", "HistoricalProcessingResult", "RESTHistoricalProcessor",
     "create_historical_processor", "process_historical_evidence_job",
-    "request_historical_evidence",
+    "request_historical_evidence", "HistoricalReviewConflict", "review_historical_artifact",
 ]
+
+
+class HistoricalReviewConflict(RuntimeError):
+    pass
+
+
+def review_historical_artifact(
+    session, artifact: ImageryArtifact, *, verification_state: str, notes: str,
+    expected_reviewed_at: datetime | None, reviewer_id, request_id: str | None = None,
+) -> ImageryArtifact:
+    reviewer = session.get(User, reviewer_id)
+    if reviewer is None or reviewer.role not in {"reviewer", "admin"}:
+        raise PermissionError("Historical evidence review requires a reviewer or admin.")
+    if artifact.state != "completed":
+        raise HistoricalReviewConflict("Only a completed historical observation can be reviewed.")
+    if verification_state not in {"verified", "rejected", "needs_field_verification"}:
+        raise ValueError("Unknown historical observation review state.")
+    normalized_notes = notes.strip()
+    if not normalized_notes:
+        raise ValueError("Reviewer notes are required.")
+    if as_utc(artifact.reviewed_at) != as_utc(expected_reviewed_at):
+        raise HistoricalReviewConflict("The historical observation changed since it was loaded.")
+    before = {
+        "verification_state": artifact.verification_state,
+        "reviewer_notes": (artifact.provenance_json or {}).get("reviewer_notes"),
+    }
+    conditional_update(session, artifact,
+        expected={"state": "completed", "reviewed_at": as_utc(expected_reviewed_at)},
+        values={"reviewed_at": next_timestamp(expected_reviewed_at)},
+        conflict=HistoricalReviewConflict("The historical observation changed since it was loaded."))
+    artifact.verification_state = verification_state
+    artifact.reviewed_by = reviewer_id
+    artifact.provenance_json = {**dict(artifact.provenance_json or {}), "reviewer_notes": normalized_notes}
+    record_audit(session, actor_id=reviewer_id, action="fra_historical_evidence_reviewed",
+                 entity_type="imagery_artifact", entity_id=artifact.id, before=before,
+                 after={"verification_state": verification_state, "reviewer_notes": normalized_notes},
+                 request_id=request_id)
+    session.flush()
+    return artifact

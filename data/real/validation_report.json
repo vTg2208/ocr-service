@@ -1,0 +1,62 @@
+{
+  "status": "validated_with_limitations",
+  "synthetic_records": 0,
+  "fra_progress": {
+    "as_of": "2026-06-30",
+    "granularity": "state_aggregate",
+    "claims_received_total": 34667,
+    "titles_distributed_total": 16508,
+    "source_authority": "Ministry of Tribal Affairs, Government of India",
+    "source_reference": "https://tribal.nic.in/downloads/FRA/MPR/2026/(A)%20MPR%20June%202026.pdf"
+  },
+  "village": {
+    "village_code": "632998",
+    "village_name": "Arpisampalaiyam",
+    "district_name": "Villupuram",
+    "geometry_valid": true,
+    "source_authority": "Survey of India (SOI)",
+    "source_reference": "https://nwdp.nwic.gov.in/dataset/village-boundary",
+    "license_reference": "https://nwdp.nwic.gov.in/copyright-policy"
+  },
+  "satellite_imagery": {
+    "scene_id": "S2A_44PLU_20260605_0_L2A",
+    "collection": "sentinel-2-l2a",
+    "acquired_at": "2026-06-05T05:15:46.651000+00:00",
+    "intersects_village": true,
+    "private_asset_urls_persisted": false
+  },
+  "limitations": [
+    "claim_level_fra_records",
+    "individual_fra_title_documents",
+    "fra_claim_and_title_geometries",
+    "asset_model_accuracy_deferred_to_user_model"
+  ],
+  "cadastral_evidence_validation": {
+    "document_role": "cadastral_evidence_only",
+    "fra_document": false,
+    "source_file_sha256": "8cbcb6ac1236174dcb7b2965c1ddf61748aa6b714ee2c72c0d500706f6afbbe6",
+    "source_file_size": 1231952,
+    "ocr_model_version": "PP-OCRv5_mobile_det+ta_PP-OCRv5_mobile_rec",
+    "ocr_confidence": 0.8853,
+    "ocr_page_count": 1,
+    "ocr_line_count": 52,
+    "entity_model_version": "tn-fra-regex-v1",
+    "entity_confidence": 0.78159,
+    "extracted_field_names": [
+      "block",
+      "district",
+      "holder_name",
+      "state",
+      "state_code",
+      "subdivision_number"
+    ],
+    "missing_required_fra_fields": [
+      "claim_status",
+      "right_type",
+      "village"
+    ],
+    "fra_promotion_ready": false,
+    "review_disposition": "retain_as_supporting_cadastral_evidence",
+    "privacy": "Raw OCR text and extracted personal values are intentionally omitted."
+  }
+}

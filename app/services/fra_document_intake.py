@@ -90,6 +90,7 @@ def ingest_archive_batch(
     scanner,
     state: str = "Tamil Nadu",
     synthetic: bool = False,
+    intake_kind: str = "legacy",
     request_id: str | None = None,
     enqueue=enqueue_job,
 ) -> dict:
@@ -104,6 +105,8 @@ def ingest_archive_batch(
         )
     if not files:
         raise ArchiveValidationError("At least one archive file is required.")
+    if intake_kind not in {"legacy", "new_claim"}:
+        raise ArchiveValidationError("Unsupported FRA intake kind.")
 
     existing = session.scalar(
         select(FRAImportBatch).where(
@@ -127,6 +130,7 @@ def ingest_archive_batch(
             "district": district_name,
             "synthetic": synthetic,
             "ingest_method": "multipart_batch_upload",
+            "intake_kind": intake_kind,
         },
         request_id=request_id,
     )

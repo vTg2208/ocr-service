@@ -63,7 +63,7 @@ class SatelliteEvidenceTests(unittest.TestCase):
                 "observations": observations
                 or [
                     {
-                        "asset_class": "agricultural_cover",
+                        "asset_class": "agricultural_land",
                         "value": 0.72,
                         "confidence": 0.83,
                     }

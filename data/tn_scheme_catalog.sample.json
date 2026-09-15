@@ -1,7 +1,117 @@
 [
-  {"scheme_code":"PM-KISAN","display_name":"PM-KISAN planning reference","version":"tn-draft-2026-01","department":"Agriculture and Farmers Welfare","description":"Candidate convergence reference requiring competent-authority validation.","source_reference":"https://pmkisan.gov.in/","definition":{"reviewed_on":null},"authoritative":false,"active":false},
-  {"scheme_code":"MGNREGA","display_name":"MGNREGA planning reference","version":"tn-draft-2026-01","department":"Rural Development and Panchayat Raj","description":"Candidate works-convergence reference requiring competent-authority validation.","source_reference":"https://nrega.nic.in/","definition":{"reviewed_on":null},"authoritative":false,"active":false},
-  {"scheme_code":"PMAY-G","display_name":"PMAY-G planning reference","version":"tn-draft-2026-01","department":"Rural Development and Panchayat Raj","description":"Candidate rural-housing reference requiring competent-authority validation.","source_reference":"https://pmayg.nic.in/","definition":{"reviewed_on":null},"authoritative":false,"active":false},
-  {"scheme_code":"JJM","display_name":"Jal Jeevan Mission planning reference","version":"tn-draft-2026-01","department":"Municipal Administration and Water Supply","description":"Candidate drinking-water convergence reference requiring competent-authority validation.","source_reference":"https://jaljeevanmission.gov.in/","definition":{"reviewed_on":null},"authoritative":false,"active":false},
-  {"scheme_code":"DAJGUA","display_name":"Dharti Aaba Janjatiya Gram Utkarsh Abhiyan planning reference","version":"tn-draft-2026-01","department":"Adi Dravidar and Tribal Welfare","description":"Candidate tribal-village convergence reference requiring competent-authority validation.","source_reference":"https://tribal.nic.in/","definition":{"reviewed_on":null},"authoritative":false,"active":false}
+  {
+    "scheme_code": "PM-KISAN",
+    "display_name": "PM-KISAN planning reference",
+    "version": "tn-draft-2026-02",
+    "department": "Agriculture and Farmers Welfare",
+    "description": "Candidate FRA-holder livelihood convergence reference requiring competent-authority validation.",
+    "source_reference": "https://pmkisan.gov.in/",
+    "definition": {
+      "reviewed_on": null,
+      "target_scope": "holder",
+      "applicable_right_types": ["IFR"],
+      "intervention_types": ["agricultural_livelihood"],
+      "convergence_prerequisites": [
+        {"fact": "has_active_title", "label": "Current FRA title evidence"},
+        {"fact": "agricultural_observation", "label": "Current verified agricultural observation"},
+        {"fact": "agricultural_land_fraction", "label": "Measured agricultural land coverage"}
+      ],
+      "evidence_facts": ["has_active_title", "agricultural_observation", "agricultural_land_fraction"],
+      "screening_note": "These are AranyaSetu convergence inputs, not a reproduction of official eligibility conditions."
+    },
+    "authoritative": false,
+    "active": false
+  },
+  {
+    "scheme_code": "MGNREGA",
+    "display_name": "MGNREGA planning reference",
+    "version": "tn-draft-2026-02",
+    "department": "Rural Development and Panchayat Raj",
+    "description": "Candidate FRA-village works-convergence reference requiring competent-authority validation.",
+    "source_reference": "https://nrega.nic.in/",
+    "definition": {
+      "reviewed_on": null,
+      "target_scope": "holder_and_village",
+      "applicable_right_types": ["IFR", "CR", "CFR"],
+      "intervention_types": ["natural_resource_works", "water_conservation", "access_infrastructure"],
+      "convergence_prerequisites": [
+        {"fact": "claim_status", "label": "Current FRA claim status"},
+        {"fact": "village_socioeconomic", "label": "Current village context"},
+        {"fact": "asset_deficiency_indicators", "label": "Mapped village asset gaps"}
+      ],
+      "evidence_facts": ["claim_status", "village_socioeconomic", "asset_deficiency_indicators"],
+      "screening_note": "These are AranyaSetu convergence inputs, not a reproduction of official eligibility conditions."
+    },
+    "authoritative": false,
+    "active": false
+  },
+  {
+    "scheme_code": "PMAY-G",
+    "display_name": "PMAY-G planning reference",
+    "version": "tn-draft-2026-02",
+    "department": "Rural Development and Panchayat Raj",
+    "description": "Candidate rural-housing convergence reference requiring competent-authority validation.",
+    "source_reference": "https://pmayg.nic.in/",
+    "definition": {
+      "reviewed_on": null,
+      "target_scope": "holder",
+      "applicable_right_types": ["IFR"],
+      "intervention_types": ["rural_housing"],
+      "convergence_prerequisites": [
+        {"fact": "has_active_title", "label": "Current FRA title evidence"},
+        {"fact": "homestead_observation", "label": "Current verified homestead observation"},
+        {"fact": "village_socioeconomic", "label": "Current village context"}
+      ],
+      "evidence_facts": ["has_active_title", "homestead_observation", "village_socioeconomic"],
+      "screening_note": "These are AranyaSetu convergence inputs, not a reproduction of official eligibility conditions."
+    },
+    "authoritative": false,
+    "active": false
+  },
+  {
+    "scheme_code": "JJM",
+    "display_name": "Jal Jeevan Mission planning reference",
+    "version": "tn-draft-2026-02",
+    "department": "Municipal Administration and Water Supply",
+    "description": "Candidate FRA-village drinking-water convergence reference requiring competent-authority validation.",
+    "source_reference": "https://jaljeevanmission.gov.in/",
+    "definition": {
+      "reviewed_on": null,
+      "target_scope": "holder_and_village",
+      "applicable_right_types": ["IFR", "CR", "CFR"],
+      "intervention_types": ["drinking_water", "water_source_strengthening"],
+      "convergence_prerequisites": [
+        {"fact": "water_source_present", "label": "Current verified water-source observation"},
+        {"fact": "groundwater_status", "label": "Published groundwater context"},
+        {"fact": "water_stress_status", "label": "Published water-stress context"}
+      ],
+      "evidence_facts": ["water_source_present", "groundwater_status", "water_stress_status"],
+      "screening_note": "These are AranyaSetu convergence inputs, not a reproduction of official eligibility conditions."
+    },
+    "authoritative": false,
+    "active": false
+  },
+  {
+    "scheme_code": "DAJGUA",
+    "display_name": "Dharti Aaba Janjatiya Gram Utkarsh Abhiyan planning reference",
+    "version": "tn-draft-2026-02",
+    "department": "Adi Dravidar and Tribal Welfare",
+    "description": "Candidate tribal-village multi-department convergence reference requiring competent-authority validation.",
+    "source_reference": "https://tribal.nic.in/",
+    "definition": {
+      "reviewed_on": null,
+      "target_scope": "village",
+      "applicable_right_types": ["IFR", "CR", "CFR"],
+      "intervention_types": ["tribal_village_convergence", "multi_department_planning"],
+      "convergence_prerequisites": [
+        {"fact": "claim_right_type", "label": "Structured FRA right type"},
+        {"fact": "village_socioeconomic", "label": "Current village context"},
+        {"fact": "source_quality_flags", "label": "DSS source-quality assessment"}
+      ],
+      "evidence_facts": ["claim_right_type", "village_socioeconomic", "source_quality_flags"],
+      "screening_note": "These are AranyaSetu convergence inputs, not a reproduction of official eligibility conditions."
+    },
+    "authoritative": false,
+    "active": false
+  }
 ]

@@ -1,1 +1,1 @@
-"""Operational command modules for the OCR and land registry service."""
+"""Operational commands for the AranyaSetu FRA Spatial Intelligence platform."""

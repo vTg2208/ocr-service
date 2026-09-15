@@ -21,6 +21,7 @@ class _FakePaddleEngine:
             _PaddleV3Result(
                 rec_texts=["First line", "Second line"],
                 rec_scores=np.array([0.98, 0.86]),
+                rec_boxes=np.array([[10, 20, 110, 40], [10, 50, 130, 70]]),
             )
         ]
 
@@ -68,6 +69,18 @@ class PaddleOCREngineTests(unittest.TestCase):
         self.assertEqual(text, "First line\nSecond line")
         self.assertEqual(confidence, 92.0)
         self.assertEqual(engine.engine.last_image_shape, (10, 10, 3))
+
+    def test_extract_page_retains_line_confidence_and_bounding_boxes(self):
+        engine = PaddleOCREngine.__new__(PaddleOCREngine)
+        engine.engine = _FakePaddleEngine()
+
+        result = engine.extract_page(np.zeros((10, 10), dtype=np.uint8))
+
+        self.assertEqual(result.text, "First line\nSecond line")
+        self.assertEqual(result.confidence, 92.0)
+        self.assertEqual(result.lines[0].text, "First line")
+        self.assertEqual(result.lines[0].confidence, 0.98)
+        self.assertEqual(result.lines[0].bounding_box, [10.0, 20.0, 110.0, 40.0])
 
 
 if __name__ == "__main__":

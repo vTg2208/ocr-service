@@ -1,5 +1,8 @@
 import json
 import io
+import importlib.util
+from pathlib import Path
+import tempfile
 import unittest
 import zipfile
 
@@ -9,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.db.models import User
 from app.services.fra_geospatial_import import (
+    KMLDatasetReader,
     SpatialImportValidationError,
     FionaDatasetReader,
     publish_spatial_import,
@@ -91,6 +95,54 @@ class FRAGeospatialImportTests(unittest.TestCase):
             archive.writestr("../outside.shp", b"unsafe")
         with self.assertRaisesRegex(SpatialImportValidationError, "unsafe path"):
             FionaDatasetReader().read(content.getvalue(), "forest.zip")
+
+    def test_kml_reader_extracts_polygon_without_an_optional_gdal_driver(self):
+        content = b"""<?xml version="1.0" encoding="UTF-8"?>
+        <kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark id="claim-1">
+          <name>Claim boundary</name><ExtendedData><Data name="claim_number"><value>TN-1</value></Data></ExtendedData>
+          <Polygon><outerBoundaryIs><LinearRing><coordinates>
+            78.0,11.0,0 78.1,11.0,0 78.1,11.1,0 78.0,11.0,0
+          </coordinates></LinearRing></outerBoundaryIs></Polygon>
+        </Placemark></Document></kml>"""
+
+        dataset = KMLDatasetReader().read(content, "claims.kml")
+
+        self.assertEqual(dataset.crs, "EPSG:4326")
+        self.assertEqual(dataset.features[0]["id"], "claim-1")
+        self.assertEqual(dataset.features[0]["properties"]["claim_number"], "TN-1")
+        self.assertEqual(dataset.features[0]["geometry"]["type"], "Polygon")
+
+    @unittest.skipUnless(importlib.util.find_spec("fiona"), "Fiona/GDAL is not installed")
+    def test_fiona_reader_opens_real_zipped_shapefile_and_geopackage(self):
+        import fiona
+
+        schema = {"geometry": "Polygon", "properties": {"name": "str"}}
+        polygon = {
+            "type": "Polygon",
+            "coordinates": [[[78.0, 11.0], [78.1, 11.0], [78.1, 11.1], [78.0, 11.0]]],
+        }
+        feature_row = {"geometry": polygon, "properties": {"name": "Claim 1"}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shapefile = root / "claims.shp"
+            with fiona.open(shapefile, "w", driver="ESRI Shapefile", schema=schema, crs="EPSG:4326") as target:
+                target.write(feature_row)
+            archive = io.BytesIO()
+            with zipfile.ZipFile(archive, "w") as zipped:
+                for component in root.glob("claims.*"):
+                    zipped.write(component, component.name)
+
+            geopackage = root / "claims.gpkg"
+            with fiona.open(geopackage, "w", driver="GPKG", schema=schema, crs="EPSG:4326", layer="claims") as target:
+                target.write(feature_row)
+
+            shapefile_data = FionaDatasetReader().read(archive.getvalue(), "claims.zip")
+            geopackage_data = FionaDatasetReader().read(geopackage.read_bytes(), "claims.gpkg")
+
+        self.assertEqual(shapefile_data.features[0]["properties"]["name"], "Claim 1")
+        self.assertEqual(geopackage_data.features[0]["properties"]["name"], "Claim 1")
+        self.assertEqual(shapefile_data.normalized_crs, "EPSG:4326")
+        self.assertEqual(geopackage_data.normalized_crs, "EPSG:4326")
 
     def test_publish_requires_reviewer_and_preserves_idempotent_stage(self):
         square = [[78.0, 11.0], [78.1, 11.0], [78.1, 11.1], [78.0, 11.0]]

@@ -14,11 +14,11 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import router
-from app.api.land_routes import router as land_router
-from app.api.patta_routes import router as patta_router
+from app.api.document_intelligence_routes import router as document_intelligence_router
+from app.api.cadastral_enrichment_routes import router as cadastral_enrichment_router
+from app.api.cadastral_evidence_routes import router as cadastral_evidence_router
 from app.api.session_routes import router as session_router
-from app.api.claim_registry_routes import router as claim_registry_router
+from app.api.cadastral_registry_routes import router as cadastral_registry_router
 from app.api.fra_routes import router as fra_router
 from app.api.fra_archive_routes import router as fra_archive_router
 from app.api.fra_operations_routes import router as fra_operations_router
@@ -60,7 +60,11 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    description="Standalone OCR microservice for extracting text from images and PDFs.",
+    description=(
+        "AranyaSetu is an FRA Spatial Intelligence and Decision Support platform for "
+        "digitizing records, managing rights workflows, mapping evidence, and producing "
+        "reviewable scheme recommendations."
+    ),
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -69,11 +73,11 @@ app.add_middleware(
     window_seconds=settings.rate_limit_window_seconds,
 )
 
-app.include_router(router)
-app.include_router(land_router)
-app.include_router(patta_router)
+app.include_router(document_intelligence_router)
+app.include_router(cadastral_enrichment_router)
+app.include_router(cadastral_evidence_router)
 app.include_router(session_router)
-app.include_router(claim_registry_router)
+app.include_router(cadastral_registry_router)
 app.include_router(fra_router)
 app.include_router(fra_archive_router)
 app.include_router(fra_operations_router)
@@ -100,9 +104,15 @@ async def login_ui() -> FileResponse:
     return FileResponse(static_root / "login" / "index.html")
 
 
+@app.get("/cadastral-evidence", include_in_schema=False)
+async def cadastral_evidence_ui() -> FileResponse:
+    return FileResponse(static_root / "cadastral-evidence" / "index.html")
+
+
 @app.get("/land-mapping", include_in_schema=False)
-async def land_mapping_ui() -> FileResponse:
-    return FileResponse(static_root / "land-mapping" / "index.html")
+async def legacy_cadastral_workspace_redirect() -> RedirectResponse:
+    """Keep bookmarks working while directing staff to the renamed workspace."""
+    return RedirectResponse("/cadastral-evidence", status_code=308)
 
 
 @app.get("/fra", include_in_schema=False)

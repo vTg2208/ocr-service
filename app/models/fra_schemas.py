@@ -4,49 +4,16 @@ from datetime import date
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from shapely.geometry import shape
+
+from app.services.asset_contracts import AssetClass
 
 
 RightType = Literal["IFR", "CR", "CFR"]
 HolderType = Literal["individual", "household", "community"]
 EvidenceCategory = Literal[
     "oral_statement", "documentary", "physical", "map", "satellite_observation"
-]
-AssetClass = Literal[
-    "agricultural_cover",
-    "anganwadi",
-    "barren_land",
-    "borewell",
-    "bridge",
-    "check_dam",
-    "community_centre",
-    "electricity_grid",
-    "fisheries",
-    "forest_cover",
-    "forest_nursery",
-    "grazing_land",
-    "health_centre",
-    "homestead",
-    "irrigation_canal",
-    "livestock",
-    "market",
-    "minor_forest_produce",
-    "open_well",
-    "pipeline",
-    "plantation_orchard",
-    "pond",
-    "rainwater_harvesting",
-    "river_stream",
-    "road",
-    "sanitation_toilet",
-    "school",
-    "scrubland",
-    "solar_power",
-    "storage_warehouse",
-    "tap_water",
-    "water_body",
-    "water_tank",
 ]
 LifecycleTarget = Literal[
     "submitted", "gram_sabha_verified", "sdlc_review", "dlc_decided", "granted",
@@ -89,13 +56,16 @@ class FRAClaimCreate(StrictModel):
     right_type: RightType
     rights_holder_id: UUID
     gram_sabha_id: UUID | None = None
+    village_id: UUID | None = None
     parcel_id: UUID | None = None
     document_id: UUID | None = None
+    supersedes_claim_id: UUID | None = None
     claimed_area_sqm: float | None = Field(default=None, gt=0)
     provenance: dict[str, Any] = Field(default_factory=dict)
 
 
 class LegacyPromotionCreate(StrictModel):
+    expected_revision: int = Field(ge=0)
     rights_holder_id: UUID
     right_type: RightType
     gram_sabha_id: UUID | None = None
@@ -135,8 +105,22 @@ class EvidenceCreate(StrictModel):
     source: str = Field(min_length=1, max_length=100)
     description: str = Field(min_length=1)
     document_id: UUID | None = None
+    source_page_start: int | None = Field(default=None, gt=0)
+    source_page_end: int | None = Field(default=None, gt=0)
     provenance: dict[str, Any] = Field(default_factory=dict)
     captured_at: date | None = None
+
+    @model_validator(mode="after")
+    def validate_source_pages(self):
+        if self.source_page_end is not None and self.source_page_start is None:
+            raise ValueError("A source page start is required when a source page end is provided.")
+        if (
+            self.source_page_start is not None
+            and self.source_page_end is not None
+            and self.source_page_end < self.source_page_start
+        ):
+            raise ValueError("Source page end must be on or after source page start.")
+        return self
 
 
 class TransitionCreate(StrictModel):
@@ -144,11 +128,14 @@ class TransitionCreate(StrictModel):
     authority_level: str = Field(min_length=1, max_length=32)
     outcome: str = Field(min_length=1, max_length=64)
     reasons: list[str] = Field(default_factory=list)
+    decision_date: date | None = None
+    reference_number: str | None = Field(default=None, max_length=100)
 
 
 class TitleCreate(StrictModel):
     title_number: str = Field(min_length=1, max_length=100)
     geometry_version_id: UUID | None = None
+    granted_area_sqm: float | None = Field(default=None, gt=0)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -162,10 +149,10 @@ class SpatialEvaluationCreate(StrictModel):
     )
     reference_kinds: list[Literal[
         "administrative_boundary", "protected_area", "forest_compartment",
-        "water_body", "cadastral_parcel",
+        "forest_area", "water_body", "cadastral_parcel", "infrastructure",
     ]] = Field(default_factory=lambda: [
         "administrative_boundary", "protected_area", "forest_compartment",
-        "water_body", "cadastral_parcel",
+        "forest_area", "water_body", "cadastral_parcel", "infrastructure",
     ])
 
     @field_validator("geometry")
@@ -190,6 +177,7 @@ class SatelliteObservationCreate(StrictModel):
 
 
 class SchemeRuleSetCreate(StrictModel):
+    catalog_entry_id: UUID
     scheme_code: str = Field(min_length=1, max_length=100)
     display_name: str = Field(min_length=1, max_length=255)
     version: str = Field(min_length=1, max_length=100)
@@ -197,6 +185,12 @@ class SchemeRuleSetCreate(StrictModel):
     effective_to: date | None = None
     required_facts: list[str] = Field(default_factory=list)
     condition: dict[str, Any]
+    required_evidence: list[str] = Field(default_factory=list)
+    required_assets: list[str] = Field(default_factory=list)
+    exclusion_condition: dict[str, Any] | None = None
+    priority_conditions: list[dict[str, Any]] = Field(default_factory=list)
+    freshness_requirements: dict[str, int] = Field(default_factory=dict)
+    recommendation_logic: dict[str, str] = Field(default_factory=dict)
     recommendation_text: str = Field(min_length=1)
     source_reference: str = Field(min_length=1, max_length=500)
     active: bool = True

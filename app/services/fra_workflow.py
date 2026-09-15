@@ -1,9 +1,11 @@
 """Validated FRA lifecycle transitions and versioned title issuance."""
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from app.db.fra_models import FRADecision, FRATitle
 from app.services.audit import record_audit
+from app.services.concurrency import guard_claim
 
 
 TRANSITIONS: dict[str, set[str]] = {
@@ -57,6 +59,8 @@ def transition_claim(
     reasons: list[str],
     actor_id,
     request_id: str | None,
+    decision_date=None,
+    reference_number: str | None = None,
 ) -> FRADecision:
     current_status = claim.status
     allowed = allowed_transitions(current_status)
@@ -71,6 +75,8 @@ def transition_claim(
             f"A reason is required when an FRA claim is {target_status}.",
         )
 
+    guard_claim(session, claim, target_status=target_status, conflict=InvalidTransitionError(
+        current_status, target_status, allowed, "The FRA claim changed since it was loaded."))
     decision = FRADecision(
         claim=claim,
         authority_level=authority_level,
@@ -78,6 +84,8 @@ def transition_claim(
         to_status=target_status,
         outcome=outcome,
         reasons_json=normalized_reasons,
+        decision_date=decision_date,
+        reference_number=reference_number.strip() if reference_number else None,
         actor_id=actor_id,
         request_id=request_id,
     )
@@ -109,6 +117,7 @@ def issue_title(
     issued_by,
     metadata: dict,
     request_id: str | None,
+    granted_area_sqm=None,
 ) -> FRATitle:
     if claim.status != "granted":
         raise TitleIssuanceError("A title can be issued only for a granted FRA claim.")
@@ -116,6 +125,9 @@ def issue_title(
     if not normalized_number:
         raise TitleIssuanceError("A title number is required.")
 
+    guard_claim(session, claim, conflict=TitleIssuanceError("The FRA claim changed since it was loaded."))
+    session.flush()
+    session.expire(claim, ["titles"])
     titles = list(claim.titles)
     for existing in titles:
         if existing.active:
@@ -125,6 +137,7 @@ def issue_title(
         version=max((item.version for item in titles), default=0) + 1,
         title_number=normalized_number,
         geometry_version_id=geometry_version_id,
+        granted_area_sqm=(Decimal(str(granted_area_sqm)) if granted_area_sqm is not None else None),
         active=True,
         metadata_json=dict(metadata),
         issued_by=issued_by,

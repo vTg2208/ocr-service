@@ -1,3 +1,5 @@
+name: aranyasetu
+
 services:
   db:
     image: postgis/postgis:16-3.4
@@ -23,6 +25,7 @@ services:
       retries: 10
   api:
     build: .
+    image: aranyasetu-api:local
     env_file:
       - path: .env.example
       - path: .env
@@ -33,8 +36,10 @@ services:
       clamav:
         condition: service_healthy
     ports: ["8000:8000"]
+    environment:
+      SECURE_UPLOAD_DIR: /var/lib/aranyasetu/private_uploads
     volumes:
-      - private_uploads:/var/lib/ocr/private_uploads
+      - private_uploads:/var/lib/aranyasetu/private_uploads
       - paddle_models:/root/.paddlex
     restart: unless-stopped
     healthcheck:
@@ -42,6 +47,23 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+  worker:
+    build: .
+    image: aranyasetu-worker:local
+    command: ["python", "-m", "scripts.run_fra_jobs", "--forever"]
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      SECURE_UPLOAD_DIR: /var/lib/aranyasetu/private_uploads
+    volumes:
+      - private_uploads:/var/lib/aranyasetu/private_uploads
+      - paddle_models:/root/.paddlex
+    restart: unless-stopped
 volumes:
   postgres_data:
   clamav_data:

@@ -6,6 +6,7 @@ from app.db.fra_models import FRAClaim
 from app.db.fra_operational_models import FRAIntakeItem
 from app.db.models import Claim
 from app.services.audit import record_audit
+from app.services.concurrency import reserve_revision
 from app.services.fra_claims import promote_legacy_claim
 
 
@@ -68,11 +69,12 @@ def update_intake(
         "triage": dict(intake.triage_json or {}),
         "revision": intake.revision,
     }
+    reserve_revision(session, intake, expected_revision=expected_revision, state_field="state",
+                     conflict=IntakeConflictError("The FRA intake changed since it was loaded."))
     intake.state = target_state
     intake.reasons_json = normalized_reasons
     intake.triage_json = dict(triage or intake.triage_json or {})
     intake.updated_by = actor_id
-    intake.revision += 1
     record_audit(
         session,
         actor_id=actor_id,
@@ -92,6 +94,15 @@ def update_intake(
     return intake
 
 
+def _check_promotion_parameters(claim, right_type, rights_holder_id, gram_sabha_id):
+    if (
+        claim.right_type != right_type.strip().upper()
+        or claim.rights_holder_id != rights_holder_id
+        or claim.gram_sabha_id != gram_sabha_id
+    ):
+        raise IntakeConflictError("The FRA intake was promoted with different parameters.")
+
+
 def promote_intake(
     session,
     intake: FRAIntakeItem,
@@ -109,22 +120,29 @@ def promote_intake(
         existing = session.get(FRAClaim, intake.promoted_claim_id)
         if existing is None:
             raise IntakeConflictError("The promoted FRA claim no longer exists.")
+        _check_promotion_parameters(existing, right_type, rights_holder_id, gram_sabha_id)
+        reserve_revision(session, intake, expected_revision=expected_revision, state_field="state",
+                         advance=False, conflict=IntakeConflictError("The FRA intake changed since it was loaded."))
         return existing
     if intake.state != "ready_for_promotion":
         raise IntakeConflictError("Only a reviewed FRA intake can be promoted.")
+    reserve_revision(session, intake, expected_revision=expected_revision, state_field="state",
+                     conflict=IntakeConflictError("The FRA intake changed since it was loaded."))
     claim = promote_legacy_claim(
         session,
         legacy_claim_id=intake.legacy_claim_id,
         rights_holder_id=rights_holder_id,
         right_type=right_type,
         gram_sabha_id=gram_sabha_id,
+        reviewed_intake=intake,
         actor_id=actor_id,
         request_id=request_id,
     )
+    # Older compatibility promotions may already exist without an intake link.
+    _check_promotion_parameters(claim, right_type, rights_holder_id, gram_sabha_id)
     intake.promoted_claim_id = claim.id
     intake.state = "promoted"
     intake.updated_by = actor_id
-    intake.revision += 1
     record_audit(
         session,
         actor_id=actor_id,

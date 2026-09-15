@@ -15,8 +15,16 @@ from app.db.fra_completion_models import (
 from app.db.fra_models import FRAClaim
 from app.db.models import User
 from app.services.audit import record_audit
-from app.services.model_gateway import validate_model_output
+from app.services.asset_contracts import (
+    ASSET_CLASSES,
+    canonical_asset_class,
+    normalize_asset_observation,
+    validate_asset_value,
+)
+from app.services.concurrency import reserve_revision
+from app.services.model_gateway import ModelOutputValidationError, validate_model_output
 from app.services.processing_jobs import enqueue_job
+from app.services.fra_locations import asset_location, location_matches
 
 
 class AssetValidationError(ValueError):
@@ -70,7 +78,10 @@ def enqueue_asset_inference(
     scene = " ".join(scene_id.split())
     if not scene:
         raise AssetValidationError("A scene ID is required.")
-    validate_model_output(manifest)
+    try:
+        validate_model_output(manifest)
+    except ModelOutputValidationError as error:
+        raise AssetValidationError(str(error)) from error
     return enqueue_job(
         session,
         task_type="asset_inference",
@@ -119,6 +130,11 @@ def process_asset_inference(session, job: ProcessingJob, *, adapter) -> list[Ass
     )
     result = adapter.detect(payload.get("scene_id", ""), geometry, payload.get("manifest") or {})
     validate_model_output(result.features)
+    for feature in result.features:
+        try:
+            validate_asset_value(feature["asset_class"], feature.get("value", {}))
+        except ValueError as error:
+            raise AssetValidationError(str(error)) from error
     acquired_at = None
     raw_date = (payload.get("manifest") or {}).get("acquired_at")
     if raw_date:
@@ -153,15 +169,16 @@ def process_asset_inference(session, job: ProcessingJob, *, adapter) -> list[Ass
     assets: list[AssetFeature] = []
     for item in result.features:
         feature_geometry = item["geometry"]
+        asset_class, observed_value = normalize_asset_observation(
+            item["asset_class"], item.get("value", {})
+        )
         asset = AssetFeature(
             village_id=entity_id if entity_type == "village" else None,
             claim_id=entity_id if entity_type == "fra_claim" else None,
-            asset_class=item["asset_class"],
+            asset_class=asset_class,
             polygon_geometry=(feature_geometry if feature_geometry.get("type") == "MultiPolygon" else None),
             point_geometry_json=(feature_geometry if feature_geometry.get("type") == "Point" else None),
-            observed_value_json=(
-                dict(item["value"]) if isinstance(item.get("value"), dict) else {"value": item.get("value")}
-            ),
+            observed_value_json=observed_value,
             acquired_at=acquired_at,
             confidence=item["confidence"],
             inference_run=run,
@@ -219,18 +236,14 @@ def review_asset(
     normalized_reasons = [str(reason).strip() for reason in reasons if str(reason).strip()]
     if outcome in {"rejected", "corrected"} and not normalized_reasons:
         raise AssetValidationError("A reason is required for rejection or correction.")
-    now = datetime.now(timezone.utc)
-    if outcome != "corrected":
-        asset.verification_state = outcome
-        asset.verification_reasons_json = normalized_reasons
-        asset.verified_by = reviewer_id
-        asset.verified_at = now
-        asset.revision += 1
-        result = asset
-    else:
+    if outcome == "corrected":
         if not isinstance(corrected_value, dict):
             raise AssetValidationError("A corrected observed value is required.")
-        validate_model_output(corrected_value)
+        try:
+            validate_model_output(corrected_value)
+            validate_asset_value(asset.asset_class, corrected_value)
+        except ValueError as error:
+            raise AssetValidationError(str(error)) from error
         polygon = asset.polygon_geometry
         point = asset.point_geometry_json
         if corrected_geometry is not None:
@@ -240,11 +253,21 @@ def review_asset(
                 point, polygon = corrected_geometry, None
             else:
                 raise AssetValidationError("Corrected geometry must be a Point or MultiPolygon.")
+    before = {"verification_state": asset.verification_state, "revision": asset.revision}
+    reserve_revision(session, asset, expected_revision=expected_revision, state_field="verification_state",
+                     conflict=AssetReviewConflict("The asset changed since it was loaded."))
+    now = datetime.now(timezone.utc)
+    if outcome != "corrected":
+        asset.verification_state = outcome
+        asset.verification_reasons_json = normalized_reasons
+        asset.verified_by = reviewer_id
+        asset.verified_at = now
+        result = asset
+    else:
         asset.verification_state = "superseded"
         asset.verification_reasons_json = normalized_reasons
         asset.verified_by = reviewer_id
         asset.verified_at = now
-        asset.revision += 1
         result = AssetFeature(
             village_id=asset.village_id,
             claim_id=asset.claim_id,
@@ -275,7 +298,7 @@ def review_asset(
         action="fra_asset_reviewed",
         entity_type="asset_feature",
         entity_id=asset.id,
-        before={"verification_state": "unverified", "revision": expected_revision},
+        before=before,
         after={
             "verification_state": asset.verification_state,
             "outcome": outcome,
@@ -293,23 +316,30 @@ def list_assets(
     block: str | None = None,
     village: str | None = None,
     claim_id=None,
+    visible_claim_ids=None,
     asset_class: str | None = None,
     verification_state: str | None = None,
 ) -> list[AssetFeature]:
-    assets = session.scalars(select(AssetFeature).order_by(AssetFeature.created_at.desc(), AssetFeature.id)).all()
+    canonical_filter = canonical_asset_class(asset_class) if asset_class else None
+    if canonical_filter and canonical_filter not in ASSET_CLASSES:
+        raise AssetValidationError(f"Unsupported asset class: {asset_class}.")
+    statement = select(AssetFeature)
+    if visible_claim_ids is not None:
+        statement = statement.where(
+            (AssetFeature.claim_id.is_(None)) | AssetFeature.claim_id.in_(visible_claim_ids)
+        )
+    if claim_id is not None:
+        statement = statement.where(AssetFeature.claim_id == claim_id)
+    assets = session.scalars(statement.order_by(AssetFeature.created_at.desc(), AssetFeature.id)).all()
     result = []
     for asset in assets:
         if claim_id and asset.claim_id != claim_id:
             continue
-        if asset_class and asset.asset_class != asset_class:
+        if canonical_filter and canonical_asset_class(asset.asset_class) != canonical_filter:
             continue
         if verification_state and asset.verification_state != verification_state:
             continue
-        if district and (asset.village is None or asset.village.district_name.casefold() != district.casefold()):
-            continue
-        if block and (asset.village is None or asset.village.block_name.casefold() != block.casefold()):
-            continue
-        if village and (asset.village is None or asset.village.village_name.casefold() != village.casefold()):
+        if not location_matches(asset_location(asset), district=district, block=block, village=village):
             continue
         result.append(asset)
     return result

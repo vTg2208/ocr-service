@@ -119,6 +119,32 @@ class DSSReferralTests(unittest.TestCase):
                 )
             self.assertEqual(referral.status, "referred")
 
+    def test_two_sessions_cannot_append_conflicting_history(self):
+        from sqlalchemy import func, select
+        from app.db.fra_completion_models import DSSReferral
+        from app.db.models import AuditEvent
+        with Session(self.engine) as setup:
+            reviewer, recommendation = self._seed(setup)
+            referral = create_referral(setup, recommendation_id=recommendation.id, department="Welfare",
+                                       priority="normal", actor_id=reviewer.id, idempotency_key="race")
+            referral_id, actor_id = referral.id, reviewer.id
+            setup.commit()
+        with Session(self.engine) as first, Session(self.engine) as second:
+            current, stale = first.get(DSSReferral, referral_id), second.get(DSSReferral, referral_id)
+            update_referral(first, current, status="under_review", notes="Review started", assigned_to=None,
+                            actor_id=actor_id, expected_revision=0)
+            first.commit()
+            with self.assertRaises(ReferralConflictError):
+                update_referral(second, stale, status="withdrawn", notes="Other decision", assigned_to=None,
+                                actor_id=actor_id, expected_revision=0)
+            second.rollback()
+        with Session(self.engine) as check:
+            row = check.get(DSSReferral, referral_id)
+            self.assertEqual(row.status, "under_review")
+            self.assertEqual(len(row.history_json), 2)
+            self.assertEqual(check.scalar(select(func.count()).select_from(AuditEvent).where(
+                AuditEvent.action == "dss_referral_updated")), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

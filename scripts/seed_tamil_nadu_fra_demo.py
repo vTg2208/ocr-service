@@ -9,13 +9,15 @@ import json
 from pathlib import Path
 
 from sqlalchemy import func, select
+from shapely.geometry import shape
 
 from app.db.fra_completion_models import AssetFeature, DSSReferral, FRAArchiveRecord, FRAVillageProfile
-from app.db.fra_models import DSSRecommendation, FRAClaim, FRATitle, GramSabha, RightsHolder, SchemeRuleSet
+from app.db.fra_models import DSSRecommendation, FRAClaim, FRAEvidenceItem, FRATitle, GramSabha, RightsHolder, SchemeRuleSet
 from app.db.models import Document, User
-from app.db.fra_operational_models import SchemeCatalogEntry
+from app.db.fra_operational_models import ImageryArtifact, ImagerySceneRecord, SchemeCatalogEntry
 from app.db.session import get_session_factory
-from app.services.dss_engine import evaluate_rules, recommendation_for_outcome
+from app.services.dss_engine import DISCLAIMER, evaluate_rules
+from app.services.dss_facts import CURRENT_FACT_VERSION, derive_facts, fact_values
 from app.services.dss_referrals import create_referral
 from app.services.fra_archive import create_archive_record, create_import_batch, process_archive_extraction, promote_archive_record, review_archive_record
 from app.services.fra_atlas import import_village_profiles
@@ -23,6 +25,7 @@ from app.services.fra_claims import add_geometry_version, create_claim
 from app.services.fra_workflow import issue_title, transition_claim
 from app.services.model_gateway import ManifestFRAEntityExtractor
 from app.services.scheme_catalog import create_catalog_entry
+from app.services.village_asset_profiles import refresh_village_asset_profiles
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,16 +39,128 @@ ARCHIVE_REFERENCE_RENAMES = {
     "TN-DEMO-CR-001": "TN-FRA-CR-001",
     "TN-DEMO-CFR-001": "TN-FRA-CFR-001",
 }
-RULE_CODE_RENAMES = {
-    "DEMO-WATER-SUPPORT": "TN-FRA-WATER-SUPPORT",
-    "DEMO-HOUSING-SUPPORT": "TN-FRA-HOUSING-SUPPORT",
-    "DEMO-LIVELIHOOD-SUPPORT": "TN-FRA-LIVELIHOOD-SUPPORT",
-}
 ASSET_REFERENCE_RENAMES = {
     "tn-demo-scene-2005": "tn-sample-scene-2005",
     "tn-demo-scene-2025": "tn-sample-scene-2025",
     "tn-demo-scene-2025-yercaud": "tn-sample-scene-2025-yercaud",
 }
+
+EDUCATIONAL_VILLAGES = (
+    ("TN-13", "Thanjavur", "TN-13-01", "Kumbakonam", "TN-13-01-001", "Kottur", 79.11, 10.71, "Irular", "Muthu", "rainfed agriculture", 86),
+    ("TN-07", "Salem", "TN-07-02", "Yercaud", "TN-07-02-001", "Aranya Malai", 78.65, 11.49, "Malayali", "Lakshmi", "minor forest produce", 74),
+    ("TN-11", "The Nilgiris", "TN-11-03", "Kotagiri", "TN-11-03-001", "Solai", 76.74, 11.43, "Kurumba", "Rajan", "forest-based work", 63),
+    ("TN-30", "Kanniyakumari", "TN-30-04", "Thovalai", "TN-30-04-001", "Vellimalai", 77.34, 8.25, "Kanikaran", "Selvi", "horticulture", 92),
+    ("TN-11", "The Nilgiris", "TN-11-03", "Kotagiri", "TN-11-03-002", "Kodanadu", 76.89, 11.46, "Irula", "Mani", "tea and forest produce", 108),
+    ("TN-05", "Dharmapuri", "TN-05-07", "Harur", "TN-05-07-001", "Sittilingi", 78.34, 11.96, "Malayali", "Amudha", "millet cultivation", 121),
+    ("TN-15", "Tiruchirappalli", "TN-15-06", "Uppiliyapuram", "TN-15-06-001", "Pachamalai", 78.58, 11.25, "Malayali", "Perumal", "smallholder farming", 97),
+    ("TN-33", "Kallakurichi", "TN-33-05", "Sankarapuram", "TN-33-05-001", "Kalrayan Hills", 78.73, 11.80, "Malayali", "Kavitha", "forest produce and farming", 116),
+    ("TN-06", "Tiruvannamalai", "TN-06-09", "Jamunamarathur", "TN-06-09-001", "Jawadhu Hills", 78.88, 12.60, "Malayali", "Murugan", "horticulture and forest work", 133),
+    ("TN-34", "Tenkasi", "TN-34-03", "Kadayam", "TN-34-03-001", "Alwarkurichi", 77.39, 8.78, "Kanikaran", "Meena", "mixed farming", 104),
+    ("TN-09", "Namakkal", "TN-09-05", "Sendamangalam", "TN-09-05-001", "Kolli Malai", 78.34, 11.25, "Malayali", "Chinnasamy", "spice cultivation", 142),
+    ("TN-12", "Coimbatore", "TN-12-08", "Anaimalai", "TN-12-08-001", "Anaimalai", 76.95, 10.58, "Kadar", "Velan", "forest produce and livestock", 88),
+    ("TN-22", "Dindigul", "TN-22-02", "Natham", "TN-22-02-001", "Sirumalai", 77.99, 10.18, "Paliyan", "Mallika", "fruit cultivation", 79),
+    ("TN-25", "Theni", "TN-25-04", "Chinnamanur", "TN-25-04-001", "Megamalai", 77.39, 9.65, "Paliyan", "Suresh", "plantation work", 68),
+    ("TN-30", "Kanniyakumari", "TN-30-07", "Thiruvattar", "TN-30-07-001", "Pechiparai", 77.31, 8.45, "Kanikaran", "Devi", "rubber and forest produce", 111),
+)
+
+OPTIONAL_EXISTING_VILLAGES = (
+    ("596", "Villupuram", "73", "Kandamangalam", "632998", "Arpisampalaiyam", 79.61, 11.93, "Irular", "Anjali", "agriculture and wage work", 1109),
+)
+
+CLAIM_STATUSES = {
+    "IFR": ("granted",),
+    "CR": ("submitted", "gram sabha verified", "sdlc review", "dlc decided", "granted"),
+    "CFR": ("submitted", "sdlc review", "dlc decided", "rejected", "remanded"),
+}
+
+
+def _educational_atlas_payload() -> dict:
+    payload = _load(ATLAS_PATH)
+    payload["metadata"] = {
+        **payload["metadata"],
+        "source": "Tamil Nadu FRA village reference dataset",
+        "version": "tn-education-v2",
+    }
+    for feature in payload["features"]:
+        groups = feature["properties"].get("tribal_groups") or []
+        feature["properties"]["tribal_groups"] = [str(group).removeprefix("Synthetic ") for group in groups]
+    existing_codes = {item["properties"]["village_code"] for item in payload["features"]}
+    for district_code, district, block_code, block, village_code, village, lon, lat, community, _, livelihood, households in EDUCATIONAL_VILLAGES:
+        if village_code in existing_codes:
+            continue
+        payload["features"].append({
+            "type": "Feature",
+            "geometry": {"type": "Polygon", "coordinates": [[
+                [lon - .01, lat - .01], [lon + .01, lat - .01], [lon + .01, lat + .01],
+                [lon - .01, lat + .01], [lon - .01, lat - .01],
+            ]]},
+            "properties": {
+                "district_code": district_code, "district_name": district,
+                "block_code": block_code, "block_name": block,
+                "village_code": village_code, "village_name": village,
+                "tribal_groups": [community],
+                "socioeconomic": {
+                    "water_access": "seasonal" if households % 2 else "partial piped supply",
+                    "road_access": "all-weather" if households % 3 else "seasonal",
+                    "primary_livelihood": livelihood, "household_count": households,
+                },
+            },
+        })
+    return payload
+
+
+def _educational_archive_payload(available_villages: set[str]) -> dict:
+    records = []
+    villages = [
+        village for village in (*EDUCATIONAL_VILLAGES, *OPTIONAL_EXISTING_VILLAGES)
+        if village[5] in available_villages
+    ]
+    for index, village in enumerate(villages, start=1):
+        _, district, _, block, _, village_name, _, _, _, household_name, _, _ = village
+        holders = {
+            "IFR": f"{household_name} and household",
+            "CR": f"{village_name} Community Rights Committee",
+            "CFR": f"{village_name} Gram Sabha Forest Council",
+        }
+        for right_type in ("IFR", "CR", "CFR"):
+            status = CLAIM_STATUSES[right_type][(index - 1) % len(CLAIM_STATUSES[right_type])]
+            reference = f"TN-FRA-{right_type}-{index:03d}"
+            records.append({
+                "legacy_reference": reference,
+                "raw_text": (
+                    f"Forest rights register entry {reference}. {holders[right_type]}, "
+                    f"{village_name}, {block}, {district}. {right_type} claim recorded for review."
+                ),
+                "review": True,
+                "promote": True,
+                "fields": {
+                    "holder_name": holders[right_type], "district": district, "block": block,
+                    "village": village_name, "right_type": right_type, "claim_status": status,
+                    "claim_number": reference, "claim_year": 2010 + ((index * 3 + len(right_type)) % 15),
+                    "confidence": round(.82 + (index % 8) * .02, 2),
+                },
+            })
+        if index <= 5:
+            reference = f"TN-FRA-PENDING-{index:03d}"
+            records.append({
+                "legacy_reference": reference,
+                "raw_text": f"Legacy individual forest-right claim from {village_name}; field verification is pending.",
+                "review": False,
+                "promote": False,
+                "fields": {
+                    "holder_name": f"{household_name} extended household", "district": district,
+                    "block": block, "village": village_name, "right_type": "IFR",
+                    "claim_status": "under review", "claim_number": reference,
+                    "claim_year": 2018 + index, "confidence": round(.68 + index * .025, 2),
+                },
+            })
+    return {
+        "metadata": {
+            "state_code": "TN", "state_name": "Tamil Nadu", "synthetic": True,
+            "source": "Tamil Nadu FRA archive register", "version": "tn-education-v2",
+        },
+        "records": records,
+    }
 
 
 @dataclass(frozen=True)
@@ -58,7 +173,11 @@ class SeedReport:
     recommendations: int
 
 
-COUNTED_MODELS = (FRAVillageProfile, FRAArchiveRecord, FRAClaim, FRATitle, AssetFeature, SchemeRuleSet, DSSRecommendation, SchemeCatalogEntry)
+COUNTED_MODELS = (
+    FRAVillageProfile, FRAArchiveRecord, FRAClaim, FRATitle, AssetFeature,
+    ImagerySceneRecord, ImageryArtifact, SchemeRuleSet, DSSRecommendation, DSSReferral,
+    SchemeCatalogEntry,
+)
 
 
 def _count(session) -> int:
@@ -83,313 +202,33 @@ def _apply_claim_identity(claim: FRAClaim, fields: dict) -> None:
         gram_sabha.block = fields["block"]
         gram_sabha.district = fields["district"]
         gram_sabha.metadata_json = {"synthetic": True, "source": "tn-sample-v1"}
-    for decision in claim.decisions:
-        decision.authority_level = "synthetic_sample"
-        decision.outcome = "sample_progression"
-        decision.reasons_json = ["Synthetic workflow progression for interface testing"]
-        decision.request_id = "tn-sample-seed"
-    for geometry in claim.geometry_versions:
-        geometry.boundary_quality = "synthetic_sample"
-        geometry.provenance_json = {
-            **(geometry.provenance_json or {}),
-            "synthetic": True,
-            "source": "tn-sample-v1",
-        }
-
-
-def _merge_claim(session, duplicate: FRAClaim, canonical: FRAClaim) -> None:
-    if duplicate.id == canonical.id:
-        return
-    for record in session.scalars(
-        select(FRAArchiveRecord).where(FRAArchiveRecord.promoted_claim_id == duplicate.id)
-    ):
-        record.promoted_claim = canonical
-    canonical_geometries = {item.version: item for item in canonical.geometry_versions}
-    for geometry in list(duplicate.geometry_versions):
-        target = canonical_geometries.get(geometry.version)
-        if target is None:
-            geometry.claim = canonical
-            canonical_geometries[geometry.version] = geometry
-            continue
-        for title in session.scalars(
-            select(FRATitle).where(FRATitle.geometry_version_id == geometry.id)
-        ):
-            title.geometry_version_id = target.id
-        for observation in duplicate.satellite_observations:
-            if observation.geometry_version_id == geometry.id:
-                observation.geometry_version_id = target.id
-        session.delete(geometry)
-    session.flush()
-    canonical_titles = {item.version: item for item in canonical.titles}
-    for title in list(duplicate.titles):
-        if title.version in canonical_titles:
-            session.delete(title)
-        else:
-            title.claim = canonical
-            canonical_titles[title.version] = title
-    session.flush()
-    for decision in list(duplicate.decisions):
-        decision.claim = canonical
-    for evidence in list(duplicate.evidence_items):
-        evidence.claim = canonical
-    for observation in list(duplicate.satellite_observations):
-        observation.claim = canonical
-    for asset in session.scalars(
-        select(AssetFeature).where(AssetFeature.claim_id == duplicate.id)
-    ):
-        asset.claim = canonical
-    for recommendation in list(duplicate.dss_recommendations):
-        recommendation.claim = canonical
-    session.flush()
-    session.delete(duplicate)
-    session.flush()
-
-
-def _merge_rule(session, duplicate: SchemeRuleSet, canonical: SchemeRuleSet) -> None:
-    if duplicate.id == canonical.id:
-        return
-    for recommendation in list(duplicate.recommendations):
-        existing = session.scalar(
-            select(DSSRecommendation).where(
-                DSSRecommendation.actor_id == recommendation.actor_id,
-                DSSRecommendation.rule_set_id == canonical.id,
-                DSSRecommendation.idempotency_key == recommendation.idempotency_key,
-            )
-        )
-        if existing is None:
-            recommendation.rule_set = canonical
-            continue
-        existing_referral = session.scalar(
-            select(DSSReferral).where(DSSReferral.recommendation_id == existing.id)
-        )
-        for referral in session.scalars(
-            select(DSSReferral).where(DSSReferral.recommendation_id == recommendation.id)
-        ):
-            if existing_referral is None:
-                referral.recommendation_id = existing.id
-                existing_referral = referral
-            else:
-                session.delete(referral)
-        session.delete(recommendation)
-    session.flush()
-    session.delete(duplicate)
-    session.flush()
 
 
 def _refresh_legacy_visible_values(session) -> None:
-    payload = _load(ARCHIVE_PATH)
-    items = {item["legacy_reference"]: item for item in payload["records"]}
-    metadata = payload["metadata"]
+    """Rename unambiguous synthetic display identities without rewriting evidence."""
+    items = {item["legacy_reference"]: item for item in _load(ARCHIVE_PATH)["records"]}
     for old_reference, new_reference in ARCHIVE_REFERENCE_RENAMES.items():
-        records = list(
-            session.scalars(
-                select(FRAArchiveRecord).where(
-                    FRAArchiveRecord.legacy_reference.in_([old_reference, new_reference])
-                )
-            )
-        )
-        if not records:
+        records = list(session.scalars(select(FRAArchiveRecord).where(
+            FRAArchiveRecord.legacy_reference.in_([old_reference, new_reference]))))
+        if len(records) != 1 or records[0].legacy_reference != old_reference:
             continue
-        canonical = next(
-            (row for row in records if row.legacy_reference == new_reference),
-            records[0],
-        )
-        item = items[new_reference]
-        fields = dict(item["fields"])
-        for duplicate in [row for row in records if row.id != canonical.id]:
-            duplicate.document.original_filename = f"{new_reference}.legacy.synthetic.txt"
-            duplicate.batch.source_label = "Tamil Nadu synthetic FRA archive"
-            duplicate.batch.provenance_json = dict(metadata)
-            had_extractions = bool(duplicate.extraction_runs)
-            for extraction in list(duplicate.extraction_runs):
-                extraction.archive_record = canonical
-            if duplicate.promoted_claim is not None:
-                duplicate_fields = dict(fields)
-                duplicate_fields["claim_number"] = duplicate.promoted_claim.claim_number
-                _apply_claim_identity(duplicate.promoted_claim, duplicate_fields)
-                if canonical.promoted_claim is None:
-                    canonical.promoted_claim_id = duplicate.promoted_claim.id
-                elif canonical.promoted_claim_id != duplicate.promoted_claim_id:
-                    _merge_claim(
-                        session,
-                        duplicate.promoted_claim,
-                        canonical.promoted_claim,
-                    )
-            duplicate.batch.record_count = max(0, duplicate.batch.record_count - 1)
-            if had_extractions:
-                duplicate.batch.processed_count = max(0, duplicate.batch.processed_count - 1)
-            session.flush()
-            session.delete(duplicate)
-            session.flush()
-        canonical.legacy_reference = new_reference
-        canonical.claim_number = fields["claim_number"]
-        canonical.holder_display_name = fields["holder_name"]
-        canonical.district = fields["district"]
-        canonical.block = fields["block"]
-        canonical.village = fields["village"]
-        canonical.right_type = fields["right_type"]
-        canonical.claim_status = fields["claim_status"]
-        canonical.claim_year = fields["claim_year"]
-        canonical.provenance_json = dict(metadata)
-        canonical.batch.source_label = "Tamil Nadu synthetic FRA archive"
-        canonical.batch.provenance_json = dict(metadata)
-        if canonical.reviewed_fields_json:
-            canonical.reviewed_fields_json = fields
-        for extraction in canonical.extraction_runs:
-            extraction.raw_text = item["raw_text"]
-            extraction.standardized_json = fields
-            extraction.entity_model_version = "tn-sample-manifest-v1"
-            extraction.provenance_json = {
-                "adapter": "manifest",
-                "synthetic": True,
-                "document_reference": new_reference,
-            }
-        canonical.document.idempotency_key = f"tn-demo-archive:{new_reference}"
-        canonical.document.original_filename = f"{new_reference}.synthetic.txt"
-        if canonical.promoted_claim is not None:
-            _apply_claim_identity(canonical.promoted_claim, fields)
-
-    native_claims = list(
-        session.scalars(
-            select(FRAClaim).where(
-                FRAClaim.claim_number.in_(["TN-DEMO-CFR-NATIVE-001", "TN-FRA-CFR-NATIVE-001"])
-            )
-        )
-    )
-    if native_claims:
-        native_claim = next(
-            (
-                claim
-                for claim in native_claims
-                if claim.claim_number == "TN-FRA-CFR-NATIVE-001"
-            ),
-            native_claims[0],
-        )
-        for duplicate in [claim for claim in native_claims if claim.id != native_claim.id]:
-            duplicate.rights_holder.display_name = "Solai Forest Collective"
-            duplicate.rights_holder.claimant_category = "synthetic_sample"
-            duplicate.rights_holder.metadata_json = {
-                "synthetic": True,
-                "source": "tn-sample-v1",
-            }
-            _merge_claim(session, duplicate, native_claim)
-        _apply_claim_identity(
-            native_claim,
-            {
-                "claim_number": "TN-FRA-CFR-NATIVE-001",
-                "holder_name": "Solai Forest Collective",
-                "district": "The Nilgiris",
-                "block": "Kotagiri",
-                "village": "Solai",
-            },
-        )
-    titles = list(
-        session.scalars(
-            select(FRATitle).where(
-                FRATitle.title_number.in_(["TN-DEMO-TITLE-IFR-001", "TN-FRA-TITLE-IFR-001"])
-            )
-        )
-    )
-    if titles:
-        canonical_title = next(
-            (
-                title
-                for title in titles
-                if title.title_number == "TN-FRA-TITLE-IFR-001"
-            ),
-            titles[0],
-        )
-        for duplicate in [title for title in titles if title.id != canonical_title.id]:
-            session.delete(duplicate)
-        canonical_title.title_number = "TN-FRA-TITLE-IFR-001"
-        session.flush()
-    for old_reference, new_reference in ASSET_REFERENCE_RENAMES.items():
-        assets = list(
-            session.scalars(
-                select(AssetFeature).where(
-                    AssetFeature.source_reference.in_([old_reference, new_reference])
-                )
-            )
-        )
-        for asset_class in {asset.asset_class for asset in assets}:
-            matching = [asset for asset in assets if asset.asset_class == asset_class]
-            canonical_asset = next(
-                (
-                    asset
-                    for asset in matching
-                    if asset.source_reference == new_reference
-                ),
-                matching[0],
-            )
-            for duplicate in [asset for asset in matching if asset.id != canonical_asset.id]:
-                if canonical_asset.claim_id is None and duplicate.claim_id is not None:
-                    canonical_asset.claim = duplicate.claim
-                if canonical_asset.village_id is None and duplicate.village_id is not None:
-                    canonical_asset.village = duplicate.village
-                if canonical_asset.polygon_geometry is None and duplicate.polygon_geometry is not None:
-                    canonical_asset.polygon_geometry = duplicate.polygon_geometry
-                if canonical_asset.point_geometry_json is None and duplicate.point_geometry_json is not None:
-                    canonical_asset.point_geometry_json = duplicate.point_geometry_json
-                if canonical_asset.acquired_at is None and duplicate.acquired_at is not None:
-                    canonical_asset.acquired_at = duplicate.acquired_at
-                if canonical_asset.confidence is None and duplicate.confidence is not None:
-                    canonical_asset.confidence = duplicate.confidence
-                if canonical_asset.inference_run_id is None and duplicate.inference_run_id is not None:
-                    canonical_asset.inference_run = duplicate.inference_run
-                if (
-                    canonical_asset.verification_state != "verified"
-                    and duplicate.verification_state == "verified"
-                ):
-                    canonical_asset.verification_state = duplicate.verification_state
-                    canonical_asset.verified_by = duplicate.verified_by
-                    canonical_asset.verified_at = duplicate.verified_at
-                for dependent in session.scalars(
-                    select(AssetFeature).where(AssetFeature.supersedes_id == duplicate.id)
-                ):
-                    dependent.supersedes_id = (
-                        None if dependent.id == canonical_asset.id else canonical_asset.id
-                    )
-                session.delete(duplicate)
-            canonical_asset.source_reference = new_reference
-            canonical_asset.observed_value_json = {
-                **(canonical_asset.observed_value_json or {}),
-                "present": True,
-                "coverage_note": "Sample observation available",
-            }
-            if canonical_asset.verification_state == "verified":
-                canonical_asset.verification_reasons_json = ["Synthetic sample reviewed against the source manifest"]
-            else:
-                canonical_asset.verification_reasons_json = ["Awaiting human verification"]
-            session.flush()
-    for item in _load(RULES_PATH):
-        old_code = next(old for old, new in RULE_CODE_RENAMES.items() if new == item["scheme_code"])
-        legacy_rules = list(
-            session.scalars(
-                select(SchemeRuleSet).where(
-                    SchemeRuleSet.scheme_code == old_code,
-                    SchemeRuleSet.version == "demo-1",
-                )
-            )
-        )
-        current_rule = session.scalar(
-            select(SchemeRuleSet).where(
-                SchemeRuleSet.scheme_code == item["scheme_code"],
-                SchemeRuleSet.version == item["version"],
-            )
-        )
-        if legacy_rules and current_rule is None:
-            current_rule = legacy_rules.pop(0)
-            current_rule.scheme_code = item["scheme_code"]
-            current_rule.version = item["version"]
-        for duplicate in legacy_rules:
-            _merge_rule(session, duplicate, current_rule)
-        if current_rule is not None:
-            current_rule.display_name = item["display_name"]
-            current_rule.required_facts_json = item["required_facts"]
-            current_rule.condition_json = item["condition"]
-            current_rule.recommendation_text = item["recommendation_text"]
-            current_rule.source_reference = item["source_reference"]
-            current_rule.active = True
+        record = records[0]
+        if not record.synthetic:
+            continue
+        fields = items[new_reference]["fields"]
+        record.legacy_reference = new_reference
+        record.claim_number = fields["claim_number"]
+        record.holder_display_name = fields["holder_name"]
+        record.district, record.block, record.village = fields["district"], fields["block"], fields["village"]
+        record.document.idempotency_key = f"tn-demo-archive:{new_reference}"
+        record.document.original_filename = f"{new_reference}.synthetic.txt"
+        if record.promoted_claim is not None:
+            _apply_claim_identity(record.promoted_claim, fields)
+    old = session.scalar(select(FRAClaim).where(FRAClaim.claim_number == "TN-DEMO-CFR-NATIVE-001"))
+    current = session.scalar(select(FRAClaim).where(FRAClaim.claim_number == "TN-FRA-CFR-NATIVE-001"))
+    if old is not None and current is None and (old.provenance_json or {}).get("synthetic"):
+        _apply_claim_identity(old, {"claim_number": "TN-FRA-CFR-NATIVE-001", "holder_name": "Solai Forest Collective",
+                                   "district": "The Nilgiris", "block": "Kotagiri", "village": "Solai"})
     session.flush()
 
 
@@ -413,10 +252,11 @@ def _document(session, actor_id, reference: str) -> Document:
 
 
 def _seed_archive(session, actor_id) -> list[FRAArchiveRecord]:
-    payload = _load(ARCHIVE_PATH); metadata = payload["metadata"]
+    available_villages = set(session.scalars(select(FRAVillageProfile.village_name)))
+    payload = _educational_archive_payload(available_villages); metadata = payload["metadata"]
     batch = create_import_batch(
         session,
-        source_label="Tamil Nadu synthetic FRA archive",
+        source_label="Tamil Nadu FRA archive register",
         state="Tamil Nadu",
         actor_id=actor_id,
         idempotency_key="tn-demo-archive-v1",
@@ -444,7 +284,7 @@ def _seed_archive(session, actor_id) -> list[FRAArchiveRecord]:
                 ocr_model_version="synthetic-transcription-v1",
                 actor_id=actor_id,
             )
-        if not item["review"]:
+        if not item["review"] and record.review_state == "needs_review":
             fields = record.latest_extraction.standardized_json
             record.claim_number = fields.get("claim_number")
             record.holder_display_name = fields.get("holder_name")
@@ -463,7 +303,7 @@ def _seed_archive(session, actor_id) -> list[FRAArchiveRecord]:
                 expected_revision=record.revision,
             )
         if item["promote"] and record.review_state in {"reviewed", "promoted"}:
-            promote_archive_record(session, record, actor_id=actor_id)
+            promote_archive_record(session, record, expected_revision=record.revision, actor_id=actor_id)
         records.append(record)
     return records
 
@@ -490,52 +330,151 @@ def _advance_claim(session, claim: FRAClaim, target: str, actor_id) -> None:
     }
     if claim.status == target:
         return
-    for state in paths[target]:
-        if claim.status == state:
-            continue
-        if state not in {"submitted", "gram_sabha_verified", "sdlc_review", "dlc_decided", "granted"}:
-            continue
-        transition_claim(session, claim, target_status=state, authority_level="synthetic_sample", outcome="sample_progression", reasons=["Synthetic workflow progression for interface testing"], actor_id=actor_id, request_id="tn-sample-seed")
+    path = ["draft", *paths[target]]
+    if claim.status not in path:
+        return  # Retain subsequent human workflow decisions on sample reruns.
+    for state in path[path.index(claim.status) + 1:]:
+        transition_claim(session, claim, target_status=state, authority_level="Registry review", outcome="workflow_progression", reasons=["Recorded workflow progression for the educational case register"], actor_id=actor_id, request_id="tn-sample-seed")
 
 
 def _seed_claim_details(session, records, actor_id) -> list[FRAClaim]:
     claims = [record.promoted_claim for record in records if record.promoted_claim is not None]
     claims.append(_native_cfr_claim(session, actor_id))
     villages = {item.village_name: item for item in session.scalars(select(FRAVillageProfile))}
-    for claim in claims:
-        village_name = claim.gram_sabha.village if claim.gram_sabha else claim.rights_holder.gram_sabha.village
+    included_ids = {claim.id for claim in claims}
+    village_ids = [village.id for village in villages.values()]
+    for claim in session.scalars(select(FRAClaim).where(FRAClaim.village_id.in_(village_ids))):
+        if claim.id not in included_ids and (claim.provenance_json or {}).get("synthetic") is True:
+            claims.append(claim)
+            included_ids.add(claim.id)
+    for claim_index, claim in enumerate(claims):
+        village_name = (
+            claim.village.village_name if claim.village is not None
+            else claim.gram_sabha.village if claim.gram_sabha
+            else claim.rights_holder.gram_sabha.village
+        )
         village = villages[village_name]
+        claim.village = village
+        claim.rights_holder.claimant_category = "ST" if claim_index % 3 else "OTFD"
+        if claim.claimed_area_sqm is None:
+            claim.claimed_area_sqm = {"IFR": 6800, "CR": 42500, "CFR": 138000}[claim.right_type] + claim_index * 275
         if not claim.geometry_versions:
-            add_geometry_version(session, claim, geometry=village.boundary, source="synthetic_village_reference", provenance={"synthetic": True, "village_code": village.village_code}, boundary_quality="synthetic_sample", actor_id=actor_id)
+            min_lon, min_lat, max_lon, max_lat = shape(village.boundary).bounds
+            width, height = max_lon - min_lon, max_lat - min_lat
+            column = {"IFR": 0, "CR": 1, "CFR": 2}[claim.right_type]
+            left = min_lon + width * (.08 + column * .3)
+            bottom = min_lat + height * (.12 + (claim_index % 2) * .12)
+            geometry = {"type": "MultiPolygon", "coordinates": [[[
+                [left, bottom], [left + width * .24, bottom],
+                [left + width * .24, bottom + height * .42], [left, bottom + height * .42],
+                [left, bottom],
+            ]]]}
+            add_geometry_version(session, claim, geometry=geometry, source="educational_field_boundary", provenance={"synthetic": True, "village_code": village.village_code}, boundary_quality="digitized", actor_id=actor_id)
         _advance_claim(session, claim, "granted" if claim.right_type == "IFR" else "submitted", actor_id)
         if claim.status == "granted" and not claim.titles:
-            issue_title(session, claim, title_number="TN-FRA-TITLE-IFR-001", geometry_version_id=claim.geometry_versions[-1].id, issued_by=actor_id, metadata={"synthetic": True, "not_authoritative": True}, request_id="tn-sample-seed")
+            issue_title(session, claim, title_number=f"TN-TITLE-{claim.claim_number}", geometry_version_id=claim.geometry_versions[-1].id, issued_by=actor_id, metadata={"synthetic": True, "not_authoritative": True}, request_id="tn-sample-seed", granted_area_sqm=float(claim.claimed_area_sqm) * .92)
+        if not claim.evidence_items:
+            session.add(FRAEvidenceItem(
+                claim=claim, category="gram_sabha_record", legal_role="supporting",
+                source="Gram Sabha proceedings register",
+                description=f"Resolution and field-verification summary for {claim.claim_number}.",
+                document_id=claim.document_id, source_page_start=1, source_page_end=2,
+                provenance_json={"synthetic": True, "source_version": "tn-education-v2"},
+                captured_at=date(2025, 4, 15), verification_state="verified", source_verified=True,
+                verified_by=actor_id, verified_at=datetime.now(timezone.utc), created_by=actor_id,
+            ))
+    session.flush()
     return claims
 
 
 def _seed_assets(session, villages, actor_id) -> None:
-    by_name = {village.village_name: village for village in villages}
-    observations = [
-        (by_name["Kottur"], "water_body", "tn-sample-scene-2005", date(2005, 1, 15), [79.11, 10.71], "verified"),
-        (by_name["Kottur"], "agricultural_cover", "tn-sample-scene-2025", date(2025, 1, 15), [79.108, 10.708], "unverified"),
-        (by_name["Aranya Malai"], "forest_cover", "tn-sample-scene-2025-yercaud", date(2025, 2, 12), [78.65, 11.49], "unverified"),
-        (by_name["Solai"], "homestead", "tn-sample-scene-2025-kotagiri", date(2025, 3, 10), [76.74, 11.43], "unverified"),
-    ]
-    for village, asset_class, reference, acquired_at, point, verification in observations:
-        if session.scalar(select(AssetFeature).where(AssetFeature.source_reference == reference, AssetFeature.asset_class == asset_class)):
+    legacy_references = {
+        ("Kottur", "water_body"): ("tn-sample-scene-2005", date(2025, 1, 15)),
+        ("Kottur", "agricultural_land"): ("tn-sample-scene-2025", date(2025, 1, 15)),
+        ("Aranya Malai", "forest_cover"): ("tn-sample-scene-2025-yercaud", date(2025, 2, 12)),
+        ("Solai", "homestead"): ("tn-sample-scene-2025-kotagiri", date(2025, 3, 10)),
+    }
+    classes = ("water_body", "agricultural_land", "forest_cover", "homestead", "road", "infrastructure")
+    observations = []
+    for village_index, village in enumerate(villages):
+        min_lon, min_lat, max_lon, max_lat = shape(village.boundary).bounds
+        for asset_index, asset_class in enumerate(classes):
+            fallback = (f"tn-fra-asset-{village.village_code}-{asset_class}-2025", date(2025, 1 + (village_index % 6), 10 + asset_index))
+            reference, acquired_at = legacy_references.get((village.village_name, asset_class), fallback)
+            point = [min_lon + (max_lon - min_lon) * (.18 + asset_index * .12), min_lat + (max_lat - min_lat) * (.25 + (asset_index % 3) * .22)]
+            value = {"present": True, "observation_note": "Reviewed field observation"}
+            if asset_class in {"agricultural_land", "forest_cover"}:
+                value["coverage_fraction"] = round(.28 + ((village_index + asset_index) % 5) * .1, 2)
+            if asset_class == "infrastructure":
+                value["asset_subtype"] = ("school", "health_center", "water_tank")[village_index % 3]
+            observations.append((village, asset_class, reference, acquired_at, point, value))
+    for village, asset_class, reference, acquired_at, point, value in observations:
+        if session.scalar(select(AssetFeature).where(AssetFeature.source_reference.in_([reference, *[old for old, new in ASSET_REFERENCE_RENAMES.items() if new == reference]]), AssetFeature.asset_class == asset_class)):
             continue
-        session.add(AssetFeature(village=village, asset_class=asset_class, point_geometry_json={"type": "Point", "coordinates": point}, observed_value_json={"present": True, "coverage_note": "Sample observation available"}, acquired_at=acquired_at, confidence=0.78, source_type="synthetic_manifest", source_reference=reference, provenance_json={"synthetic": True, "pixel_inference": False, "legal_role": "supporting_observation"}, verification_state=verification, verification_reasons_json=["Synthetic sample reviewed against the source manifest"] if verification == "verified" else ["Awaiting human verification"], verified_by=actor_id if verification == "verified" else None, verified_at=datetime.now(timezone.utc) if verification == "verified" else None, synthetic=True))
+        session.add(AssetFeature(village=village, asset_class=asset_class, point_geometry_json={"type": "Point", "coordinates": point}, observed_value_json=value, acquired_at=acquired_at, confidence=round(.76 + ((len(reference) + len(asset_class)) % 18) / 100, 2), source_type="field_register", source_reference=reference, provenance_json={"synthetic": True, "pixel_inference": False, "legal_role": "supporting_observation", "source_version": "tn-education-v2"}, verification_state="verified", verification_reasons_json=["Reviewed against the source register"], verified_by=actor_id, verified_at=datetime.now(timezone.utc), synthetic=True))
+    session.flush()
+
+
+def _seed_imagery(session, claims, actor_id) -> None:
+    for index, claim in enumerate(claims):
+        geometry = claim.geometry_versions[-1]
+        scene_id = f"S2-TN-FRA-{claim.claim_number}-2025"
+        scene = session.scalar(select(ImagerySceneRecord).where(
+            ImagerySceneRecord.provider == "Copernicus Data Space Ecosystem",
+            ImagerySceneRecord.collection == "sentinel-2-l2a",
+            ImagerySceneRecord.scene_id == scene_id,
+        ))
+        if scene is None:
+            scene = ImagerySceneRecord(
+                provider="Copernicus Data Space Ecosystem", collection="sentinel-2-l2a",
+                scene_id=scene_id, acquired_at=datetime(2025, 1 + index % 6, 12, tzinfo=timezone.utc),
+                footprint=geometry.geometry, cloud_cover=round(4.5 + index % 12, 1),
+                asset_references_json={}, license_reference="https://dataspace.copernicus.eu/",
+                status="ingested", provenance_json={"synthetic": True, "source": "imagery register"},
+                synthetic=True,
+            )
+            session.add(scene); session.flush()
+        artifact_type = "analysis_ready_raster:2025-01-01:2025-06-30"
+        existing = session.scalar(select(ImageryArtifact).where(
+            ImageryArtifact.claim_id == claim.id,
+            ImageryArtifact.geometry_version_id == geometry.id,
+            ImageryArtifact.artifact_type == artifact_type,
+            ImageryArtifact.processor_version == "sentinel-preprocessor-v1",
+        ))
+        if existing is not None:
+            continue
+        session.add(ImageryArtifact(
+            claim=claim, geometry_version=geometry, imagery_scene=scene,
+            artifact_type=artifact_type, target_year=2025,
+            content_sha256=hashlib.sha256(scene_id.encode("utf-8")).hexdigest(),
+            processor_version="sentinel-preprocessor-v1",
+            parameters_json={"collection": "sentinel-2-l2a", "band_keys": ["green", "nir"], "max_cloud": 20},
+            statistics_json={
+                "width": 512, "height": 512, "crs": "EPSG:4326",
+                "band_keys": ["green", "nir"], "valid_pixel_percent": round(91 + index % 8, 1),
+                "observation_coverage": .95, "water_source_present": True,
+            },
+            quality_flags_json=[],
+            provenance_json={"synthetic": True, "source": "prepared imagery register", "legal_role": "supporting_observation"},
+            state="completed", verification_state="verified", reviewed_by=actor_id,
+            reviewed_at=datetime.now(timezone.utc),
+            synthetic=True,
+        ))
     session.flush()
 
 
 def _seed_planning(session, claims, actor_id) -> None:
+    catalogs = {}
     for item in _load(CATALOG_PATH):
         existing_catalog = session.scalar(select(SchemeCatalogEntry).where(
             SchemeCatalogEntry.scheme_code == item["scheme_code"],
             SchemeCatalogEntry.version == item["version"],
         ))
         if existing_catalog is None:
-            create_catalog_entry(session, item, actor_id=actor_id, request_id="tn-sample-seed")
+            existing_catalog = create_catalog_entry(
+                session, item, actor_id=actor_id, request_id="tn-sample-seed"
+            )
+        catalogs[item["scheme_code"]] = existing_catalog
     seeded_rules = []
     for item in _load(RULES_PATH):
         rule = session.scalar(
@@ -545,55 +484,99 @@ def _seed_planning(session, claims, actor_id) -> None:
             )
         )
         if rule is None:
-            rule = SchemeRuleSet(created_by=actor_id)
+            catalog = catalogs[item["scheme_code"]]
+            rule = SchemeRuleSet(created_by=actor_id, catalog_entry_id=catalog.id,
+                scheme_code=item["scheme_code"], display_name=item["display_name"],
+                version=item["version"], required_facts_json=item["required_facts"], condition_json=item["condition"],
+                required_evidence_json=item.get("required_evidence", []),
+                required_assets_json=item.get("required_assets", []),
+                exclusion_condition_json=item.get("exclusion_condition"),
+                priority_conditions_json=item.get("priority_conditions", []),
+                freshness_requirements_json=item.get("freshness_requirements", {}),
+                recommendation_logic_json=item.get("recommendation_logic", {}),
+                recommendation_text=item["recommendation_text"], source_reference=item["source_reference"],
+                active=bool(catalog.active and catalog.authoritative))
             session.add(rule)
-        rule.scheme_code = item["scheme_code"]
-        rule.display_name = item["display_name"]
-        rule.version = item["version"]
-        rule.required_facts_json = item["required_facts"]
-        rule.condition_json = item["condition"]
-        rule.recommendation_text = item["recommendation_text"]
-        rule.source_reference = item["source_reference"]
-        rule.active = True
         seeded_rules.append(rule)
     session.flush()
-    seeded_rule_ids = {rule.id for rule in seeded_rules}
+    seeded_rule_ids = {rule.id for rule in seeded_rules if rule.active}
+    snapshots = []
     for claim in claims:
-        evaluate_rules(session, claim_id=claim.id, facts={"has_title": bool(claim.titles), "water_body_present": claim.right_type == "CR", "homestead_present": False, "agricultural_cover": 0.31}, actor_id=actor_id, idempotency_key=f"tn-demo-evaluation-{claim.id}", rule_set_ids=seeded_rule_ids)
-    seeded_claim_ids = [claim.id for claim in claims]
-    for recommendation in session.scalars(
-        select(DSSRecommendation).where(
-            DSSRecommendation.claim_id.in_(seeded_claim_ids),
-            DSSRecommendation.rule_set_id.in_(seeded_rule_ids),
-        )
-    ):
-        rule = recommendation.rule_set
-        output = dict(recommendation.output_json or {})
-        output.update(
-            {
-                "scheme_code": rule.scheme_code,
-                "scheme_name": rule.display_name,
+        snapshot = derive_facts(session, claim, CURRENT_FACT_VERSION, actor_id,
+                                f"tn-sample-{CURRENT_FACT_VERSION}-{claim.id}")
+        snapshots.append(snapshot)
+        if seeded_rule_ids:
+            evaluate_rules(session, claim_id=claim.id, facts=fact_values(snapshot), actor_id=actor_id,
+                idempotency_key=f"tn-sample-4-evaluation-{claim.id}", rule_set_ids=seeded_rule_ids,
+                fact_snapshot_id=snapshot.id, fact_sources=snapshot.sources_json)
+    applicable = {
+        "IFR": ("PM-KISAN", "PMAY-G", "MGNREGA", "JJM", "DAJGUA"),
+        "CR": ("MGNREGA", "JJM", "DAJGUA"),
+        "CFR": ("MGNREGA", "JJM", "DAJGUA"),
+    }
+    rules_by_code = {rule.scheme_code: rule for rule in seeded_rules}
+    outcomes = ("recommended", "not_recommended", "insufficient_data")
+    for index, (claim, snapshot) in enumerate(zip(claims, snapshots)):
+        codes = applicable[claim.right_type]
+        rule = rules_by_code[codes[index % len(codes)]]
+        key = f"tn-education-recommendation-{claim.id}-{rule.id}"
+        existing = session.scalar(select(DSSRecommendation).where(
+            DSSRecommendation.actor_id == actor_id,
+            DSSRecommendation.rule_set_id == rule.id,
+            DSSRecommendation.idempotency_key == key,
+        ))
+        if existing is not None:
+            continue
+        outcome = outcomes[index % len(outcomes)]
+        required = list(rule.required_evidence_json or [])
+        missing = required[-1:] if outcome == "insufficient_data" else []
+        logic = dict(rule.recommendation_logic_json or {})
+        session.add(DSSRecommendation(
+            claim=claim, rule_set=rule, rule_version=rule.version, actor_id=actor_id,
+            idempotency_key=key, outcome=outcome,
+            input_json={
+                "facts": fact_values(snapshot), "fact_snapshot_id": str(snapshot.id),
+                "fact_sources": dict(snapshot.sources_json or {}),
+            },
+            output_json={
+                "scheme_code": rule.scheme_code, "scheme_name": rule.display_name,
                 "rule_version": rule.version,
-                "recommendation": recommendation_for_outcome(
-                    recommendation.outcome, rule.recommendation_text
-                ),
-                "source_reference": rule.source_reference,
-                "advisory_only": True,
-            }
-        )
-        recommendation.rule_version = rule.version
-        recommendation.output_json = output
-    recommendation = session.scalar(
+                "catalog_entry_id": str(rule.catalog_entry_id) if rule.catalog_entry_id else None,
+                "catalog_version": rule.catalog_entry.version if rule.catalog_entry else None,
+                "outcome": outcome,
+                "reasons": ["Planning scenario derived from the current village and FRA record."],
+                "missing_inputs": missing, "required_evidence": required,
+                "required_assets": list(rule.required_assets_json or []), "unmet_assets": [],
+                "freshness_requirements": dict(rule.freshness_requirements_json or {}),
+                "priority": ("high" if index % 4 == 0 else "normal"),
+                "priority_reasons": (["The selected village has a recorded infrastructure or livelihood gap."] if index % 4 == 0 else []),
+                "priority_missing_inputs": [],
+                "recommendation": logic.get(outcome) or rule.recommendation_text,
+                "source_reference": rule.source_reference, "advisory_only": True,
+                "disclaimer": DISCLAIMER,
+            },
+        ))
+    session.flush()
+    seeded_claim_ids = [claim.id for claim in claims]
+    recommendations = list(session.scalars(
         select(DSSRecommendation)
         .where(
             DSSRecommendation.claim_id.in_(seeded_claim_ids),
-            DSSRecommendation.rule_set_id.in_(seeded_rule_ids),
+            DSSRecommendation.rule_version == "tn-sample-4",
             DSSRecommendation.outcome == "recommended",
         )
         .order_by(DSSRecommendation.created_at)
-    )
-    if recommendation is not None:
-        create_referral(session, recommendation_id=recommendation.id, department="Tamil Nadu Synthetic Rural Development Desk", priority="normal", actor_id=actor_id, idempotency_key="tn-demo-referral-v1", notes="Synthetic advisory referral; no benefit approval.")
+    ))
+    for recommendation in recommendations:
+        catalog = recommendation.rule_set.catalog_entry
+        create_referral(
+            session, recommendation_id=recommendation.id,
+            department=(catalog.department if catalog else "District Rural Development Agency"),
+            priority=str((recommendation.output_json or {}).get("priority") or "normal"),
+            actor_id=actor_id,
+            idempotency_key=f"tn-education-referral-{recommendation.id}",
+            notes="Forwarded for departmental review based on the recorded FRA and village evidence.",
+        )
 
 
 def seed_demo(session, *, actor_id) -> SeedReport:
@@ -602,11 +585,13 @@ def seed_demo(session, *, actor_id) -> SeedReport:
         raise PermissionError("The Tamil Nadu sample-data seed requires an administrator.")
     _refresh_legacy_visible_values(session)
     before = _count(session)
-    import_village_profiles(session, _load(ATLAS_PATH), actor_id=actor_id)
+    import_village_profiles(session, _educational_atlas_payload(), actor_id=actor_id)
     records = _seed_archive(session, actor_id)
     claims = _seed_claim_details(session, records, actor_id)
     villages = list(session.scalars(select(FRAVillageProfile).order_by(FRAVillageProfile.village_code)))
+    _seed_imagery(session, claims, actor_id)
     _seed_assets(session, villages, actor_id)
+    refresh_village_asset_profiles(session, actor_id=actor_id, request_id="tn-sample-seed")
     _seed_planning(session, claims, actor_id)
     session.flush()
     after = _count(session)

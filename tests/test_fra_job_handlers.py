@@ -87,6 +87,14 @@ class FRAArchiveJobHandlerTests(unittest.TestCase):
                     0.91,
                     "paddle-ta-v1",
                     25,
+                    [{
+                        "page_number": 1,
+                        "confidence": 0.91,
+                        "text": (
+                            "Claim No: TN-IFR-77\nClaimant: Ramu\nDistrict: Salem\n"
+                            "Block: Yercaud\nVillage: Kottur\nRight Type: IFR\nStatus: Pending"
+                        ),
+                    }],
                 ),
             ):
                 result = get_job_handler("archive_extract")(session, job)
@@ -94,15 +102,51 @@ class FRAArchiveJobHandlerTests(unittest.TestCase):
             self.assertEqual(run.standardized_json["claim_number"], "TN-IFR-77")
             self.assertEqual(run.entity_model_version_id, model.id)
             self.assertEqual(run.ocr_model_version, "paddle-ta-v1")
+            self.assertEqual(
+                next(field for field in run.field_reviews if field.field_name == "village").source_page,
+                1,
+            )
+            self.assertEqual(run.provenance_json["ocr_pages"][0]["page_number"], 1)
+            self.assertNotIn("text", run.provenance_json["ocr_pages"][0])
             self.assertEqual(document.ocr_status, "completed")
             self.assertNotIn("stored bytes", str(run.provenance_json))
 
-    def test_non_synthetic_archive_job_waits_for_an_active_model(self):
+    def test_non_synthetic_archive_job_uses_local_extractor_without_registered_model(self):
         with self.factory() as session:
-            _staff, _document, _record, job = self.build_job(session)
-            with self.assertRaisesRegex(JobExecutionError, "No active FRA entity model") as raised:
-                get_job_handler("archive_extract")(session, job)
-            self.assertTrue(raised.exception.retriable)
+            _staff, document, record, job = self.build_job(session)
+            record.provenance_json = {"intake_kind": "new_claim", "district": "Kanyakumari"}
+            text = (
+                "FRA Claim Form\nClaim No: TN-FRA-IFR-991\nClaimant: Ramu\n"
+                "Holder Type: Individual\nDistrict: Salem\nBlock: Yercaud\n"
+                "Village: Kottur\nRight Type: IFR"
+            )
+            with patch("app.services.fra_job_handlers._read_archive_document", return_value=b"scan"), patch(
+                "app.services.fra_job_handlers._recognize_archive_document",
+                return_value=(text, 0.91, "paddle-test", 25, [{"page_number": 1, "text": text, "confidence": 0.91, "lines": []}]),
+            ):
+                result = get_job_handler("archive_extract")(session, job)
+            run = session.get(FRAExtractionRun, uuid.UUID(result["extraction_run_id"]))
+            self.assertEqual(run.standardized_json["holder_name"], "Ramu")
+            self.assertEqual(run.entity_model_version_id, None)
+            self.assertEqual(record.provenance_json["document_classification"]["document_type"], "claim_form")
+            self.assertTrue(any("differs from the upload district" in item for item in run.provenance_json["warnings"]))
+            self.assertEqual(run.provenance_json["ocr_source_pages"][0]["text"], text)
+            self.assertEqual(document.ocr_status, "completed")
+
+    def test_unreadable_new_claim_remains_in_human_review_without_invented_fields(self):
+        with self.factory() as session:
+            _staff, _document, record, job = self.build_job(session)
+            record.provenance_json = {"intake_kind": "new_claim"}
+            with patch("app.services.fra_job_handlers._read_archive_document", return_value=b"scan"), patch(
+                "app.services.fra_job_handlers._recognize_archive_document",
+                return_value=("", 0.0, "paddle-test", 25, [{"page_number": 1, "text": "", "confidence": 0.0, "lines": []}]),
+            ):
+                result = get_job_handler("archive_extract")(session, job)
+            run = session.get(FRAExtractionRun, uuid.UUID(result["extraction_run_id"]))
+            self.assertEqual(record.review_state, "needs_review")
+            self.assertIsNone(run.standardized_json.get("holder_name"))
+            self.assertIn("Missing holder_name", run.provenance_json["warnings"])
+            self.assertEqual(record.provenance_json["document_classification"]["document_type"], "unknown")
 
     def test_synthetic_archive_job_keeps_explicit_manifest_replay(self):
         with self.factory() as session:

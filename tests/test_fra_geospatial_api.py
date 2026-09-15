@@ -39,6 +39,7 @@ class FRAGeospatialAPITests(unittest.TestCase):
         with self.factory() as session:
             session.add_all([
                 User(external_id="geo-api-user", display_name="Uploader", role="user"),
+                User(external_id="geo-api-other", display_name="Other", role="user"),
                 User(external_id="geo-api-reviewer", display_name="Reviewer", role="reviewer"),
             ]); session.commit()
         self.client = TestClient(app); self.storage = MemoryStorage()
@@ -72,6 +73,10 @@ class FRAGeospatialAPITests(unittest.TestCase):
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview.json()["features"][0]["geometry"]["type"], "MultiPolygon")
         self.assertNotIn("storage_key", preview.text)
+        hidden = self.client.get(
+            f"/api/fra/geospatial/imports/{import_id}", headers=self.headers("geo-api-other")
+        )
+        self.assertEqual(hidden.status_code, 404)
         denied = self.client.post(f"/api/fra/geospatial/imports/{import_id}/publish", headers=self.headers())
         self.assertEqual(denied.status_code, 403)
         published = self.client.post(f"/api/fra/geospatial/imports/{import_id}/publish", headers=self.headers("geo-api-reviewer"))

@@ -4,6 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,7 @@ from app.api.auth import (
     require_admin,
     require_reviewer,
 )
+from app.api.fra_access import claim_for_user, document_for_user
 from app.db.fra_models import (
     DSSRecommendation,
     FRAClaim,
@@ -22,7 +24,7 @@ from app.db.fra_models import (
     RightsHolder,
     SchemeRuleSet,
 )
-from app.db.models import Document
+from app.db.fra_operational_models import FRAIntakeItem
 from app.db.session import get_db
 from app.models.fra_schemas import (
     DSSEvaluationCreate,
@@ -39,13 +41,21 @@ from app.models.fra_schemas import (
     TransitionCreate,
 )
 from app.services.audit import record_audit
-from app.services.dss_engine import InvalidRuleError, evaluate_rules, validate_rule_definition
+from app.services.dss_engine import (
+    InvalidRuleError,
+    evaluate_rules,
+    validate_rule_definition,
+    validate_rule_fact_contract,
+    validate_rule_configuration,
+)
+from app.services.scheme_catalog import CatalogValidationError, validate_rule_catalog_binding
 from app.services.fra_claims import (
     FRAClaimValidationError,
+    FRAClaimConflictError,
     add_geometry_version,
     create_claim,
-    promote_legacy_claim,
 )
+from app.services.fra_intake import IntakeConflictError, promote_intake
 from app.services.fra_spatial_policy import evaluate_spatial_compatibility
 from app.services.fra_reference_spatial import evaluate_reference_intersections
 from app.services.fra_workflow import (
@@ -84,13 +94,6 @@ def _commit(db: Session, message: str = "The record conflicts with existing data
         raise HTTPException(status_code=409, detail=message) from exc
 
 
-def _claim_or_404(db: Session, claim_id: uuid.UUID) -> FRAClaim:
-    claim = db.get(FRAClaim, claim_id)
-    if claim is None:
-        raise HTTPException(status_code=404, detail="FRA claim not found.")
-    return claim
-
-
 def _holder_dict(holder: RightsHolder, user: AuthenticatedUser) -> dict:
     result = {
         "id": str(holder.id),
@@ -113,10 +116,12 @@ def _claim_dict(claim: FRAClaim, user: AuthenticatedUser, *, detailed: bool = Fa
         "status": claim.status,
         "rights_holder_id": str(claim.rights_holder_id),
         "gram_sabha_id": str(claim.gram_sabha_id) if claim.gram_sabha_id else None,
+        "village_id": str(claim.village_id) if claim.village_id else None,
         "submitted_by": str(claim.submitted_by),
         "legacy_claim_id": str(claim.legacy_claim_id) if claim.legacy_claim_id else None,
         "parcel_id": str(claim.parcel_id) if claim.parcel_id else None,
         "document_id": str(claim.document_id) if claim.document_id else None,
+        "supersedes_claim_id": str(claim.supersedes_claim_id) if claim.supersedes_claim_id else None,
         "claimed_area_sqm": float(claim.claimed_area_sqm) if claim.claimed_area_sqm else None,
         "provenance": dict(claim.provenance_json or {}),
     }
@@ -136,6 +141,8 @@ def _claim_dict(claim: FRAClaim, user: AuthenticatedUser, *, detailed: bool = Fa
                     "id": str(item.id), "from_status": item.from_status,
                     "to_status": item.to_status, "authority_level": item.authority_level,
                     "outcome": item.outcome, "reasons": list(item.reasons_json or []),
+                    "decision_date": item.decision_date.isoformat() if item.decision_date else None,
+                    "reference_number": item.reference_number,
                 }
                 for item in claim.decisions
             ],
@@ -144,6 +151,9 @@ def _claim_dict(claim: FRAClaim, user: AuthenticatedUser, *, detailed: bool = Fa
                     "id": str(item.id), "title_number": item.title_number,
                     "version": item.version, "active": item.active,
                     "geometry_version_id": str(item.geometry_version_id) if item.geometry_version_id else None,
+                    "granted_area_sqm": (
+                        float(item.granted_area_sqm) if item.granted_area_sqm is not None else None
+                    ),
                 }
                 for item in claim.titles
             ],
@@ -212,12 +222,16 @@ def create_fra_claim(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if payload.document_id:
+        document_for_user(db, payload.document_id, user)
     try:
         claim = create_claim(
             db, claim_number=payload.claim_number, right_type=payload.right_type,
             rights_holder_id=payload.rights_holder_id, submitted_by=user.id,
-            gram_sabha_id=payload.gram_sabha_id, parcel_id=payload.parcel_id,
-            document_id=payload.document_id, claimed_area_sqm=payload.claimed_area_sqm,
+            gram_sabha_id=payload.gram_sabha_id, village_id=payload.village_id,
+            parcel_id=payload.parcel_id, document_id=payload.document_id,
+            supersedes_claim_id=payload.supersedes_claim_id,
+            claimed_area_sqm=payload.claimed_area_sqm,
             provenance=payload.provenance, request_id=_request_id(request),
         )
     except FRAClaimValidationError as exc:
@@ -231,20 +245,35 @@ def promote_claim(
     legacy_claim_id: uuid.UUID,
     payload: LegacyPromotionCreate,
     request: Request,
-    user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(require_reviewer),
     db: Session = Depends(get_db),
 ):
+    intake = db.scalar(select(FRAIntakeItem).where(FRAIntakeItem.legacy_claim_id == legacy_claim_id))
+    if intake is None:
+        raise HTTPException(status_code=404, detail="FRA intake item not found.")
     try:
-        claim = promote_legacy_claim(
-            db, legacy_claim_id=legacy_claim_id, rights_holder_id=payload.rights_holder_id,
+        claim = promote_intake(
+            db, intake, rights_holder_id=payload.rights_holder_id,
             right_type=payload.right_type, actor_id=user.id,
-            gram_sabha_id=payload.gram_sabha_id, request_id=_request_id(request),
+            gram_sabha_id=payload.gram_sabha_id, expected_revision=payload.expected_revision,
+            request_id=_request_id(request),
         )
+    except (FRAClaimConflictError, IntegrityError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc) if isinstance(exc, FRAClaimConflictError)
+                            else "The operation conflicts with the current stored state.") from exc
+    except IntakeConflictError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except FRAClaimValidationError as exc:
-        status = 404 if "does not exist" in str(exc) else 422
-        raise HTTPException(status_code=status, detail=str(exc)) from exc
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     _commit(db)
-    return _claim_dict(claim, user, detailed=True)
+    return {
+        **_claim_dict(claim, user, detailed=True),
+        "intake_id": str(intake.id), "intake_state": intake.state,
+        "promoted_claim_id": str(intake.promoted_claim_id), "revision": intake.revision,
+    }
 
 
 @router.get("/claims/{claim_id}")
@@ -253,7 +282,7 @@ def get_fra_claim(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _claim_dict(_claim_or_404(db, claim_id), user, detailed=True)
+    return _claim_dict(claim_for_user(db, claim_id, user), user, detailed=True)
 
 
 @router.post("/claims/{claim_id}/geometries", status_code=201)
@@ -264,14 +293,19 @@ def create_geometry(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = _claim_or_404(db, claim_id)
+    claim = claim_for_user(db, claim_id, user)
     try:
         version = add_geometry_version(
             db, claim, geometry=payload.geometry, source=payload.source,
             provenance=payload.provenance, boundary_quality=payload.boundary_quality,
             actor_id=user.id, request_id=_request_id(request),
         )
+    except (FRAClaimConflictError, IntegrityError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc) if isinstance(exc, FRAClaimConflictError)
+                            else "The operation conflicts with the current stored state.") from exc
     except FRAClaimValidationError as exc:
+        db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     _commit(db)
     return {
@@ -289,19 +323,40 @@ def create_evidence(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = _claim_or_404(db, claim_id)
+    claim = claim_for_user(db, claim_id, user)
     if payload.category == "satellite_observation":
         raise HTTPException(
             status_code=422,
             detail="Satellite evidence must be created through the satellite-observations endpoint.",
         )
-    if payload.document_id and db.get(Document, payload.document_id) is None:
-        raise HTTPException(status_code=404, detail="Document not found.")
+    spatial_disposition = payload.source.strip().casefold() == "spatial_evaluation_disposition"
+    if spatial_disposition and user.role not in {"reviewer", "admin"}:
+        raise HTTPException(status_code=403, detail="A reviewer role is required for spatial dispositions.")
+    if payload.document_id:
+        document_for_user(db, payload.document_id, user)
+    if spatial_disposition:
+        from app.services.concurrency import guard_claim
+        try:
+            geometry_id = uuid.UUID(str(payload.provenance.get("geometry_version_id", "")))
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail="Spatial dispositions require a saved geometry_version_id.") from error
+        try:
+            guard_claim(db, claim, conflict=FRAClaimConflictError("The claim boundary changed during review."))
+            db.expire(claim, ["geometry_versions"])
+            latest = max(claim.geometry_versions, key=lambda item: item.version, default=None)
+            if latest is None or latest.id != geometry_id:
+                raise FRAClaimConflictError("Evaluate the current saved claim boundary before recording a disposition.")
+        except FRAClaimConflictError as error:
+            db.rollback()
+            raise HTTPException(status_code=409, detail=str(error)) from error
     evidence = FRAEvidenceItem(
-        claim=claim, category=payload.category, legal_role="submitted", source=payload.source,
+        claim=claim, category=payload.category, legal_role="submitted",
+        source="spatial_evaluation_disposition" if spatial_disposition else payload.source,
         description=payload.description, document_id=payload.document_id,
+        source_page_start=payload.source_page_start, source_page_end=payload.source_page_end,
         provenance_json=payload.provenance, captured_at=payload.captured_at,
-        verification_state="unverified", source_verified=False, created_by=user.id,
+        verification_state="verified" if spatial_disposition else "unverified",
+        source_verified=spatial_disposition, created_by=user.id,
     )
     db.add(evidence); db.flush()
     record_audit(
@@ -315,6 +370,8 @@ def create_evidence(
         "legal_role": evidence.legal_role, "source": evidence.source,
         "description": evidence.description, "verification_state": evidence.verification_state,
         "source_verified": evidence.source_verified,
+        "source_page_start": evidence.source_page_start,
+        "source_page_end": evidence.source_page_end,
     }
 
 
@@ -326,14 +383,20 @@ def transition_fra_claim(
     user: AuthenticatedUser = Depends(require_reviewer),
     db: Session = Depends(get_db),
 ):
-    claim = _claim_or_404(db, claim_id)
+    claim = claim_for_user(db, claim_id, user)
     try:
         decision = transition_claim(
             db, claim, target_status=payload.target_status,
             authority_level=payload.authority_level, outcome=payload.outcome,
             reasons=payload.reasons, actor_id=user.id, request_id=_request_id(request),
+            decision_date=payload.decision_date, reference_number=payload.reference_number,
         )
+    except (FRAClaimConflictError, IntegrityError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc) if isinstance(exc, FRAClaimConflictError)
+                            else "The operation conflicts with the current stored state.") from exc
     except InvalidTransitionError as exc:
+        db.rollback()
         raise HTTPException(
             status_code=409,
             detail={"message": str(exc), "allowed_states": sorted(exc.allowed_states)},
@@ -343,6 +406,8 @@ def transition_fra_claim(
         "id": str(decision.id), "claim_id": str(claim.id),
         "from_status": decision.from_status, "to_status": decision.to_status,
         "outcome": decision.outcome, "reasons": decision.reasons_json,
+        "decision_date": decision.decision_date.isoformat() if decision.decision_date else None,
+        "reference_number": decision.reference_number,
     }
 
 
@@ -354,7 +419,7 @@ def create_title(
     user: AuthenticatedUser = Depends(require_reviewer),
     db: Session = Depends(get_db),
 ):
-    claim = _claim_or_404(db, claim_id)
+    claim = claim_for_user(db, claim_id, user)
     if payload.geometry_version_id:
         geometry = db.get(FRAGeometryVersion, payload.geometry_version_id)
         if geometry is None or geometry.claim_id != claim.id:
@@ -364,14 +429,23 @@ def create_title(
             db, claim, title_number=payload.title_number,
             geometry_version_id=payload.geometry_version_id, issued_by=user.id,
             metadata=payload.metadata, request_id=_request_id(request),
+            granted_area_sqm=payload.granted_area_sqm,
         )
+    except (FRAClaimConflictError, IntegrityError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc) if isinstance(exc, FRAClaimConflictError)
+                            else "The operation conflicts with the current stored state.") from exc
     except TitleIssuanceError as exc:
+        db.rollback()
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     _commit(db, "A title with that title number already exists.")
     return {
         "id": str(title.id), "claim_id": str(claim.id), "title_number": title.title_number,
         "version": title.version, "active": title.active,
         "geometry_version_id": str(title.geometry_version_id) if title.geometry_version_id else None,
+        "granted_area_sqm": (
+            float(title.granted_area_sqm) if title.granted_area_sqm is not None else None
+        ),
     }
 
 
@@ -382,7 +456,7 @@ def spatial_evaluation(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = _claim_or_404(db, claim_id)
+    claim = claim_for_user(db, claim_id, user)
     result = evaluate_spatial_compatibility(
         db, claim, payload.geometry, min_sqm=payload.min_sqm,
         min_percent=payload.min_percent, policy_version=payload.policy_version,
@@ -446,7 +520,7 @@ def create_satellite_observations(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    claim = _claim_or_404(db, claim_id)
+    claim = claim_for_user(db, claim_id, user)
     if not claim.geometry_versions:
         raise HTTPException(status_code=422, detail="The claim requires a geometry version.")
     geometry = max(claim.geometry_versions, key=lambda item: item.version).geometry
@@ -493,15 +567,44 @@ def create_rule_set(
 ):
     try:
         validate_rule_definition(payload.condition)
+        validate_rule_fact_contract(payload.required_facts, payload.condition)
+        validate_rule_configuration(
+            required_facts=payload.required_facts,
+            required_evidence=payload.required_evidence,
+            required_assets=payload.required_assets,
+            exclusion_condition=payload.exclusion_condition,
+            priority_conditions=payload.priority_conditions,
+            freshness_requirements=payload.freshness_requirements,
+            recommendation_logic=payload.recommendation_logic,
+        )
     except InvalidRuleError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if payload.effective_from and payload.effective_to and payload.effective_to < payload.effective_from:
         raise HTTPException(status_code=422, detail="effective_to cannot precede effective_from.")
+    try:
+        catalog_entry = validate_rule_catalog_binding(
+            db,
+            catalog_entry_id=payload.catalog_entry_id,
+            scheme_code=payload.scheme_code,
+            active=payload.active,
+            effective_from=payload.effective_from,
+            effective_to=payload.effective_to,
+        )
+    except CatalogValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     rule = SchemeRuleSet(
-        scheme_code=payload.scheme_code.strip(), display_name=payload.display_name.strip(),
+        catalog_entry_id=catalog_entry.id,
+        scheme_code=payload.scheme_code.strip().upper(), display_name=payload.display_name.strip(),
         version=payload.version.strip(), effective_from=payload.effective_from,
         effective_to=payload.effective_to, required_facts_json=payload.required_facts,
-        condition_json=payload.condition, recommendation_text=payload.recommendation_text,
+        condition_json=payload.condition,
+        required_evidence_json=payload.required_evidence,
+        required_assets_json=payload.required_assets,
+        exclusion_condition_json=payload.exclusion_condition,
+        priority_conditions_json=payload.priority_conditions,
+        freshness_requirements_json=payload.freshness_requirements,
+        recommendation_logic_json=payload.recommendation_logic,
+        recommendation_text=payload.recommendation_text,
         source_reference=payload.source_reference, active=payload.active, created_by=user.id,
     )
     db.add(rule); db.flush()
@@ -513,7 +616,18 @@ def create_rule_set(
     _commit(db, "That DSS scheme code and version already exist.")
     return {
         "id": str(rule.id), "scheme_code": rule.scheme_code,
+        "catalog_entry_id": str(rule.catalog_entry_id),
+        "catalog_version": rule.catalog_entry.version,
+        "catalog_authoritative": rule.catalog_entry.authoritative,
         "display_name": rule.display_name, "version": rule.version,
+        "eligibility_condition": rule.condition_json,
+        "required_facts": list(rule.required_facts_json or []),
+        "required_evidence": list(rule.required_evidence_json or []),
+        "required_assets": list(rule.required_assets_json or []),
+        "exclusion_condition": rule.exclusion_condition_json,
+        "priority_conditions": list(rule.priority_conditions_json or []),
+        "freshness_requirements": dict(rule.freshness_requirements_json or {}),
+        "recommendation_logic": dict(rule.recommendation_logic_json or {}),
         "source_reference": rule.source_reference, "active": rule.active,
         "advisory_only": True,
     }
@@ -533,8 +647,7 @@ def evaluate_dss(
 ):
     if not idempotency_key or not idempotency_key.strip():
         raise HTTPException(status_code=422, detail="Idempotency-Key header is required.")
-    if db.get(FRAClaim, payload.claim_id) is None:
-        raise HTTPException(status_code=404, detail="FRA claim not found.")
+    claim_for_user(db, payload.claim_id, user)
     try:
         recommendations = evaluate_rules(
             db, claim_id=payload.claim_id, facts=payload.facts, actor_id=user.id,
@@ -549,10 +662,11 @@ def evaluate_dss(
 @router.get("/dss/recommendations/{recommendation_id}")
 def get_dss_recommendation(
     recommendation_id: uuid.UUID,
-    _user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     recommendation = db.get(DSSRecommendation, recommendation_id)
     if recommendation is None:
         raise HTTPException(status_code=404, detail="DSS recommendation not found.")
+    claim_for_user(db, recommendation.claim_id, user)
     return _recommendation_dict(recommendation)

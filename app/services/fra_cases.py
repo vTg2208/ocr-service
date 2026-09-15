@@ -2,9 +2,11 @@
 
 from sqlalchemy import select
 
+from app.db.fra_completion_models import FRAArchiveRecord
 from app.db.fra_models import FRAClaim
 from app.db.models import AuditEvent
 from app.services.fra_workflow import allowed_transitions
+from app.services.fra_locations import claim_location, location_matches
 
 
 PRIVATE_KEYS = {"private_uri", "artifact_uri", "source_uri", "storage_key"}
@@ -29,20 +31,7 @@ def _gram_sabha(claim: FRAClaim):
 
 
 def _location(claim: FRAClaim) -> dict:
-    gram_sabha = _gram_sabha(claim)
-    if gram_sabha is not None:
-        return {
-            "district": gram_sabha.district,
-            "block": gram_sabha.block,
-            "village": gram_sabha.village,
-        }
-    if claim.parcel is not None:
-        return {
-            "district": claim.parcel.district,
-            "block": claim.parcel.taluk,
-            "village": claim.parcel.village,
-        }
-    return {"district": None, "block": None, "village": None}
+    return {key: value for key, value in claim_location(claim).items() if key != "state"}
 
 
 def case_summary(claim: FRAClaim) -> dict:
@@ -85,11 +74,7 @@ def list_cases(
     result = []
     for claim in claims:
         location = _location(claim)
-        if district and (location["district"] or "").casefold() != district.casefold():
-            continue
-        if block and (location["block"] or "").casefold() != block.casefold():
-            continue
-        if village and (location["village"] or "").casefold() != village.casefold():
+        if not location_matches(location, district=district, block=block, village=village):
             continue
         if term and term not in " ".join(
             [claim.claim_number, claim.rights_holder.display_name, *(value or "" for value in location.values())]
@@ -104,6 +89,11 @@ def can_view_case(claim: FRAClaim, *, user_id, privileged: bool) -> bool:
 
 
 def case_detail(session, claim: FRAClaim, *, privileged: bool) -> dict:
+    archive_record = session.scalar(
+        select(FRAArchiveRecord).where(FRAArchiveRecord.promoted_claim_id == claim.id)
+    )
+    archive_run = archive_record.latest_extraction if archive_record else None
+    archive_run_provenance = dict(archive_run.provenance_json or {}) if archive_run else {}
     audit_events = session.scalars(
         select(AuditEvent)
         .where(AuditEvent.entity_type == "fra_claim", AuditEvent.entity_id == claim.id)
@@ -114,6 +104,32 @@ def case_detail(session, claim: FRAClaim, *, privileged: bool) -> dict:
         "legacy_claim_id": str(claim.legacy_claim_id) if claim.legacy_claim_id else None,
         "parcel_id": str(claim.parcel_id) if claim.parcel_id else None,
         "document_id": str(claim.document_id) if claim.document_id else None,
+        "archive_record_id": str(archive_record.id) if archive_record else None,
+        "location_state": claim_location(claim).get("state"),
+        "parcel_reference": (
+            "/".join(filter(None, (claim.parcel.survey_number, claim.parcel.subdivision_number)))
+            if claim.parcel else None
+        ),
+        "source_document": (
+            {
+                "id": str(claim.document.id),
+                "filename": claim.document.original_filename,
+                "content_type": claim.document.content_type,
+                "uploaded_at": claim.document.created_at.isoformat(),
+                "ocr_status": claim.document.ocr_status,
+                "source_office": archive_record.batch.source_label if archive_record else None,
+                "processing_status": archive_record.review_state if archive_record else None,
+                "document_type": (
+                    (archive_record.provenance_json or {}).get("document_classification", {}).get("document_type")
+                    if archive_record else None
+                ),
+                "page_count": archive_run_provenance.get("page_count") or (
+                    len(archive_run_provenance["ocr_source_pages"])
+                    if archive_run_provenance.get("ocr_source_pages") else None
+                ),
+            }
+            if claim.document else None
+        ),
         "provenance": _safe_mapping(dict(claim.provenance_json or {})),
         "rights_holder": {
             "id": str(claim.rights_holder.id),
@@ -148,6 +164,17 @@ def case_detail(session, claim: FRAClaim, *, privileged: bool) -> dict:
                 "source": item.source, "description": item.description,
                 "verification_state": item.verification_state,
                 "source_verified": item.source_verified,
+                "document_id": str(item.document_id) if item.document_id else None,
+                "document_type": (item.provenance_json or {}).get("document_type"),
+                "document": (
+                    {
+                        "id": str(item.document.id),
+                        "filename": item.document.original_filename,
+                        "content_type": item.document.content_type,
+                        "uploaded_at": item.document.created_at.isoformat(),
+                    }
+                    if item.document else None
+                ),
                 "captured_at": item.captured_at.isoformat() if item.captured_at else None,
                 "created_at": item.created_at.isoformat(),
             }
@@ -158,6 +185,7 @@ def case_detail(session, claim: FRAClaim, *, privileged: bool) -> dict:
                 "id": str(item.id), "from_status": item.from_status,
                 "to_status": item.to_status, "authority_level": item.authority_level,
                 "outcome": item.outcome, "reasons": list(item.reasons_json or []),
+                "decision_date": item.decision_date.isoformat() if item.decision_date else None,
                 "created_at": item.created_at.isoformat(),
             }
             for item in claim.decisions

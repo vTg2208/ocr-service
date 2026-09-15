@@ -35,6 +35,25 @@ class SchemeCatalogTests(unittest.TestCase):
         self.assertEqual({row["scheme_code"] for row in entries}, {"PM-KISAN", "MGNREGA", "PMAY-G", "JJM", "DAJGUA"})
         self.assertTrue(all(not row["authoritative"] and not row["active"] for row in entries))
         self.assertTrue(all(row["source_reference"] for row in entries))
+        self.assertTrue(all(row["definition"]["target_scope"] in {"holder", "village", "holder_and_village"} for row in entries))
+        self.assertTrue(all(row["definition"]["convergence_prerequisites"] for row in entries))
+        self.assertTrue(all(row["definition"]["evidence_facts"] for row in entries))
+        self.assertTrue(all(row["definition"]["intervention_types"] for row in entries))
+        rules = json.loads(Path("data/demo_dss_rules.json").read_text(encoding="utf-8"))
+        self.assertEqual({row["scheme_code"] for row in rules}, {row["scheme_code"] for row in entries})
+
+    def test_convergence_definition_rejects_unknown_facts(self):
+        with Session(self.engine) as session:
+            payload = {
+                "scheme_code": "TEST", "display_name": "Test", "version": "draft-1",
+                "department": "Department", "source_reference": "https://example.gov.in/test",
+                "definition": {
+                    "target_scope": "holder",
+                    "convergence_prerequisites": [{"fact": "invented_fact", "label": "Invented"}],
+                },
+            }
+            with self.assertRaisesRegex(CatalogValidationError, "unknown DSS fact"):
+                create_catalog_entry(session, payload, actor_id=self.user_id)
 
 
 if __name__ == "__main__": unittest.main()

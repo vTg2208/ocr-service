@@ -8,9 +8,11 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -20,7 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.models import GEOJSON_MULTIPOLYGON, UUID_PK, utcnow
+from app.db.models import GEOJSON_MULTIPOLYGON, GEOJSON_POINT, UUID_PK, utcnow
 
 
 class FRAImportBatch(Base):
@@ -86,6 +88,10 @@ class FRAVillageProfile(Base):
             "village_code",
             name="uq_fra_village_natural_key",
         ),
+        Index(
+            "ix_fra_village_profiles_boundary_gist", "boundary",
+            postgresql_using="gist",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
@@ -109,6 +115,10 @@ class FRAVillageProfile(Base):
     )
 
     assets: Mapped[list["AssetFeature"]] = relationship(back_populates="village")
+    claims: Mapped[list["FRAClaim"]] = relationship(back_populates="village")
+    asset_profile: Mapped["VillageAssetProfile | None"] = relationship(
+        back_populates="village", uselist=False
+    )
 
 
 class FRAArchiveRecord(Base):
@@ -165,6 +175,8 @@ class ProcessingJob(Base):
         UniqueConstraint(
             "task_type", "entity_id", "idempotency_key", name="uq_processing_job_idempotency"
         ),
+        Index("ix_processing_jobs_dispatch", "state", "available_at", "created_at"),
+        Index("ix_processing_jobs_lease", "state", "lease_expires_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
@@ -179,8 +191,12 @@ class ProcessingJob(Base):
     result_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     error_code: Mapped[str | None] = mapped_column(String(100))
     error_message: Mapped[str | None] = mapped_column(Text)
+    failure_history_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     requested_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     worker_id: Mapped[str | None] = mapped_column(String(255))
+    lease_token: Mapped[str | None] = mapped_column(String(36))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -219,6 +235,49 @@ class FRAExtractionRun(Base):
     entity_model: Mapped[ModelVersion | None] = relationship(
         foreign_keys=[entity_model_version_id]
     )
+    field_reviews: Mapped[list["FRAFieldReview"]] = relationship(
+        back_populates="extraction_run", order_by="FRAFieldReview.field_name"
+    )
+
+
+class FRAFieldReview(Base):
+    """Traceable extracted value, reviewer correction, and approved field value."""
+
+    __tablename__ = "fra_field_reviews"
+    __table_args__ = (
+        UniqueConstraint("extraction_run_id", "field_name", name="uq_fra_field_review_run_field"),
+        CheckConstraint(
+            "source_page IS NULL OR source_page > 0", name="ck_fra_field_review_page_positive"
+        ),
+        CheckConstraint(
+            "confidence IS NULL OR (confidence >= 0 AND confidence <= 1)",
+            name="ck_fra_field_review_confidence",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
+    extraction_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("fra_extraction_runs.id"), nullable=False
+    )
+    field_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    source_page: Mapped[int | None] = mapped_column(Integer)
+    source_value_json: Mapped[Any | None] = mapped_column(JSON)
+    extracted_value_json: Mapped[Any | None] = mapped_column(JSON)
+    extraction_method: Mapped[str] = mapped_column(String(100), nullable=False)
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(8, 5))
+    evidence_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    corrected_value_json: Mapped[Any | None] = mapped_column(JSON)
+    final_value_json: Mapped[Any | None] = mapped_column(JSON)
+    review_state: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    extraction_run: Mapped[FRAExtractionRun] = relationship(back_populates="field_reviews")
+    reviewer: Mapped["User | None"] = relationship(foreign_keys=[reviewed_by])
 
 
 class InferenceRun(Base):
@@ -247,13 +306,27 @@ class InferenceRun(Base):
 
 class AssetFeature(Base):
     __tablename__ = "asset_features"
+    __table_args__ = (
+        CheckConstraint(
+            "asset_class IN ('agricultural_land','water_body','homestead','forest_cover','road','infrastructure','other_asset')",
+            name="ck_asset_features_asset_class",
+        ),
+        Index(
+            "ix_asset_features_polygon_geometry_gist", "polygon_geometry",
+            postgresql_using="gist",
+        ),
+        Index(
+            "ix_asset_features_point_geometry_gist", "point_geometry_json",
+            postgresql_using="gist",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
     village_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fra_village_profiles.id"))
     claim_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fra_claims.id"))
     asset_class: Mapped[str] = mapped_column(String(64), nullable=False)
     polygon_geometry: Mapped[Any | None] = mapped_column(GEOJSON_MULTIPOLYGON)
-    point_geometry_json: Mapped[dict | None] = mapped_column(JSON)
+    point_geometry_json: Mapped[dict | None] = mapped_column(GEOJSON_POINT)
     observed_value_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     acquired_at: Mapped[date | None] = mapped_column(Date)
     confidence: Mapped[Decimal | None] = mapped_column(Numeric(8, 5))
@@ -277,6 +350,33 @@ class AssetFeature(Base):
     inference_run: Mapped[InferenceRun | None] = relationship(back_populates="assets")
     verifier: Mapped["User | None"] = relationship(foreign_keys=[verified_by])
     supersedes: Mapped["AssetFeature | None"] = relationship(remote_side=[id])
+
+
+class VillageAssetProfile(Base):
+    """Versioned calculation output over reviewed assets for one FRA village."""
+
+    __tablename__ = "fra_village_asset_profiles"
+    __table_args__ = (
+        UniqueConstraint("village_id", name="uq_fra_village_asset_profile_village"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)
+    village_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("fra_village_profiles.id"), nullable=False
+    )
+    taxonomy_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    calculation_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    source_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_asset_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    verified_asset_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    pending_asset_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    metrics_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    sources_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    generated_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    village: Mapped[FRAVillageProfile] = relationship(back_populates="asset_profile")
+    generator: Mapped["User"] = relationship(foreign_keys=[generated_by])
 
 
 class DSSReferral(Base):

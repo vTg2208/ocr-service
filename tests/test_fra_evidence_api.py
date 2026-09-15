@@ -73,14 +73,63 @@ class FRAEvidenceAPITests(unittest.TestCase):
         reviewer = self.client.get(f"/api/fra/claims/{self.other_claim_id}/historical-evidence", headers=self.headers("evidence-reviewer"))
         self.assertEqual(reviewer.status_code, 200)
 
+    def test_owner_can_queue_and_list_real_satellite_ingestion_without_private_urls(self):
+        payload = {
+            "start_date": "2025-01-01", "end_date": "2025-01-31",
+            "collection": "sentinel-2-l2a", "band_keys": ["green", "nir"],
+            "max_cloud": 20,
+        }
+        queued = self.client.post(
+            f"/api/fra/claims/{self.claim_id}/imagery-ingestions",
+            headers=self.headers(key="real-imagery-1"), json=payload,
+        )
+        self.assertEqual(queued.status_code, 202, queued.text)
+        self.assertEqual(queued.json()["task_type"], "satellite_ingestion")
+        listed = self.client.get(
+            f"/api/fra/claims/{self.claim_id}/imagery-ingestions", headers=self.headers()
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(listed.json()["jobs"][0]["collection"], "sentinel-2-l2a")
+        self.assertEqual(listed.json()["artifacts"], [])
+        self.assertNotIn("storage_key", listed.text)
+
     def test_only_reviewer_can_record_human_disposition(self):
         path = f"/api/fra/claims/{self.claim_id}/historical-evidence/{self.artifact_id}/review"
         denied = self.client.patch(path, headers=self.headers(), json={"verification_state": "verified", "notes": "Checked"})
         self.assertEqual(denied.status_code, 403)
-        reviewed = self.client.patch(path, headers=self.headers("evidence-reviewer"), json={"verification_state": "needs_field_verification", "notes": "Cloud edge needs a site check."})
+        reviewed = self.client.patch(path, headers=self.headers("evidence-reviewer"), json={"verification_state": "needs_field_verification", "notes": "Cloud edge needs a site check.", "expected_reviewed_at": None})
         self.assertEqual(reviewed.status_code, 200, reviewed.text)
         self.assertEqual(reviewed.json()["verification_state"], "needs_field_verification")
         self.assertEqual(reviewed.json()["reviewer_notes"], "Cloud edge needs a site check.")
+
+    def test_review_requires_explicit_timestamp_precondition(self):
+        path = f"/api/fra/claims/{self.claim_id}/historical-evidence/{self.artifact_id}/review"
+        response = self.client.patch(path, headers=self.headers("evidence-reviewer"),
+                                     json={"verification_state": "verified", "notes": "Checked"})
+        self.assertEqual(response.status_code, 422, response.text)
+
+    def test_stale_initial_review_conflicts_and_latest_token_preserves_notes_history(self):
+        from app.db.models import AuditEvent
+        path = f"/api/fra/claims/{self.claim_id}/historical-evidence/{self.artifact_id}/review"
+        payload = {"verification_state": "verified", "notes": "First review", "expected_reviewed_at": None}
+        first = self.client.patch(path, headers=self.headers("evidence-reviewer"), json=payload)
+        self.assertEqual(first.status_code, 200, first.text)
+        rejected = self.client.patch(path, headers=self.headers("evidence-reviewer"),
+                                     json={**payload, "notes": "Stale review", "verification_state": "rejected"})
+        self.assertEqual(rejected.status_code, 409, rejected.text)
+        listing = self.client.get(f"/api/fra/claims/{self.claim_id}/historical-evidence", headers=self.headers()).json()
+        self.assertEqual(listing["artifacts"][0]["reviewed_at"], first.json()["reviewed_at"])
+        second = self.client.patch(path, headers=self.headers("evidence-reviewer"),
+            json={**payload, "notes": "Second review", "expected_reviewed_at": first.json()["reviewed_at"]})
+        self.assertEqual(second.status_code, 200, second.text)
+        stale = self.client.patch(path, headers=self.headers("evidence-reviewer"),
+            json={**payload, "expected_reviewed_at": first.json()["reviewed_at"]})
+        self.assertEqual(stale.status_code, 409, stale.text)
+        with self.factory() as check:
+            events = check.scalars(select(AuditEvent).where(AuditEvent.action == "fra_historical_evidence_reviewed")
+                                   .order_by(AuditEvent.created_at)).all()
+            self.assertEqual([event.after_json["reviewer_notes"] for event in events], ["First review", "Second review"])
+            self.assertEqual(events[1].before_json["reviewer_notes"], "First review")
 
 
 if __name__ == "__main__": unittest.main()

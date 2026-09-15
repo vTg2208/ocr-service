@@ -115,6 +115,12 @@ class FRAOperationsAPITests(unittest.TestCase):
         self.assertEqual(listed.status_code, 200)
         self.assertNotIn("private://document", listed.text)
         self.assertEqual(listed.json()["items"][0]["state"], "failed")
+        self.assertTrue(listed.json()["items"][0]["can_retry"])
+        self.assertIsNotNone(listed.json()["items"][0]["completed_at"])
+        detail = self.client.get(f"/api/fra/jobs/{job_id}", headers=self.headers())
+        self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertEqual(detail.json()["failure_history"][0]["code"], "provider_down")
+        self.assertIsNone(detail.json()["lease_expires_at"])
         denied = self.client.post(
             f"/api/fra/jobs/{job_id}/retry", headers=self.headers()
         )

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base
 from app.db.fra_completion_models import AssetFeature, DSSReferral, ProcessingJob
-from app.db.fra_models import DSSRecommendation, FRAClaim, FRAGeometryVersion, FRATitle, GramSabha, RightsHolder, SchemeRuleSet
+from app.db.fra_models import DSSRecommendation, FRAClaim, FRADecision, FRAGeometryVersion, FRATitle, GramSabha, RightsHolder, SchemeRuleSet
 from app.db.fra_operational_models import DSSFactSnapshot, ImageryArtifact
 from app.db.models import User
 from app.services.fra_dashboards import planner_dashboard, verifier_dashboard
@@ -29,9 +29,12 @@ def seed_dashboard(session):
     geometry = FRAGeometryVersion(claim=submitted, version=1, geometry=GEOMETRY, source="survey", boundary_quality="surveyed", created_by=reviewer.id)
     session.add(geometry); session.flush()
     session.add_all([
-        FRATitle(claim=granted, version=1, title_number="TN-DASH-TITLE", active=True, metadata_json={}, issued_by=reviewer.id),
+        FRATitle(claim=granted, version=1, title_number="TN-DASH-TITLE", granted_area_sqm=750,
+                 active=True, metadata_json={}, issued_by=reviewer.id),
+        FRADecision(claim=granted, authority_level="DLC", from_status="dlc_decided", to_status="granted",
+                    outcome="granted", reasons_json=[], actor_id=reviewer.id),
         AssetFeature(claim_id=granted.id, asset_class="water_body", observed_value_json={"present": True}, source_type="field", provenance_json={}, verification_state="verified", verified_by=reviewer.id),
-        AssetFeature(claim_id=submitted.id, asset_class="well", observed_value_json={"present": True}, source_type="model", provenance_json={}, verification_state="unverified"),
+        AssetFeature(claim_id=submitted.id, asset_class="infrastructure", observed_value_json={"present": True, "asset_subtype": "well"}, source_type="model", provenance_json={}, verification_state="unverified"),
         ImageryArtifact(claim_id=submitted.id, geometry_version_id=geometry.id, artifact_type="historical_land_observation:2005", target_year=2005, processor_version="v1", parameters_json={}, statistics_json={}, quality_flags_json=[], provenance_json={}, state="completed", verification_state="unverified"),
         ProcessingJob(task_type="historical_evidence", entity_type="fra_claim", entity_id=submitted.id, state="failed", attempts=3, max_attempts=3, idempotency_key="dash-job", payload_json={}, result_json={}, requested_by=reviewer.id),
     ])
@@ -68,13 +71,35 @@ class FRADashboardTests(unittest.TestCase):
             self.assertEqual(result["claims_by_status"], {"granted": 1, "submitted": 1})
             self.assertEqual(result["claims_by_right_type"], {"CFR": 1, "IFR": 1})
             self.assertEqual(result["active_titles"], 1)
-            self.assertEqual(result["granted_area_sqm"], 1000)
+            self.assertEqual(result["granted_area_sqm"], 750)
             self.assertEqual(result["verified_assets"], {"water_body": 1})
             self.assertEqual(result["referrals"][0]["department"], "Rural Development")
             self.assertEqual(result["missing_inputs"][0]["fact"], "water_stress_reference")
+            self.assertEqual(result["fra"], {
+                "claims": 2, "titles": 1, "active_titles": 1, "pending_cases": 1, "decisions": 1,
+            })
+            self.assertEqual(result["spatial"]["fra_area_sqm"], 1500)
+            self.assertEqual(result["spatial"]["granted_area_sqm"], 750)
+            self.assertEqual(result["spatial"]["villages_covered"], 2)
+            self.assertEqual(result["spatial"]["spatialized_claims"], 1)
+            self.assertEqual(result["spatial"]["unmapped_claims"], 1)
+            self.assertEqual(result["spatial"]["asset_distribution"], {"water_body": 1})
+            self.assertEqual(result["development"]["water_availability"], {
+                "mapped_assets": 1, "recorded_deficiencies": 0,
+            })
+            self.assertEqual(result["development"]["infrastructure"], {
+                "mapped_assets": 0, "recorded_deficiencies": 0,
+            })
+            self.assertEqual(result["dss"]["scheme_convergence"], {
+                "insufficient_data": 1, "not_evaluated": 0, "not_indicated": 0,
+                "potentially_eligible": 0,
+            })
+            self.assertEqual(result["dss"]["insufficient_data_cases"], 1)
             filtered = planner_dashboard(session, district="District A")
             self.assertEqual(filtered["claims_by_status"], {"submitted": 1})
             self.assertEqual(filtered["active_titles"], 0)
+            self.assertEqual(filtered["fra"]["claims"], 1)
+            self.assertEqual(filtered["fra"]["decisions"], 0)
 
 
 if __name__ == "__main__": unittest.main()

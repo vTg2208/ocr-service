@@ -28,9 +28,18 @@ class FRAArchiveRecordCreate(StrictModel):
     idempotency_key: str | None = Field(default=None, max_length=255)
 
 
+class FRAArchivePromote(StrictModel):
+    expected_revision: int = Field(ge=0)
+
+
 class FRAArchiveReview(StrictModel):
     expected_revision: int = Field(ge=0)
     reviewed_fields: dict[str, Any]
+
+
+class FRAArchiveRejection(StrictModel):
+    expected_revision: int = Field(ge=0)
+    reason: str = Field(min_length=1, max_length=2000)
 
 
 class FRAArchiveBatchFileResult(StrictModel):

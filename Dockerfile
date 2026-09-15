@@ -22,9 +22,8 @@ COPY alembic.ini ./alembic.ini
 COPY data ./data
 COPY scripts ./scripts
 
-# Present even though processing is done in-memory; kept for any
-# temporary artifacts a future OCR engine implementation might need.
-RUN mkdir -p /var/lib/ocr/private_uploads
+# Private source documents and generated artifacts are shared with the worker.
+RUN mkdir -p /var/lib/aranyasetu/private_uploads
 
 EXPOSE 8000
 

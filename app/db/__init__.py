@@ -1,4 +1,4 @@
-"""Database models and session helpers for the land registry workflow."""
+"""Database models and session helpers for AranyaSetu FRA workflows."""
 
 from app.db.base import Base
 from app.db import fra_models as fra_models  # noqa: F401

@@ -40,6 +40,39 @@ def _confidence(value):
     return result
 
 
+def _validated_field_evidence(fields: dict, evidence: dict) -> dict:
+    for field_name in fields:
+        item = evidence.get(field_name)
+        if not isinstance(item, dict):
+            raise ModelOutputValidationError(
+                f"field_evidence.{field_name} must be an object."
+            )
+        source_page = item.get("source_page")
+        if source_page is not None and (
+            isinstance(source_page, bool)
+            or not isinstance(source_page, int)
+            or source_page < 1
+        ):
+            raise ModelOutputValidationError(
+                f"field_evidence.{field_name}.source_page must be a positive integer."
+            )
+        if "confidence" not in item:
+            raise ModelOutputValidationError(
+                f"field_evidence.{field_name}.confidence is required."
+            )
+        _confidence(item["confidence"])
+        if "ambiguous" in item and not isinstance(item["ambiguous"], bool):
+            raise ModelOutputValidationError(
+                f"field_evidence.{field_name}.ambiguous must be boolean."
+            )
+        if "candidates" in item and not isinstance(item["candidates"], list):
+            raise ModelOutputValidationError(
+                f"field_evidence.{field_name}.candidates must be an array."
+            )
+    validate_model_output(evidence)
+    return evidence
+
+
 class RESTFRAEntityExtractor:
     def __init__(self, model, transport):
         self.version = model.version
@@ -67,9 +100,17 @@ class RESTFRAEntityExtractor:
     def extract(self, document_reference: str, manifest: dict) -> EntityExtractionResult:
         if not isinstance(manifest, dict) or not isinstance(manifest.get("raw_text"), str):
             raise ModelOutputValidationError("OCR text is required for REST entity extraction.")
+        payload = {
+            "raw_text": manifest["raw_text"],
+            "state_code": str(manifest.get("state_code") or "TN"),
+        }
+        if "pages" in manifest:
+            if not isinstance(manifest["pages"], list):
+                raise ModelOutputValidationError("OCR pages must be an array.")
+            payload["pages"] = manifest["pages"]
         response = self.transport(
             self.endpoint,
-            {"raw_text": manifest["raw_text"], "state_code": "TN"},
+            payload,
             self.timeout,
         )
         if not isinstance(response, dict):
@@ -81,12 +122,17 @@ class RESTFRAEntityExtractor:
         if not isinstance(fields, dict) or not isinstance(evidence, dict):
             raise ModelOutputValidationError("REST model fields and field evidence must be objects.")
         validate_model_output(fields)
+        evidence = _validated_field_evidence(fields, evidence)
         processing_time = response.get("processing_time_ms", 0)
         if isinstance(processing_time, bool) or not isinstance(processing_time, int) or processing_time < 0:
             raise ModelOutputValidationError("processing_time_ms must be a non-negative integer.")
         provenance = response.get("provenance") or {}
         if not isinstance(provenance, dict):
             raise ModelOutputValidationError("REST model provenance must be an object.")
+        validate_model_output(provenance)
+        warnings = response.get("warnings") or []
+        if not isinstance(warnings, list) or any(not isinstance(item, str) for item in warnings):
+            raise ModelOutputValidationError("REST model warnings must be an array of strings.")
         return EntityExtractionResult(
             fields=fields,
             field_evidence=evidence,
@@ -100,7 +146,7 @@ class RESTFRAEntityExtractor:
                 "model_id": self.model_id,
                 "legal_role": "unverified_extraction",
             },
-            warnings=list(response.get("warnings") or []),
+            warnings=list(warnings),
         )
 
 

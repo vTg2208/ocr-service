@@ -1,10 +1,10 @@
 # Privacy and retention policy baseline
 
-This service records document claims; it does not determine or transfer legal ownership.
+AranyaSetu processes FRA case records and supporting evidence; it does not determine or transfer legal ownership, establish an FRA right, or approve a scheme benefit.
 
 ## Data classification and access
 
-- Uploaded pattas, raw OCR, claimant identifiers, and claim evidence are restricted personal data.
+- Uploaded FRA and supporting cadastral documents, raw OCR, claimant identifiers, and case evidence are restricted personal data.
 - FRA rights-holder identities, external references, claimant categories, Gram Sabha links, declared DSS facts, and evidence provenance are restricted case data.
 - Normal users may read only their documents, claims, and generic notifications.
 - Normal FRA users do not receive rights-holder external references; reviewer and administrator access remains authenticated and purpose-limited.

@@ -8,16 +8,11 @@ from shapely.geometry import shape
 from sqlalchemy import func, select
 
 from app.db.fra_operational_models import SpatialReferenceFeature
+from app.services.reference_contracts import DATASET_KINDS, WATER_REFERENCE_KINDS
 from app.services.fra_spatial_policy import _overlap_metrics
 
 
-REFERENCE_KINDS = {
-    "administrative_boundary",
-    "protected_area",
-    "forest_compartment",
-    "water_body",
-    "cadastral_parcel",
-}
+REFERENCE_KINDS = set(DATASET_KINDS)
 
 
 @dataclass(frozen=True)
@@ -91,12 +86,21 @@ def evaluate_reference_intersections(
             )
         elif feature.dataset_kind == "forest_compartment":
             outcome, reason = "context", "intersects_forest_compartment"
+        elif feature.dataset_kind in WATER_REFERENCE_KINDS:
+            outcome = "context"
+            reason = {
+                "groundwater": "overlaps_groundwater_reference",
+                "groundwater_stress": "overlaps_groundwater_stress_reference",
+                "water_stress": "overlaps_water_stress_reference",
+            }[feature.dataset_kind]
         else:
             outcome = "review_required"
             reason = {
                 "protected_area": "intersects_protected_area",
                 "water_body": "intersects_water_body",
                 "cadastral_parcel": "overlaps_cadastral_reference",
+                "forest_area": "intersects_forest_area",
+                "infrastructure": "intersects_infrastructure",
             }[feature.dataset_kind]
         findings.append(ReferenceSpatialFinding(
             reference_feature_id=feature.id,

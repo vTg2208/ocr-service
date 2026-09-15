@@ -21,7 +21,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
-        protected = request.url.path.startswith(("/api/pattas", "/api/claims", "/api/parcels/resolve"))
+        protected = request.url.path.startswith(
+            ("/api/cadastral-evidence", "/api/pattas", "/api/claims", "/api/parcels/resolve")
+        )
         if protected:
             identity = request.headers.get("Authorization") or (request.client.host if request.client else "unknown")
             key = hashlib.sha256(identity.encode()).hexdigest()

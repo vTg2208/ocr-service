@@ -72,6 +72,26 @@ def compile_sqlite_geojson(_type, _compiler, **_kwargs):
 GEOJSON_MULTIPOLYGON = GeoJSONMultiPolygon()
 
 
+class GeoJSONPoint(GeoJSONMultiPolygon):
+    """GeoJSON in SQLite, a native PostGIS Point in PostgreSQL."""
+
+    def get_col_spec(self, **_kwargs):
+        return "geometry(Point,4326)"
+
+
+@compiles(GeoJSONPoint, "postgresql")
+def compile_postgis_point(_type, _compiler, **_kwargs):
+    return "geometry(Point,4326)"
+
+
+@compiles(GeoJSONPoint, "sqlite")
+def compile_sqlite_point_geojson(_type, _compiler, **_kwargs):
+    return "JSON"
+
+
+GEOJSON_POINT = GeoJSONPoint()
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -93,6 +113,7 @@ class Parcel(Base):
             "ix_parcel_lookup", "state", "district", "taluk", "village",
             "survey_number", "subdivision_number",
         ),
+        Index("parcels_geometry_gix", "geometry", postgresql_using="gist"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID_PK, primary_key=True, default=uuid.uuid4)

@@ -31,9 +31,13 @@ def _request_id(request: Request) -> str | None:
     return getattr(request.state, "request_id", None) or request.headers.get("X-Request-ID")
 
 
-def _batch_or_404(db: Session, batch_id: uuid.UUID) -> SpatialImportBatch:
+def _batch_or_404(
+    db: Session, batch_id: uuid.UUID, user: AuthenticatedUser
+) -> SpatialImportBatch:
     batch = db.get(SpatialImportBatch, batch_id)
-    if batch is None:
+    if batch is None or (
+        user.role not in {"reviewer", "admin"} and batch.created_by != user.id
+    ):
         raise HTTPException(status_code=404, detail="Spatial import not found.")
     return batch
 
@@ -106,10 +110,10 @@ async def create_import(
 @router.get("/imports/{batch_id}", response_model=SpatialImportPreview)
 def preview_import(
     batch_id: uuid.UUID,
-    _user: AuthenticatedUser = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    batch = _batch_or_404(db, batch_id)
+    batch = _batch_or_404(db, batch_id, user)
     return {
         **_summary(batch),
         "errors": list((batch.error_summary_json or {}).get("features", [])),
@@ -131,7 +135,7 @@ def publish_import(
     user: AuthenticatedUser = Depends(require_reviewer),
     db: Session = Depends(get_db),
 ):
-    batch = _batch_or_404(db, batch_id)
+    batch = _batch_or_404(db, batch_id, user)
     try:
         publish_spatial_import(
             db, batch, reviewer_id=user.id, request_id=_request_id(request)

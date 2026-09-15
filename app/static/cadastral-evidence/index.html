@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123c2d">
+  <title>AranyaSetu — Cadastral Evidence</title>
+  <link rel="icon" href="/static/brand/aranyasetu-mark.webp" type="image/webp">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/static/cadastral-evidence/styles.css?v=20260907.1">
+</head>
+<body>
+  <a class="skip-link" href="#cadastralMain">Skip to cadastral evidence workspace</a>
+  <div class="top-rule"></div>
+  <header class="masthead">
+    <div class="brand" aria-label="AranyaSetu">
+      <span class="brand-emblem" aria-hidden="true">
+        <img src="/static/brand/aranyasetu-mark.webp" alt="" width="192" height="192">
+      </span>
+      <span class="brand-copy">
+        <strong>AranyaSetu</strong>
+        <span class="brand-subtitle">FRA Spatial Intelligence + DSS</span>
+      </span>
+    </div>
+
+    <div class="session-account">
+      <span><small>Signed in as</small><strong id="staffName">Registry staff</strong></span>
+      <button class="text-button" id="logoutButton" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <main id="cadastralMain" tabindex="-1">
+    <section class="evidence-scope" aria-label="Workspace purpose">
+      <strong>Cadastral Evidence</strong>
+      <span>Supporting FRA spatialization through revenue-document OCR, survey and subdivision matching, and parcel registry links.</span>
+    </section>
+    <div class="registry-navigation">
+      <nav class="app-tabs" aria-label="Registry sections">
+        <button class="app-tab active" id="newClaimTab" type="button" aria-pressed="true" aria-controls="newClaimView">Add evidence</button>
+        <button class="app-tab" id="claimedLandTab" type="button" aria-pressed="false" aria-controls="claimedLandView">Parcel registry</button>
+      </nav>
+      <a class="fra-platform-link" href="/fra">
+        <span class="fra-platform-icon" aria-hidden="true"><img src="/static/fra/icons/atlas.png" alt="" width="30" height="30"></span>
+        <span>Return to FRA Platform</span>
+        <svg class="fra-platform-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"></path></svg>
+      </a>
+    </div>
+
+    <section id="newClaimView" aria-labelledby="newClaimTab">
+    <nav class="workflow-nav" aria-label="Cadastral evidence workflow">
+      <ol class="steps">
+        <li class="step active" data-step="1" aria-current="step">
+          <span class="step-number">1</span><span><strong>Upload</strong><small>Choose document</small></span>
+        </li>
+        <li class="step" data-step="2">
+          <span class="step-number">2</span><span><strong>Review</strong><small>Verify and match</small></span>
+        </li>
+        <li class="step" data-step="3">
+          <span class="step-number">3</span><span><strong>Link</strong><small>Record parcel match</small></span>
+        </li>
+      </ol>
+    </nav>
+
+    <section class="upload-sheet" id="uploadSection" aria-labelledby="uploadTitle">
+      <div class="upload-intro">
+        <p class="section-label"><span>01</span> Document upload</p>
+        <h1 id="uploadTitle">Add cadastral evidence</h1>
+        <p>Choose a clear revenue or Patta scan that supports FRA land identification.</p>
+      </div>
+      <div class="upload-actions">
+        <label class="drop-zone" id="dropZone" for="pattaFile">
+          <input id="pattaFile" type="file" accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff,.pdf">
+          <small class="document-kind">Revenue / Patta document</small>
+          <span class="drop-icon-wrap" aria-hidden="true">
+            <svg class="drop-icon" viewBox="0 0 48 48">
+              <path d="M14 5.5h13l8 8V42H14z"/>
+              <path d="M27 5.5v8h8M24 33V20m-5 5 5-5 5 5"/>
+            </svg>
+          </span>
+          <strong>Drag and drop or <span>browse</span></strong>
+          <small>PDF, JPG or PNG · 10 MB max</small>
+        </label>
+        <button class="primary" id="processButton" disabled>Continue</button>
+        <p class="feedback" id="processStatus" role="status"></p>
+      </div>
+    </section>
+
+    <section class="workspace" id="workspace" aria-labelledby="reviewTitle" hidden>
+      <header class="workspace-heading">
+        <div>
+          <p class="section-label"><span>02</span> Review and match</p>
+          <h1 id="reviewTitle">Verify document details</h1>
+        </div>
+        <p>Check the extracted record against the parcel shown.</p>
+      </header>
+      <p class="feedback workspace-feedback" id="reviewFeedback" role="status"></p>
+
+      <article class="field-sheet">
+        <div class="section-heading">
+          <div><p class="section-label">Document fields</p><h3>Extracted record</h3></div>
+        </div>
+        <section class="document-bar" id="documentBar" aria-label="Current document" hidden>
+          <span class="document-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M9 3h9l6 6v20H9zM18 3v6h6"/></svg>
+          </span>
+          <span class="document-name"><small>Current document</small><strong id="documentName">—</strong></span>
+          <span class="status-readout status-readout--document" id="documentStatus" role="status" aria-atomic="true">Ready to review</span>
+          <button class="text-button" id="replaceButton" type="button">Replace document</button>
+        </section>
+        <form id="fieldForm" class="field-grid">
+          <label><span>State</span><input name="state" required><small data-evidence="state"></small></label>
+          <label><span>District</span><input name="district" required><small data-evidence="district"></small></label>
+          <label><span>Taluk</span><input name="taluk" required><small data-evidence="taluk"></small></label>
+          <label><span>Village</span><input name="village" required><small data-evidence="village"></small></label>
+          <label><span>Survey number</span><input name="survey_number" required><small data-evidence="survey_number"></small></label>
+          <label><span>Subdivision</span><input name="subdivision_number" required><small data-evidence="subdivision_number"></small></label>
+          <label class="span-two"><span>Document area (m²)</span><input name="document_area_sqm" type="number" min="0" step="0.01"><small data-evidence="area"></small></label>
+          <button class="text-button evidence-toggle span-two" id="evidenceToggle" type="button" aria-expanded="false">Show OCR sources</button>
+          <button class="secondary span-two" id="matchButton" type="submit">Update parcel match</button>
+        </form>
+        <div class="warnings" id="warnings" aria-live="polite"></div>
+        <div class="candidates" id="candidates" aria-label="Alternative parcel matches"></div>
+        <aside class="ocr-caution" id="ocrCaution" role="note" aria-label="OCR verification warning">
+          <span class="ocr-caution-icon" aria-hidden="true">!</span>
+          <div>
+            <strong><span id="confidenceBadge" role="status" aria-atomic="true">— OCR quality</span></strong>
+            <p>OCR extraction is not perfect. Verify every field against the original revenue document before recording a parcel link.</p>
+          </div>
+        </aside>
+      </article>
+
+      <article class="map-sheet">
+        <div class="section-heading">
+          <div><p class="section-label">Registry parcel</p><h3>Parcel match</h3></div>
+          <span class="status-readout status-readout--match match-status--waiting" id="matchPill" role="status" aria-atomic="true">Waiting</span>
+        </div>
+        <div class="map-empty" id="mapEmptyState" role="status" hidden>
+          <span class="map-empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="m7 12 11-5 12 5 11-5v29l-11 5-12-5-11 5zM18 7v29m12-24v29"/></svg>
+          </span>
+          <strong>Parcel boundary unavailable</strong>
+          <p id="mapEmptyMessage"></p>
+        </div>
+        <div id="parcelMap" role="region" aria-label="Map showing the selected parcel boundary"></div>
+        <dl class="parcel-summary" id="parcelSummary">
+          <div><dt>Survey</dt><dd id="summarySurvey">—</dd></div>
+          <div><dt>Village</dt><dd id="summaryVillage">—</dd></div>
+          <div><dt>Official area</dt><dd id="summaryOfficialArea">—</dd></div>
+          <div><dt>Document area</dt><dd id="summaryDocumentArea">—</dd></div>
+        </dl>
+        <div class="claim-controls" id="claimControls">
+          <label class="confirm-check"><input id="confirmParcel" type="checkbox" disabled><span>I verified this parcel and the supporting document details.</span></label>
+          <button class="primary register" id="claimButton" disabled>Record parcel link</button>
+          <button class="secondary" id="viewClaimedLandButton" type="button" hidden>View parcel registry</button>
+          <p class="feedback" id="claimResult" role="status"></p>
+        </div>
+        <div class="completion-panel" id="completionPanel" role="status" hidden>
+          <span class="completion-icon" aria-hidden="true">✓</span>
+          <div><strong id="completionTitle">Parcel link recorded</strong><p id="completionMessage"></p></div>
+          <button class="primary" id="viewClaimMapButton" type="button">View in parcel registry</button>
+          <button class="secondary" id="startOverButton" type="button">Add another evidence document</button>
+        </div>
+      </article>
+    </section>
+    </section>
+
+    <section class="claimed-land-view" id="claimedLandView" aria-labelledby="claimedLandTab" hidden>
+      <header class="claimed-land-heading">
+        <div>
+          <p class="section-label">Registered coverage</p>
+          <h1>Parcel registry</h1>
+        </div>
+        <p class="registry-summary" id="claimedLandSummary" role="status">Loading parcel links...</p>
+      </header>
+      <p class="feedback" id="claimedLandFeedback" role="status"></p>
+      <div class="claimed-land-grid">
+        <aside class="claim-index-sheet" aria-label="Parcel registry index">
+          <div class="claim-search-block">
+            <label for="claimedLandSearch">Find a parcel link</label>
+            <div class="claim-search-field">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4 4"/></svg>
+              <input id="claimedLandSearch" type="search" aria-label="Search parcel links" placeholder="Survey, village, district or file" autocomplete="off">
+            </div>
+            <p id="claimedLandSearchResults" class="claim-search-results" role="status">Loading parcel links...</p>
+          </div>
+          <ol class="claim-list" id="claimedLandList" aria-label="Registered parcel links"></ol>
+          <div class="claim-search-empty" id="claimedLandSearchEmpty" role="status" hidden>
+            <strong>No matching parcel links</strong>
+            <span>Try another survey number or place.</span>
+          </div>
+        </aside>
+        <article class="claimed-map-sheet">
+          <div class="claimed-map-header">
+            <div>
+              <p class="section-label">Parcel map</p>
+              <h2>Registered boundaries</h2>
+            </div>
+            <span>Click a boundary to find its record</span>
+          </div>
+          <div class="claimed-land-empty" id="claimedLandEmpty" role="status" hidden>
+            <span class="map-empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="m7 12 11-5 12 5 11-5v29l-11 5-12-5-11 5zM18 7v29m12-24v29"/></svg>
+            </span>
+            <strong>No parcel links recorded yet</strong>
+            <p>Verified cadastral evidence links will appear here.</p>
+          </div>
+          <div id="claimedLandMap" role="region" aria-label="Map of all registered parcel links"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>This supporting workspace records document-to-parcel links for FRA spatialization. It does not establish an FRA right or change registered ownership.</footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/static/cadastral-evidence/claimed-land.js?v=20260907.1"></script>
+  <script src="/static/cadastral-evidence/app.js?v=20260907.1"></script>
+</body>
+</html>

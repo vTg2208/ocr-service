@@ -1,47 +1,132 @@
 [
   {
-    "scheme_code": "TN-FRA-WATER-SUPPORT",
-    "display_name": "Water Security Support Review",
-    "version": "tn-sample-1",
-    "required_facts": ["has_title", "water_body_present"],
-    "condition": {
-      "all": [
-        {"eq": {"fact": "has_title", "value": true}},
-        {"eq": {"fact": "water_body_present", "value": false}}
-      ]
+    "scheme_code": "JJM",
+    "display_name": "Jal Jeevan Mission candidate convergence review",
+    "version": "tn-sample-4",
+    "required_facts": ["claim_status", "water_source_present", "groundwater_status", "water_stress_status"],
+    "condition": {"eq": {"fact": "water_source_present", "value": false}},
+    "required_evidence": ["water_source_present", "groundwater_status", "water_stress_status"],
+    "required_assets": [],
+    "exclusion_condition": {"any": [
+      {"eq": {"fact": "claim_status", "value": "rejected"}},
+      {"eq": {"fact": "claim_status", "value": "withdrawn"}},
+      {"eq": {"fact": "claim_status", "value": "superseded"}}
+    ]},
+    "priority_conditions": [
+      {"priority": "urgent", "condition": {"eq": {"fact": "groundwater_status", "value": "critical"}}, "reason": "Critical groundwater context increases departmental review priority."},
+      {"priority": "high", "condition": {"eq": {"fact": "water_stress_status", "value": "high"}}, "reason": "High water-stress context increases departmental review priority."}
+    ],
+    "freshness_requirements": {"water_source_present": 365, "groundwater_status": 730, "water_stress_status": 730},
+    "recommendation_logic": {
+      "recommended": "Refer the FRA village and supporting water evidence for Jal Jeevan Mission convergence review.",
+      "not_recommended": "Current verified evidence does not indicate a Jal Jeevan Mission convergence referral under this screening rule.",
+      "insufficient_data": "Collect current water-source and published water-context evidence before convergence review."
     },
-    "recommendation_text": "Refer the case for departmental water-support review.",
-    "source_reference": "synthetic://water-support/v1",
+    "recommendation_text": "Refer the FRA village and supporting water evidence for Jal Jeevan Mission convergence review.",
+    "source_reference": "candidate-convergence://JJM/tn-sample-4",
     "advisory_only": true
   },
   {
-    "scheme_code": "TN-FRA-HOUSING-SUPPORT",
-    "display_name": "Housing Support Review",
-    "version": "tn-sample-1",
-    "required_facts": ["has_title", "homestead_present"],
-    "condition": {
-      "all": [
-        {"eq": {"fact": "has_title", "value": true}},
-        {"eq": {"fact": "homestead_present", "value": false}}
-      ]
+    "scheme_code": "PMAY-G",
+    "display_name": "PMAY-G candidate convergence review",
+    "version": "tn-sample-4",
+    "required_facts": ["claim_status", "has_active_title", "homestead_observation", "village_socioeconomic"],
+    "condition": {"all": [
+      {"eq": {"fact": "has_active_title", "value": true}},
+      {"eq": {"fact": "homestead_observation", "value": false}}
+    ]},
+    "required_evidence": ["has_active_title", "homestead_observation", "village_socioeconomic"],
+    "required_assets": [],
+    "exclusion_condition": {"eq": {"fact": "claim_status", "value": "rejected"}},
+    "priority_conditions": [
+      {"priority": "high", "condition": {"eq": {"fact": "homestead_observation", "value": false}}, "reason": "A verified absence of a homestead observation increases housing review priority."}
+    ],
+    "freshness_requirements": {"homestead_observation": 730, "village_socioeconomic": 730},
+    "recommendation_logic": {
+      "recommended": "Refer the FRA holder and supporting evidence for PMAY-G convergence review.",
+      "not_recommended": "Current verified evidence does not indicate a PMAY-G convergence referral under this screening rule.",
+      "insufficient_data": "Collect current homestead and village-context evidence before convergence review."
     },
-    "recommendation_text": "Refer the case for departmental housing-support review.",
-    "source_reference": "synthetic://housing-support/v1",
+    "recommendation_text": "Refer the FRA holder and supporting evidence for PMAY-G convergence review.",
+    "source_reference": "candidate-convergence://PMAY-G/tn-sample-4",
     "advisory_only": true
   },
   {
-    "scheme_code": "TN-FRA-LIVELIHOOD-SUPPORT",
-    "display_name": "Livelihood Support Review",
-    "version": "tn-sample-1",
-    "required_facts": ["has_title", "agricultural_cover"],
-    "condition": {
-      "all": [
-        {"eq": {"fact": "has_title", "value": true}},
-        {"gte": {"fact": "agricultural_cover", "value": 0.25}}
-      ]
+    "scheme_code": "PM-KISAN",
+    "display_name": "PM-KISAN candidate convergence review",
+    "version": "tn-sample-4",
+    "required_facts": ["claim_status", "has_active_title", "agricultural_observation", "agricultural_land_fraction"],
+    "condition": {"all": [
+      {"eq": {"fact": "has_active_title", "value": true}},
+      {"eq": {"fact": "agricultural_observation", "value": true}},
+      {"gte": {"fact": "agricultural_land_fraction", "value": 0.25}}
+    ]},
+    "required_evidence": ["has_active_title", "agricultural_observation", "agricultural_land_fraction"],
+    "required_assets": ["agricultural_land"],
+    "exclusion_condition": {"eq": {"fact": "claim_status", "value": "rejected"}},
+    "priority_conditions": [
+      {"priority": "high", "condition": {"gte": {"fact": "agricultural_land_fraction", "value": 0.5}}, "reason": "Higher verified agricultural coverage increases livelihood review priority."}
+    ],
+    "freshness_requirements": {"agricultural_observation": 730, "agricultural_land_fraction": 730},
+    "recommendation_logic": {
+      "recommended": "Refer the FRA holder and agricultural evidence for PM-KISAN convergence review.",
+      "not_recommended": "Current verified evidence does not indicate a PM-KISAN convergence referral under this screening rule.",
+      "insufficient_data": "Collect current agricultural and FRA-title evidence before convergence review."
     },
-    "recommendation_text": "Refer the case for departmental livelihood-support review.",
-    "source_reference": "synthetic://livelihood-support/v1",
+    "recommendation_text": "Refer the FRA holder and agricultural evidence for PM-KISAN convergence review.",
+    "source_reference": "candidate-convergence://PM-KISAN/tn-sample-4",
+    "advisory_only": true
+  },
+  {
+    "scheme_code": "MGNREGA",
+    "display_name": "MGNREGA candidate convergence review",
+    "version": "tn-sample-4",
+    "required_facts": ["claim_status", "village_socioeconomic", "asset_deficiency_indicators"],
+    "condition": {"all": [
+      {"present": {"fact": "claim_status"}},
+      {"present": {"fact": "village_socioeconomic"}},
+      {"present": {"fact": "asset_deficiency_indicators"}}
+    ]},
+    "required_evidence": ["claim_status", "village_socioeconomic", "asset_deficiency_indicators"],
+    "required_assets": [],
+    "exclusion_condition": {"any": [
+      {"eq": {"fact": "claim_status", "value": "rejected"}},
+      {"eq": {"fact": "claim_status", "value": "withdrawn"}},
+      {"eq": {"fact": "claim_status", "value": "superseded"}}
+    ]},
+    "priority_conditions": [],
+    "freshness_requirements": {"village_socioeconomic": 730, "asset_deficiency_indicators": 365},
+    "recommendation_logic": {
+      "recommended": "Refer mapped FRA village asset gaps for MGNREGA works-convergence review.",
+      "not_recommended": "Current verified evidence does not indicate an MGNREGA works-convergence referral under this screening rule.",
+      "insufficient_data": "Collect current village and mapped-asset-gap evidence before convergence review."
+    },
+    "recommendation_text": "Refer mapped FRA village asset gaps for MGNREGA works-convergence review.",
+    "source_reference": "candidate-convergence://MGNREGA/tn-sample-4",
+    "advisory_only": true
+  },
+  {
+    "scheme_code": "DAJGUA",
+    "display_name": "DAJGUA candidate convergence review",
+    "version": "tn-sample-4",
+    "required_facts": ["claim_right_type", "claim_status", "village_socioeconomic", "source_quality_flags"],
+    "condition": {"all": [
+      {"present": {"fact": "claim_right_type"}},
+      {"present": {"fact": "village_socioeconomic"}},
+      {"present": {"fact": "source_quality_flags"}}
+    ]},
+    "required_evidence": ["claim_right_type", "village_socioeconomic", "source_quality_flags"],
+    "required_assets": [],
+    "exclusion_condition": {"eq": {"fact": "claim_status", "value": "superseded"}},
+    "priority_conditions": [],
+    "freshness_requirements": {"village_socioeconomic": 730, "source_quality_flags": 365},
+    "recommendation_logic": {
+      "recommended": "Refer the FRA village profile for DAJGUA multi-department convergence review.",
+      "not_recommended": "Current verified evidence does not indicate a DAJGUA convergence referral under this screening rule.",
+      "insufficient_data": "Collect current village-profile and source-quality evidence before convergence review."
+    },
+    "recommendation_text": "Refer the FRA village profile for DAJGUA multi-department convergence review.",
+    "source_reference": "candidate-convergence://DAJGUA/tn-sample-4",
     "advisory_only": true
   }
 ]
