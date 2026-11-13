@@ -10,7 +10,7 @@ def main():
     parser = argparse.ArgumentParser(description="Create or update a central registry user.")
     parser.add_argument("external_id")
     parser.add_argument("--display-name")
-    parser.add_argument("--role", choices=("user", "admin"), default="user")
+    parser.add_argument("--role", choices=("user", "reviewer", "admin"), default="user")
     args = parser.parse_args()
     with get_session_factory()() as session:
         user = session.scalar(select(User).where(User.external_id == args.external_id))

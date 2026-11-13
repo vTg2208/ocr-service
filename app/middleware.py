@@ -22,10 +22,12 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
         protected = request.url.path.startswith(
-            ("/api/cadastral-evidence", "/api/pattas", "/api/claims", "/api/parcels/resolve")
+            ("/api/auth", "/api/user", "/api/community", "/api/staff/portal", "/api/cadastral-evidence", "/api/pattas", "/api/claims", "/api/parcels/resolve")
         )
         if protected:
-            identity = request.headers.get("Authorization") or (request.client.host if request.client else "unknown")
+            identity = request.headers.get("Authorization") or request.cookies.get("parcel_registry_session") or (request.client.host if request.client else "unknown")
+            if request.url.path.startswith("/api/auth"):
+                identity = "auth:" + (request.client.host if request.client else "unknown")
             key = hashlib.sha256(identity.encode()).hexdigest()
             now = time.monotonic(); queue = self.hits[key]
             while queue and queue[0] <= now - self.window: queue.popleft()
@@ -38,6 +40,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         started = time.perf_counter()
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
+        if request.url.path.startswith(("/api/user", "/api/community", "/api/staff/portal", "/api/auth")):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Vary"] = "Cookie, Authorization"
         logger.info(
             "request_complete method=%s path=%s status=%s duration_ms=%.2f request_id=%s",
             request.method, request.url.path, response.status_code,

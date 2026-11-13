@@ -30,6 +30,8 @@ from app.api.fra_case_routes import router as fra_case_router
 from app.api.fra_geospatial_routes import router as fra_geospatial_router
 from app.api.fra_evidence_routes import router as fra_evidence_router
 from app.api.fra_dashboard_routes import router as fra_dashboard_router
+from app.api.user_portal_routes import router as user_portal_router
+from app.api.community_routes import router as community_router
 from app.api.auth import SESSION_COOKIE, get_current_user
 from app.config import get_settings
 from app.db.session import get_db
@@ -77,6 +79,8 @@ app.include_router(document_intelligence_router)
 app.include_router(cadastral_enrichment_router)
 app.include_router(cadastral_evidence_router)
 app.include_router(session_router)
+app.include_router(user_portal_router)
+app.include_router(community_router)
 app.include_router(cadastral_registry_router)
 app.include_router(fra_router)
 app.include_router(fra_archive_router)
@@ -118,14 +122,36 @@ async def legacy_cadastral_workspace_redirect() -> RedirectResponse:
 @app.get("/fra", include_in_schema=False)
 async def fra_workspace(request: Request, db: Session = Depends(get_db)):
     try:
-        get_current_user(
+        signed_in = get_current_user(
             authorization=request.headers.get("Authorization"),
             session_token=request.cookies.get(SESSION_COOKIE),
             db=db,
         )
     except HTTPException:
         return RedirectResponse("/login")
+    if signed_in.role == "user":
+        return RedirectResponse("/my-plots")
     return FileResponse(static_root / "fra" / "index.html")
+
+
+@app.get("/my-plots", include_in_schema=False)
+async def user_workspace(request: Request, db: Session = Depends(get_db)):
+    try:
+        get_current_user(authorization=request.headers.get("Authorization"), session_token=request.cookies.get(SESSION_COOKIE), db=db)
+    except HTTPException:
+        return RedirectResponse("/login")
+    return FileResponse(static_root / "user" / "index.html")
+
+
+@app.get("/staff-services", include_in_schema=False)
+async def staff_services(request: Request, db: Session = Depends(get_db)):
+    try:
+        user = get_current_user(authorization=request.headers.get("Authorization"), session_token=request.cookies.get(SESSION_COOKIE), db=db)
+    except HTTPException:
+        return RedirectResponse("/login")
+    if user.role not in {"reviewer", "admin"}:
+        return RedirectResponse("/my-plots")
+    return FileResponse(static_root / "staff-services" / "index.html")
 
 
 @app.exception_handler(HTTPException)

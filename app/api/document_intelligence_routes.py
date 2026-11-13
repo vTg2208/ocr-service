@@ -73,6 +73,8 @@ async def health_check() -> HealthResponse:
 async def readiness_check(db: Session = Depends(get_db)) -> HealthResponse:
     try:
         db.execute(text("SELECT 1"))
+        from app.services.portal_schema import assert_portal_schema
+        assert_portal_schema(db.get_bind())
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
     return HealthResponse(status="ready")

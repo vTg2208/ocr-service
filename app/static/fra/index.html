@@ -26,7 +26,8 @@
         <a class="rail-link" href="#planner" data-section="planner"><img class="rail-icon" src="/static/fra/icons/planner.png" alt="" aria-hidden="true" width="30" height="30">DSS Planner</a>
         <a class="rail-link" href="#reports" data-section="reports"><img class="rail-icon" src="/static/fra/icons/reports.png" alt="" aria-hidden="true" width="30" height="30">Reports</a>
       </nav>
-      <div class="rail-account"><span><small>Signed in as</small><strong id="staffName">Registry staff</strong></span><button id="logoutButton" type="button">Logout</button></div>
+      <a class="rail-link" href="/staff-services"><img class="rail-icon" src="/static/fra/icons/cases-nav.webp" alt="" aria-hidden="true" width="30" height="30">Community services</a>
+      <div class="rail-account"><span><small>Signed in as</small><strong id="staffName">Registry staff</strong></span><button id="logoutButton" data-logout type="button">Logout</button></div>
       <a class="rail-secondary" href="/cadastral-evidence">
         <span class="rail-secondary-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M16 10H4m5-5-5 5 5 5"></path></svg></span>
         <span>Cadastral evidence</span>
@@ -377,5 +378,5 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script src="/static/fra/api.js?v=20260905.1"></script><script src="/static/fra/archive.js?v=20260915.5"></script><script src="/static/fra/cases.js?v=20260915.4"></script><script src="/static/fra/assets.js?v=20260907.1"></script><script src="/static/fra/atlas.js?v=20260907.1"></script><script src="/static/fra/planner.js?v=20260907.1"></script><script src="/static/fra/reports.js?v=20260906.1"></script><script src="/static/fra/dashboard.js?v=20260906.3"></script><script src="/static/fra/app.js?v=20260915.4"></script>
-</body>
+<script src="/static/shared/session.js?v=3"></script></body>
 </html>

@@ -2,6 +2,7 @@ const FRAApi = (() => {
   function errorMessage(body) {
     const value = body?.message ?? body?.detail ?? body;
     if (typeof value === 'string') return value;
+    if (Array.isArray(value)) return value.map((item) => item.msg || 'Check the submitted fields.').join(' ');
     if (value && typeof value.message === 'string') return value.message;
     return 'The request could not be completed.';
   }

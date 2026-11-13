@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#123c2d">
-  <title>Staff sign in — AranyaSetu</title>
+  <title>Sign in — AranyaSetu</title>
   <link rel="icon" href="/static/brand/aranyasetu-mark.webp" type="image/webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,18 +21,24 @@
         <span class="brand-copy"><strong>AranyaSetu</strong><span class="brand-subtitle">FRA Spatial Intelligence + DSS</span></span>
       </header>
       <div class="login-copy">
-        <p>Registry staff</p>
+        <p>Your AranyaSetu workspace</p>
         <h1 id="loginTitle">Sign in</h1>
-        <span>Enter your four-digit access code.</span>
+        <span>Sign in for community updates, your land records and support.</span>
       </div>
-      <form id="loginForm" novalidate>
-        <label for="accessCode">Access code</label>
-        <input id="accessCode" name="access_code" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" aria-describedby="accessCodeHint" required>
-        <small id="accessCodeHint">Four digits issued to authorized project staff.</small>
-        <button id="loginButton" type="submit">Continue</button>
+      <div class="login-modes" role="group" aria-label="Choose access type">
+        <button type="button" data-mode="login" aria-pressed="true">Sign in</button>
+        <button type="button" data-mode="register" aria-pressed="false">Create account</button>
+        <button type="button" data-mode="staff" aria-pressed="false">Staff demo</button>
+      </div>
+      <form id="loginForm">
+        <div id="nameGroup" hidden><label for="displayName">Your name</label><input id="displayName" maxlength="120" autocomplete="name"></div>
+        <div id="accountGroup"><label for="username">Username</label><input id="username" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,79}" autocomplete="username" required><small>Letters, numbers, dots, hyphens or underscores.</small>
+        <label for="password">Password</label><input id="password" type="password" maxlength="128" autocomplete="current-password" required></div>
+        <div id="staffGroup" hidden><label for="accessCode">Staff demo access code</label><input id="accessCode" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code"><small>Temporary project staff access.</small></div>
+        <button id="loginButton" type="submit">Sign in</button>
         <p id="loginStatus" class="login-status" role="status" aria-live="polite"></p>
       </form>
-      <footer>Authorized FRA platform access for project staff.</footer>
+      <footer>New accounts open a personal dashboard. Staff permissions are assigned by an administrator.</footer>
     </section>
   </main>
   <script src="/static/login/app.js?v=20260826.1"></script>

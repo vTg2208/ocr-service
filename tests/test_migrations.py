@@ -65,6 +65,7 @@ class MigrationTests(unittest.TestCase):
             "imagery_scenes", "imagery_artifacts", "dss_fact_snapshots",
             "scheme_catalog_entries", "fra_village_asset_profiles",
         } <= tables)
+        self.assertTrue({"user_plots", "account_credentials", "plot_submissions", "support_tickets", "community_profiles"} <= tables)
         self.assertIn("fra_field_reviews", tables)
         self.assertTrue({"village_id", "supersedes_claim_id"} <= fra_claim_columns)
         self.assertIn("granted_area_sqm", fra_title_columns)
@@ -94,7 +95,7 @@ class MigrationTests(unittest.TestCase):
     def test_completion_migration_is_the_only_head(self):
         config = Config("alembic.ini")
 
-        self.assertEqual(ScriptDirectory.from_config(config).get_heads(), ["20260906_0013"])
+        self.assertEqual(ScriptDirectory.from_config(config).get_heads(), ["20261112_0016"])
 
     def test_fresh_migration_has_no_orm_schema_drift(self):
         with tempfile.TemporaryDirectory() as temp:

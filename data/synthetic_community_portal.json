@@ -1,0 +1,14 @@
+{
+  "contract_version": "community-portal-v1",
+  "synthetic": true,
+  "staff_username": "synthetic-portal-reviewer",
+  "users": [
+    {"username":"synthetic-portal-alice","display_name":"Synthetic Alice","public_label":"Synthetic North Community","plot_name":"Synthetic North Plot","coordinates":[[78.1400,11.6600],[78.1410,11.6600],[78.1410,11.6610],[78.1400,11.6610]],"approve":true},
+    {"username":"synthetic-portal-bob","display_name":"Synthetic Bob","public_label":"Synthetic East Community","plot_name":"Synthetic East Plot","coordinates":[[78.1420,11.6600],[78.1430,11.6600],[78.1430,11.6610],[78.1420,11.6610]],"approve":true},
+    {"username":"synthetic-portal-charlie","display_name":"Synthetic Charlie","public_label":"Synthetic Pending Community","plot_name":"Synthetic Pending Overlap","coordinates":[[78.1405,11.6600],[78.1415,11.6600],[78.1415,11.6610],[78.1405,11.6610]],"approve":false}
+  ],
+  "publications":[
+    {"kind":"announcement","title":"Synthetic community review day","body":"TEST DATA: A demonstration field review is being planned. This is not an official announcement.","status":"published","synthetic":true},
+    {"kind":"scheme","title":"Synthetic water-support opportunity","body":"TEST DATA: Example information for testing scheme-assistance requests. No real programme or eligibility is implied.","status":"published","synthetic":true}
+  ]
+}

@@ -7,3 +7,6 @@ from app.db import fra_operational_models as fra_operational_models  # noqa: F40
 from app.db.session import get_db
 
 __all__ = ["Base", "get_db"]
+
+from app.db import user_plot_models  # noqa: F401
+from app.db import community_models  # noqa: F401

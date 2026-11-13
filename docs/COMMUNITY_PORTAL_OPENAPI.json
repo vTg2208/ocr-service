@@ -1,0 +1,6757 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AranyaSetu",
+    "description": "AranyaSetu is an FRA Spatial Intelligence and Decision Support platform for digitizing records, managing rights workflows, mapping evidence, and producing reviewable scheme recommendations.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/auth/demo-login": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Demo Login",
+        "operationId": "demo_login_api_auth_demo_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Current Session",
+        "operationId": "current_session_api_auth_session_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "User portal"
+        ],
+        "summary": "Register",
+        "operationId": "register_api_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "User portal"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/plots": {
+      "get": {
+        "tags": [
+          "User portal"
+        ],
+        "summary": "List Plots",
+        "operationId": "list_plots_api_user_plots_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "User portal"
+        ],
+        "summary": "Create Plot",
+        "operationId": "create_plot_api_user_plots_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlotInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/plots/{plot_id}": {
+      "get": {
+        "tags": [
+          "User portal"
+        ],
+        "summary": "Get Plot",
+        "operationId": "get_plot_api_user_plots__plot_id__get",
+        "parameters": [
+          {
+            "name": "plot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plot Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "User portal"
+        ],
+        "summary": "Update Plot",
+        "operationId": "update_plot_api_user_plots__plot_id__put",
+        "parameters": [
+          {
+            "name": "plot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plot Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlotInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/dashboard": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "User Dashboard",
+        "operationId": "user_dashboard_api_user_dashboard_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/profile": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Get Profile",
+        "operationId": "get_profile_api_user_profile_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Get Profile Api User Profile Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Save Profile",
+        "operationId": "save_profile_api_user_profile_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Save Profile Api User Profile Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/atlas": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "User Atlas",
+        "operationId": "user_atlas_api_user_atlas_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlasResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/overlap-check": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Overlap Check",
+        "operationId": "overlap_check_api_user_overlap_check_post",
+        "parameters": [
+          {
+            "name": "plot_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Plot Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlotInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Overlap Check Api User Overlap Check Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/submissions": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "My Submissions",
+        "operationId": "my_submissions_api_user_submissions_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/plots/{plot_id}/submit": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Submit Plot",
+        "operationId": "submit_plot_api_user_plots__plot_id__submit_post",
+        "parameters": [
+          {
+            "name": "plot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plot Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Submit Plot Api User Plots  Plot Id  Submit Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/publications": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "User Publications",
+        "operationId": "user_publications_api_user_publications_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/resources": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "My Resources",
+        "operationId": "my_resources_api_user_resources_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/tickets": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Create Ticket",
+        "operationId": "create_ticket_api_user_tickets_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Create Ticket Api User Tickets Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "My Tickets",
+        "operationId": "my_tickets_api_user_tickets_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/tickets/{ticket_id}": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "My Ticket",
+        "operationId": "my_ticket_api_user_tickets__ticket_id__get",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response My Ticket Api User Tickets  Ticket Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/tickets/{ticket_id}/messages": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "User Reply",
+        "operationId": "user_reply_api_user_tickets__ticket_id__messages_post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response User Reply Api User Tickets  Ticket Id  Messages Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/community/tickets/{ticket_id}/attachments": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Attach File",
+        "operationId": "attach_file_api_community_tickets__ticket_id__attachments_post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_attach_file_api_community_tickets__ticket_id__attachments_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Attach File Api Community Tickets  Ticket Id  Attachments Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/community/tickets/{ticket_id}/attachments/{attachment_id}": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Download Attachment",
+        "operationId": "download_attachment_api_community_tickets__ticket_id__attachments__attachment_id__get",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "attachment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attachment Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/submissions": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Staff Submissions",
+        "operationId": "staff_submissions_api_staff_portal_submissions_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/submissions/{submission_id}/review": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Review Submission",
+        "operationId": "review_submission_api_staff_portal_submissions__submission_id__review_post",
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Review Submission Api Staff Portal Submissions  Submission Id  Review Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/tickets": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Staff Tickets",
+        "operationId": "staff_tickets_api_staff_portal_tickets_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/tickets/{ticket_id}": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Staff Ticket",
+        "operationId": "staff_ticket_api_staff_portal_tickets__ticket_id__get",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Staff Ticket Api Staff Portal Tickets  Ticket Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/tickets/{ticket_id}/messages": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Staff Reply",
+        "operationId": "staff_reply_api_staff_portal_tickets__ticket_id__messages_post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Staff Reply Api Staff Portal Tickets  Ticket Id  Messages Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/publications": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Staff Publications",
+        "operationId": "staff_publications_api_staff_portal_publications_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Create Publication",
+        "operationId": "create_publication_api_staff_portal_publications_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Create Publication Api Staff Portal Publications Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/publications/{publication_id}": {
+      "put": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Edit Publication",
+        "operationId": "edit_publication_api_staff_portal_publications__publication_id__put",
+        "parameters": [
+          {
+            "name": "publication_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Publication Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Edit Publication Api Staff Portal Publications  Publication Id  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/plots": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Staff Plots",
+        "operationId": "staff_plots_api_staff_portal_plots_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/resources": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Staff Resources",
+        "operationId": "staff_resources_api_staff_portal_resources_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Create Resource",
+        "operationId": "create_resource_api_staff_portal_resources_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Create Resource Api Staff Portal Resources Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/resources/{resource_id}": {
+      "patch": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Review Resource",
+        "operationId": "review_resource_api_staff_portal_resources__resource_id__patch",
+        "parameters": [
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resource Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Review Resource Api Staff Portal Resources  Resource Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/submissions/{submission_id}/overlaps": {
+      "get": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Staff Submission Overlaps",
+        "operationId": "staff_submission_overlaps_api_staff_portal_submissions__submission_id__overlaps_get",
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Staff Submission Overlaps Api Staff Portal Submissions  Submission Id  Overlaps Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/profile/otp/request": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Request Contact Otp",
+        "operationId": "request_contact_otp_api_user_profile_otp_request_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OTPRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Request Contact Otp Api User Profile Otp Request Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/profile/otp/verify": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Verify Contact Otp",
+        "operationId": "verify_contact_otp_api_user_profile_otp_verify_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OTPVerify"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Verify Contact Otp Api User Profile Otp Verify Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/plot-requests": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Request Staff Mapping",
+        "description": "Create request, message and required evidence in one transaction.",
+        "operationId": "request_staff_mapping_api_user_plot_requests_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_request_staff_mapping_api_user_plot_requests_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Request Staff Mapping Api User Plot Requests Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/portal/tickets/{ticket_id}/plot": {
+      "post": {
+        "tags": [
+          "Community portal v1"
+        ],
+        "summary": "Map Requested Plot",
+        "description": "Staff map for the request owner; approval remains a separate action.",
+        "operationId": "map_requested_plot_api_staff_portal_tickets__ticket_id__plot_post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "parcel_registry_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parcel Registry Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlotInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Map Requested Plot Api Staff Portal Tickets  Ticket Id  Plot Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AreaField": {
+        "properties": {
+          "raw_value": {
+            "type": "string",
+            "title": "Raw Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "normalized_square_metres": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Square Metres"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/FieldEvidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "raw_value",
+          "evidence"
+        ],
+        "title": "AreaField"
+      },
+      "AssetInferenceJobCreate": {
+        "properties": {
+          "village_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Village Id"
+          },
+          "claim_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Id"
+          },
+          "model_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Model Version Id"
+          },
+          "scene_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Scene Id"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Idempotency Key"
+          },
+          "manifest": {
+            "type": "object",
+            "title": "Manifest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "model_version_id",
+          "scene_id",
+          "idempotency_key",
+          "manifest"
+        ],
+        "title": "AssetInferenceJobCreate"
+      },
+      "AssetReviewCreate": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "rejected",
+              "corrected"
+            ],
+            "title": "Outcome"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "corrected_value": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected Value"
+          },
+          "corrected_geometry": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected Geometry"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "outcome",
+          "expected_revision"
+        ],
+        "title": "AssetReviewCreate"
+      },
+      "AtlasResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "FeatureCollection"
+            ],
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "contract_version": {
+            "type": "string",
+            "title": "Contract Version",
+            "default": "community-portal-v1"
+          },
+          "boundary_meaning": {
+            "type": "string",
+            "title": "Boundary Meaning",
+            "default": "Staff-approved community mapping; not an official FRA title."
+          }
+        },
+        "type": "object",
+        "required": [
+          "features"
+        ],
+        "title": "AtlasResponse"
+      },
+      "Body_attach_file_api_community_tickets__ticket_id__attachments_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "title": "Expected Revision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "expected_revision"
+        ],
+        "title": "Body_attach_file_api_community_tickets__ticket_id__attachments_post"
+      },
+      "Body_create_import_api_fra_geospatial_imports_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "dataset_kind": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Dataset Kind"
+          },
+          "source_authority": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Source Authority"
+          },
+          "source_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Source Version"
+          },
+          "declared_crs": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Declared Crs",
+            "default": "EPSG:4326"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "title": "Synthetic",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "dataset_kind",
+          "source_authority",
+          "source_version"
+        ],
+        "title": "Body_create_import_api_fra_geospatial_imports_post"
+      },
+      "Body_evaluate_endpoint_api_fra_document_intelligence_evaluate_post": {
+        "properties": {
+          "reference_text": {
+            "type": "string",
+            "title": "Reference Text"
+          },
+          "ocr_text": {
+            "type": "string",
+            "title": "Ocr Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reference_text",
+          "ocr_text"
+        ],
+        "title": "Body_evaluate_endpoint_api_fra_document_intelligence_evaluate_post"
+      },
+      "Body_extract_cadastral_document_endpoint_api_cadastral_evidence_documents_extract_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_extract_cadastral_document_endpoint_api_cadastral_evidence_documents_extract_post"
+      },
+      "Body_extract_cadastral_text_endpoint_api_cadastral_evidence_text_extract_post": {
+        "properties": {
+          "ocr_text": {
+            "type": "string",
+            "title": "Ocr Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ocr_text"
+        ],
+        "title": "Body_extract_cadastral_text_endpoint_api_cadastral_evidence_text_extract_post"
+      },
+      "Body_ocr_endpoint_api_fra_document_intelligence_ocr_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_ocr_endpoint_api_fra_document_intelligence_ocr_post"
+      },
+      "Body_process_cadastral_document_api_cadastral_evidence_documents_process_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_process_cadastral_document_api_cadastral_evidence_documents_process_post"
+      },
+      "Body_request_staff_mapping_api_user_plot_requests_post": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 3,
+            "title": "Subject"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "message",
+          "file"
+        ],
+        "title": "Body_request_staff_mapping_api_user_plot_requests_post"
+      },
+      "Body_upload_batch_api_fra_archive_batch_upload_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "source_office": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Source Office"
+          },
+          "district": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "District"
+          },
+          "intake_kind": {
+            "type": "string",
+            "title": "Intake Kind",
+            "default": "legacy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files",
+          "source_office",
+          "district"
+        ],
+        "title": "Body_upload_batch_api_fra_archive_batch_upload_post"
+      },
+      "Body_upload_supporting_document_api_fra_cases__claim_id__supporting_documents_post": {
+        "properties": {
+          "document_type": {
+            "type": "string",
+            "title": "Document Type"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_type",
+          "source",
+          "description",
+          "file"
+        ],
+        "title": "Body_upload_supporting_document_api_fra_cases__claim_id__supporting_documents_post"
+      },
+      "Body_upload_tabular_register_api_fra_archive_tabular_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "source_office": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Source Office"
+          },
+          "district": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "District"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "source_office",
+          "district"
+        ],
+        "title": "Body_upload_tabular_register_api_fra_archive_tabular_upload_post"
+      },
+      "ConflictUpdate": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "reviewing",
+              "resolved",
+              "dismissed"
+            ],
+            "title": "Status"
+          },
+          "resolution_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ConflictUpdate"
+      },
+      "CoordinateField": {
+        "properties": {
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "decimal",
+              "dms"
+            ],
+            "title": "Format"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/FieldEvidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "format",
+          "evidence"
+        ],
+        "title": "CoordinateField"
+      },
+      "DSSEvaluationCreate": {
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Claim Id"
+          },
+          "facts": {
+            "type": "object",
+            "title": "Facts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "claim_id"
+        ],
+        "title": "DSSEvaluationCreate"
+      },
+      "DSSReferralCreate": {
+        "properties": {
+          "department": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Department"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "urgent"
+            ],
+            "title": "Priority",
+            "default": "normal"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Idempotency Key"
+          },
+          "assigned_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "department",
+          "idempotency_key"
+        ],
+        "title": "DSSReferralCreate"
+      },
+      "DSSReferralUpdate": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "referred",
+              "under_review",
+              "closed",
+              "withdrawn"
+            ],
+            "title": "Status"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          },
+          "assigned_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "expected_revision"
+        ],
+        "title": "DSSReferralUpdate"
+      },
+      "DashboardResponse": {
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "title": "Contract Version",
+            "default": "community-portal-v1"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "profile": {
+            "type": "object",
+            "title": "Profile"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "announcements": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Announcements"
+          },
+          "schemes": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Schemes"
+          },
+          "resources": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Resources"
+          },
+          "submissions": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Submissions"
+          },
+          "tickets": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Tickets"
+          },
+          "plot_workflows": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Plot Workflows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "profile",
+          "counts",
+          "announcements",
+          "schemes",
+          "resources",
+          "submissions",
+          "tickets"
+        ],
+        "title": "DashboardResponse"
+      },
+      "DemoLoginRequest": {
+        "properties": {
+          "access_code": {
+            "type": "string",
+            "title": "Access Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_code"
+        ],
+        "title": "DemoLoginRequest"
+      },
+      "DerivedDSSEvaluationCreate": {
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Claim Id"
+          },
+          "derivation_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Derivation Version",
+            "default": "fra-dss-facts-v1"
+          },
+          "rule_set_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Set Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "claim_id"
+        ],
+        "title": "DerivedDSSEvaluationCreate"
+      },
+      "DocumentReference": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/FieldEvidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "value",
+          "evidence"
+        ],
+        "title": "DocumentReference"
+      },
+      "EvidenceCreate": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "oral_statement",
+              "documentary",
+              "physical",
+              "map",
+              "satellite_observation"
+            ],
+            "title": "Category"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Source"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Description"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "source_page_start": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Page Start"
+          },
+          "source_page_end": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Page End"
+          },
+          "provenance": {
+            "type": "object",
+            "title": "Provenance"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "category",
+          "source",
+          "description"
+        ],
+        "title": "EvidenceCreate"
+      },
+      "EvidencedText": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/FieldEvidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "evidence"
+        ],
+        "title": "EvidencedText"
+      },
+      "FRAArchiveBatchFileResult": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "legacy_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacy Reference"
+          },
+          "record_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Id"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "processing_job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processing Job Id"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "status"
+        ],
+        "title": "FRAArchiveBatchFileResult"
+      },
+      "FRAArchiveBatchUploadResponse": {
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Batch Id"
+          },
+          "batch_status": {
+            "type": "string",
+            "title": "Batch Status"
+          },
+          "accepted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Accepted"
+          },
+          "rejected": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rejected"
+          },
+          "replayed": {
+            "type": "boolean",
+            "title": "Replayed"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FRAArchiveBatchFileResult"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "batch_id",
+          "batch_status",
+          "accepted",
+          "rejected",
+          "replayed",
+          "files"
+        ],
+        "title": "FRAArchiveBatchUploadResponse"
+      },
+      "FRAArchivePromote": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision"
+        ],
+        "title": "FRAArchivePromote"
+      },
+      "FRAArchiveRecordCreate": {
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Batch Id"
+          },
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          },
+          "legacy_reference": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Legacy Reference"
+          },
+          "synthetic": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synthetic"
+          },
+          "provenance": {
+            "type": "object",
+            "title": "Provenance"
+          },
+          "extraction_manifest": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Manifest"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "batch_id",
+          "document_id",
+          "legacy_reference"
+        ],
+        "title": "FRAArchiveRecordCreate"
+      },
+      "FRAArchiveRejection": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "FRAArchiveRejection"
+      },
+      "FRAArchiveReview": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          },
+          "reviewed_fields": {
+            "type": "object",
+            "title": "Reviewed Fields"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "reviewed_fields"
+        ],
+        "title": "FRAArchiveReview"
+      },
+      "FRAClaimCreate": {
+        "properties": {
+          "claim_number": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Claim Number"
+          },
+          "right_type": {
+            "type": "string",
+            "enum": [
+              "IFR",
+              "CR",
+              "CFR"
+            ],
+            "title": "Right Type"
+          },
+          "rights_holder_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Rights Holder Id"
+          },
+          "gram_sabha_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gram Sabha Id"
+          },
+          "village_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Village Id"
+          },
+          "parcel_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parcel Id"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "supersedes_claim_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Claim Id"
+          },
+          "claimed_area_sqm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed Area Sqm"
+          },
+          "provenance": {
+            "type": "object",
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "claim_number",
+          "right_type",
+          "rights_holder_id"
+        ],
+        "title": "FRAClaimCreate"
+      },
+      "FRAImportBatchCreate": {
+        "properties": {
+          "source_label": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Source Label"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "State",
+            "default": "Tamil Nadu"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Idempotency Key"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "title": "Synthetic"
+          },
+          "provenance": {
+            "type": "object",
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_label",
+          "idempotency_key",
+          "synthetic"
+        ],
+        "title": "FRAImportBatchCreate"
+      },
+      "FRAIntakePromote": {
+        "properties": {
+          "rights_holder_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Rights Holder Id"
+          },
+          "right_type": {
+            "type": "string",
+            "enum": [
+              "IFR",
+              "CR",
+              "CFR"
+            ],
+            "title": "Right Type"
+          },
+          "gram_sabha_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gram Sabha Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rights_holder_id",
+          "right_type",
+          "expected_revision"
+        ],
+        "title": "FRAIntakePromote"
+      },
+      "FRAIntakeUpdate": {
+        "properties": {
+          "target_state": {
+            "type": "string",
+            "enum": [
+              "awaiting_triage",
+              "ready_for_promotion",
+              "not_fra",
+              "duplicate"
+            ],
+            "title": "Target State"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Reasons"
+          },
+          "triage": {
+            "type": "object",
+            "title": "Triage"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target_state",
+          "expected_revision"
+        ],
+        "title": "FRAIntakeUpdate"
+      },
+      "FieldEvidence": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "llm_with_ocr_evidence",
+              "hybrid"
+            ],
+            "title": "Method"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "source_verified": {
+            "type": "boolean",
+            "title": "Source Verified",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "method",
+          "confidence"
+        ],
+        "title": "FieldEvidence"
+      },
+      "GeometryCreate": {
+        "properties": {
+          "geometry": {
+            "type": "object",
+            "title": "Geometry"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Source"
+          },
+          "provenance": {
+            "type": "object",
+            "title": "Provenance"
+          },
+          "boundary_quality": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Boundary Quality",
+            "default": "unknown"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "geometry",
+          "source"
+        ],
+        "title": "GeometryCreate"
+      },
+      "GramSabhaCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "village": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Village"
+          },
+          "gram_panchayat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gram Panchayat"
+          },
+          "block": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "external_reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Reference"
+          },
+          "boundary": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary"
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "village"
+        ],
+        "title": "GramSabhaCreate"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "example": "healthy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse"
+      },
+      "HistoricalEvidenceRequest": {
+        "properties": {
+          "target_years": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Target Years"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target_years"
+        ],
+        "title": "HistoricalEvidenceRequest"
+      },
+      "HistoricalEvidenceReview": {
+        "properties": {
+          "expected_reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Reviewed At"
+          },
+          "verification_state": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "rejected",
+              "needs_field_verification"
+            ],
+            "title": "Verification State"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_reviewed_at",
+          "verification_state",
+          "notes"
+        ],
+        "title": "HistoricalEvidenceReview"
+      },
+      "ItemsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "contract_version": {
+            "type": "string",
+            "title": "Contract Version",
+            "default": "community-portal-v1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ItemsResponse"
+      },
+      "LandExtractionResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "partial",
+              "not_configured",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/LandRecord"
+            },
+            "type": "array",
+            "title": "Records"
+          },
+          "record_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Record Count"
+          },
+          "requires_human_review": {
+            "type": "boolean",
+            "title": "Requires Human Review"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "record_count",
+          "requires_human_review"
+        ],
+        "title": "LandExtractionResult"
+      },
+      "LandLocation": {
+        "properties": {
+          "village": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taluk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "district": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "LandLocation"
+      },
+      "LandRecord": {
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "title": "Record Id"
+          },
+          "holder": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holder_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "organization",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holder Type"
+          },
+          "survey_number": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "area": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AreaField"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoordinateField"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoordinateField"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "$ref": "#/components/schemas/LandLocation"
+          },
+          "land_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidencedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uses_or_resources": {
+            "items": {
+              "$ref": "#/components/schemas/EvidencedText"
+            },
+            "type": "array",
+            "title": "Uses Or Resources"
+          },
+          "document_references": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentReference"
+            },
+            "type": "array",
+            "title": "Document References"
+          },
+          "other_attributes": {
+            "items": {
+              "$ref": "#/components/schemas/OtherLandAttribute"
+            },
+            "type": "array",
+            "title": "Other Attributes"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "record_id"
+        ],
+        "title": "LandRecord"
+      },
+      "LegacyPromotionCreate": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          },
+          "rights_holder_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Rights Holder Id"
+          },
+          "right_type": {
+            "type": "string",
+            "enum": [
+              "IFR",
+              "CR",
+              "CFR"
+            ],
+            "title": "Right Type"
+          },
+          "gram_sabha_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gram Sabha Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "rights_holder_id",
+          "right_type"
+        ],
+        "title": "LegacyPromotionCreate"
+      },
+      "LoginInput": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 3,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginInput"
+      },
+      "MessageInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "in_progress",
+                  "awaiting_user",
+                  "resolved",
+                  "closed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "message"
+        ],
+        "title": "MessageInput"
+      },
+      "ModelVersionCreate": {
+        "properties": {
+          "task": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Task"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "adapter_type": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Adapter Type"
+          },
+          "framework": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Framework"
+          },
+          "artifact_uri": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Uri"
+          },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum"
+          },
+          "label_map": {
+            "type": "object",
+            "title": "Label Map"
+          },
+          "metrics": {
+            "type": "object",
+            "title": "Metrics"
+          },
+          "configuration": {
+            "type": "object",
+            "title": "Configuration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task",
+          "name",
+          "version",
+          "adapter_type"
+        ],
+        "title": "ModelVersionCreate"
+      },
+      "OCREvaluationResponse": {
+        "properties": {
+          "character_error_rate": {
+            "type": "number",
+            "title": "Character Error Rate",
+            "description": "Lower is better; 0 means exact character match."
+          },
+          "word_error_rate": {
+            "type": "number",
+            "title": "Word Error Rate",
+            "description": "Lower is better; 0 means exact word match."
+          },
+          "numeric_field_accuracy": {
+            "type": "number",
+            "title": "Numeric Field Accuracy",
+            "description": "Exact-match recall percentage."
+          },
+          "date_accuracy": {
+            "type": "number",
+            "title": "Date Accuracy",
+            "description": "Exact-match recall percentage."
+          },
+          "survey_number_accuracy": {
+            "type": "number",
+            "title": "Survey Number Accuracy",
+            "description": "Exact-match recall percentage."
+          },
+          "critical_field_exact_match_accuracy": {
+            "type": "number",
+            "title": "Critical Field Exact Match Accuracy",
+            "description": "Exact-match recall for survey identifier and area-value pairs."
+          }
+        },
+        "type": "object",
+        "required": [
+          "character_error_rate",
+          "word_error_rate",
+          "numeric_field_accuracy",
+          "date_accuracy",
+          "survey_number_accuracy",
+          "critical_field_exact_match_accuracy"
+        ],
+        "title": "OCREvaluationResponse"
+      },
+      "OCRLandResponse": {
+        "properties": {
+          "ocr": {
+            "$ref": "#/components/schemas/OCRResponse"
+          },
+          "land_extraction": {
+            "$ref": "#/components/schemas/LandExtractionResult"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ocr",
+          "land_extraction"
+        ],
+        "title": "OCRLandResponse"
+      },
+      "OCRQualityAssessment": {
+        "properties": {
+          "model_confidence": {
+            "type": "number",
+            "title": "Model Confidence",
+            "description": "Average recognition confidence reported by the OCR model; not measured accuracy."
+          },
+          "confidence_is_text_accuracy": {
+            "type": "boolean",
+            "title": "Confidence Is Text Accuracy",
+            "default": false
+          },
+          "requires_human_review": {
+            "type": "boolean",
+            "title": "Requires Human Review"
+          },
+          "review_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Review Reasons"
+          },
+          "dates": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dates"
+          },
+          "area_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Area Values"
+          },
+          "survey_fields": {
+            "items": {
+              "$ref": "#/components/schemas/SurveyFieldCandidate"
+            },
+            "type": "array",
+            "title": "Survey Fields"
+          },
+          "mixed_script_tokens": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mixed Script Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_confidence",
+          "requires_human_review"
+        ],
+        "title": "OCRQualityAssessment"
+      },
+      "OCRResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "processing_time": {
+            "type": "number",
+            "title": "Processing Time",
+            "description": "Time taken in seconds"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "description": "Average OCR model confidence (0-100); this is not textual accuracy."
+          },
+          "quality": {
+            "$ref": "#/components/schemas/OCRQualityAssessment"
+          },
+          "prompt_provided": {
+            "type": "boolean",
+            "title": "Prompt Provided",
+            "description": "Whether a prompt was provided for LLM analysis",
+            "default": false
+          },
+          "analysis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis",
+            "description": "Dynamic LLM output if prompt was provided"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "processing_time",
+          "text",
+          "confidence",
+          "quality"
+        ],
+        "title": "OCRResponse"
+      },
+      "OTPRequest": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "phone"
+            ],
+            "title": "Channel"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "channel"
+        ],
+        "title": "OTPRequest"
+      },
+      "OTPVerify": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "phone"
+            ],
+            "title": "Channel"
+          },
+          "challenge_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Challenge Id"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "title": "Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "channel",
+          "challenge_id",
+          "code"
+        ],
+        "title": "OTPVerify"
+      },
+      "OtherLandAttribute": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/FieldEvidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "evidence"
+        ],
+        "title": "OtherLandAttribute"
+      },
+      "ParcelLinkRequest": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          },
+          "parcel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Parcel Id"
+          },
+          "confirmed_fields": {
+            "type": "object",
+            "title": "Confirmed Fields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_id",
+          "parcel_id",
+          "confirmed_fields"
+        ],
+        "title": "ParcelLinkRequest"
+      },
+      "PlotInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "village": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Village",
+            "default": ""
+          },
+          "coordinates": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 3,
+            "title": "Coordinates"
+          },
+          "expected_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Revision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "coordinates"
+        ],
+        "title": "PlotInput"
+      },
+      "ProfileInput": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "community_name": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Community Name",
+            "default": ""
+          },
+          "public_label": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Public Label",
+            "default": ""
+          },
+          "village": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Village",
+            "default": ""
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 30,
+            "title": "Phone",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Email",
+            "default": ""
+          },
+          "livelihood": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Livelihood",
+            "default": ""
+          },
+          "share_label": {
+            "type": "boolean",
+            "title": "Share Label",
+            "default": false
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display_name",
+          "expected_revision"
+        ],
+        "title": "ProfileInput"
+      },
+      "PublicationInput": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "announcement",
+              "scheme"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 3,
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Body"
+          },
+          "source_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Source Url",
+            "default": ""
+          },
+          "district": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "District",
+            "default": ""
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "title": "Status",
+            "default": "draft"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "title": "Synthetic",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "title",
+          "body"
+        ],
+        "title": "PublicationInput"
+      },
+      "PublicationUpdate": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "announcement",
+              "scheme"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 3,
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Body"
+          },
+          "source_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Source Url",
+            "default": ""
+          },
+          "district": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "District",
+            "default": ""
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "title": "Status",
+            "default": "draft"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "title": "Synthetic",
+            "default": false
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "title",
+          "body",
+          "expected_revision"
+        ],
+        "title": "PublicationUpdate"
+      },
+      "RegisterInput": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 3,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password",
+          "display_name"
+        ],
+        "title": "RegisterInput"
+      },
+      "ResolveRequest": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "district": {
+            "type": "string",
+            "title": "District"
+          },
+          "taluk": {
+            "type": "string",
+            "title": "Taluk"
+          },
+          "village": {
+            "type": "string",
+            "title": "Village"
+          },
+          "survey_number": {
+            "type": "string",
+            "title": "Survey Number"
+          },
+          "subdivision_number": {
+            "type": "string",
+            "title": "Subdivision Number",
+            "default": ""
+          },
+          "document_area_sqm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Area Sqm"
+          },
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "district",
+          "taluk",
+          "village",
+          "survey_number",
+          "document_id"
+        ],
+        "title": "ResolveRequest"
+      },
+      "ResourceInput": {
+        "properties": {
+          "plot_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Plot Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Source"
+          },
+          "verification_state": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "verified",
+              "rejected"
+            ],
+            "title": "Verification State",
+            "default": "unverified"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "title": "Synthetic",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plot_id",
+          "name",
+          "description",
+          "source"
+        ],
+        "title": "ResourceInput"
+      },
+      "ResourceUpdate": {
+        "properties": {
+          "verification_state": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "verified",
+              "rejected"
+            ],
+            "title": "Verification State"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "verification_state"
+        ],
+        "title": "ResourceUpdate"
+      },
+      "ReviewInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "under_review",
+              "approved",
+              "changes_requested",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "status",
+          "note"
+        ],
+        "title": "ReviewInput"
+      },
+      "RevisionInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision"
+        ],
+        "title": "RevisionInput"
+      },
+      "RightsHolderCreate": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "holder_type": {
+            "type": "string",
+            "enum": [
+              "individual",
+              "household",
+              "community"
+            ],
+            "title": "Holder Type"
+          },
+          "claimant_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimant Category"
+          },
+          "external_reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Reference"
+          },
+          "gram_sabha_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gram Sabha Id"
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display_name",
+          "holder_type"
+        ],
+        "title": "RightsHolderCreate"
+      },
+      "SatelliteAssetInput": {
+        "properties": {
+          "asset_class": {
+            "type": "string",
+            "enum": [
+              "agricultural_land",
+              "water_body",
+              "homestead",
+              "forest_cover",
+              "road",
+              "infrastructure",
+              "other_asset"
+            ],
+            "title": "Asset Class"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ],
+            "title": "Value"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "asset_class",
+          "value",
+          "confidence"
+        ],
+        "title": "SatelliteAssetInput"
+      },
+      "SatelliteIngestionRequest": {
+        "properties": {
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date"
+          },
+          "collection": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Collection"
+          },
+          "band_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Band Keys"
+          },
+          "max_cloud": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Max Cloud",
+            "default": 30
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start_date",
+          "end_date",
+          "collection",
+          "band_keys"
+        ],
+        "title": "SatelliteIngestionRequest"
+      },
+      "SatelliteObservationCreate": {
+        "properties": {
+          "scene_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Scene Id"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "local-manifest"
+            ],
+            "const": "local-manifest",
+            "title": "Provider",
+            "default": "local-manifest"
+          },
+          "source_uri": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Uri"
+          },
+          "acquired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acquired At"
+          },
+          "observations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SatelliteAssetInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observations"
+          },
+          "analyser_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Analyser Version",
+            "default": "local-v1"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scene_id"
+        ],
+        "title": "SatelliteObservationCreate"
+      },
+      "SchemeCatalogCreate": {
+        "properties": {
+          "scheme_code": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Scheme Code"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Department"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "approving_authority": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approving Authority"
+          },
+          "source_reference": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Source Reference"
+          },
+          "definition": {
+            "type": "object",
+            "title": "Definition"
+          },
+          "authoritative": {
+            "type": "boolean",
+            "title": "Authoritative",
+            "default": false
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scheme_code",
+          "display_name",
+          "version",
+          "department",
+          "source_reference"
+        ],
+        "title": "SchemeCatalogCreate"
+      },
+      "SchemeRuleSetCreate": {
+        "properties": {
+          "catalog_entry_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Catalog Entry Id"
+          },
+          "scheme_code": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Scheme Code"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "required_facts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Facts"
+          },
+          "condition": {
+            "type": "object",
+            "title": "Condition"
+          },
+          "required_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Evidence"
+          },
+          "required_assets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Assets"
+          },
+          "exclusion_condition": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Condition"
+          },
+          "priority_conditions": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Priority Conditions"
+          },
+          "freshness_requirements": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Freshness Requirements"
+          },
+          "recommendation_logic": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Recommendation Logic"
+          },
+          "recommendation_text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Recommendation Text"
+          },
+          "source_reference": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Source Reference"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "catalog_entry_id",
+          "scheme_code",
+          "display_name",
+          "version",
+          "condition",
+          "recommendation_text",
+          "source_reference"
+        ],
+        "title": "SchemeRuleSetCreate"
+      },
+      "SpatialEvaluationCreate": {
+        "properties": {
+          "geometry": {
+            "type": "object",
+            "title": "Geometry"
+          },
+          "min_sqm": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Min Sqm",
+            "default": 1.0
+          },
+          "min_percent": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Min Percent",
+            "default": 0.1
+          },
+          "policy_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Policy Version",
+            "default": "fra-spatial-v1"
+          },
+          "reference_policy_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Reference Policy Version",
+            "default": "fra-reference-v1"
+          },
+          "reference_kinds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "administrative_boundary",
+                "protected_area",
+                "forest_compartment",
+                "forest_area",
+                "water_body",
+                "cadastral_parcel",
+                "infrastructure"
+              ]
+            },
+            "type": "array",
+            "title": "Reference Kinds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "geometry"
+        ],
+        "title": "SpatialEvaluationCreate"
+      },
+      "SpatialFeaturePreview": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "source_record_id": {
+            "type": "string",
+            "title": "Source Record Id"
+          },
+          "geometry": {
+            "type": "object",
+            "title": "Geometry"
+          },
+          "properties": {
+            "type": "object",
+            "title": "Properties"
+          },
+          "repaired": {
+            "type": "boolean",
+            "title": "Repaired",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "source_record_id",
+          "geometry",
+          "properties"
+        ],
+        "title": "SpatialFeaturePreview"
+      },
+      "SpatialImportPreview": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "dataset_kind": {
+            "type": "string",
+            "title": "Dataset Kind"
+          },
+          "source_authority": {
+            "type": "string",
+            "title": "Source Authority"
+          },
+          "source_version": {
+            "type": "string",
+            "title": "Source Version"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "declared_crs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Crs"
+          },
+          "detected_crs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Crs"
+          },
+          "record_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Record Count"
+          },
+          "valid_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Valid Count"
+          },
+          "invalid_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Invalid Count"
+          },
+          "repaired_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Repaired Count"
+          },
+          "duplicate_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duplicate Count"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "title": "Synthetic"
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "synthetic",
+              "declared_authoritative",
+              "published_synthetic_reference",
+              "published_authoritative_reference"
+            ],
+            "title": "Classification"
+          },
+          "errors": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/SpatialFeaturePreview"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "dataset_kind",
+          "source_authority",
+          "source_version",
+          "state",
+          "declared_crs",
+          "detected_crs",
+          "record_count",
+          "valid_count",
+          "invalid_count",
+          "repaired_count",
+          "duplicate_count",
+          "synthetic",
+          "classification",
+          "errors",
+          "features"
+        ],
+        "title": "SpatialImportPreview"
+      },
+      "SpatialImportSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "dataset_kind": {
+            "type": "string",
+            "title": "Dataset Kind"
+          },
+          "source_authority": {
+            "type": "string",
+            "title": "Source Authority"
+          },
+          "source_version": {
+            "type": "string",
+            "title": "Source Version"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "declared_crs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Crs"
+          },
+          "detected_crs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Crs"
+          },
+          "record_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Record Count"
+          },
+          "valid_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Valid Count"
+          },
+          "invalid_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Invalid Count"
+          },
+          "repaired_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Repaired Count"
+          },
+          "duplicate_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duplicate Count"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "title": "Synthetic"
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "synthetic",
+              "declared_authoritative",
+              "published_synthetic_reference",
+              "published_authoritative_reference"
+            ],
+            "title": "Classification"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "dataset_kind",
+          "source_authority",
+          "source_version",
+          "state",
+          "declared_crs",
+          "detected_crs",
+          "record_count",
+          "valid_count",
+          "invalid_count",
+          "repaired_count",
+          "duplicate_count",
+          "synthetic",
+          "classification"
+        ],
+        "title": "SpatialImportSummary"
+      },
+      "SurveyFieldCandidate": {
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "title": "Identifier"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "source_verified": {
+            "type": "boolean",
+            "title": "Source Verified",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifier",
+          "value"
+        ],
+        "title": "SurveyFieldCandidate"
+      },
+      "TicketInput": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "boundary_dispute",
+              "scheme_assistance",
+              "technical",
+              "general",
+              "plot_mapping"
+            ],
+            "title": "Category"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 180,
+            "minLength": 3,
+            "title": "Subject"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "plot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plot Id"
+          },
+          "scheme_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheme Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "category",
+          "subject",
+          "message"
+        ],
+        "title": "TicketInput"
+      },
+      "TitleCreate": {
+        "properties": {
+          "title_number": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title Number"
+          },
+          "geometry_version_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry Version Id"
+          },
+          "granted_area_sqm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted Area Sqm"
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title_number"
+        ],
+        "title": "TitleCreate"
+      },
+      "TransitionCreate": {
+        "properties": {
+          "target_status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "gram_sabha_verified",
+              "sdlc_review",
+              "dlc_decided",
+              "granted",
+              "rejected",
+              "remanded",
+              "withdrawn",
+              "superseded"
+            ],
+            "title": "Target Status"
+          },
+          "authority_level": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Authority Level"
+          },
+          "outcome": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Outcome"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "decision_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Date"
+          },
+          "reference_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Number"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target_status",
+          "authority_level",
+          "outcome"
+        ],
+        "title": "TransitionCreate"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

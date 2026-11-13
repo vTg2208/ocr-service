@@ -79,3 +79,9 @@ footer { padding-top: 20px; color: var(--ink-500); border-top: 1px solid var(--r
   .login-shell { padding: 16px; }
   .login-card { padding: 28px 24px; gap: 28px; }
 }
+[hidden] { display: none !important; }
+.login-modes { display: flex; gap: 6px; flex-wrap: wrap; }
+.login-modes button { flex: 1; min-height: 40px; padding: 8px; background: transparent; color: var(--green-800); letter-spacing: 0; }
+.login-modes button[aria-pressed="true"] { background: var(--green-800); color: white; }
+#nameGroup, #accountGroup, #staffGroup { display: grid; gap: 10px; }
+#username, #password, #displayName { letter-spacing: 0; font-size: 1rem; }

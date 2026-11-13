@@ -402,10 +402,6 @@ if (typeof document !== 'undefined') (() => {
     fileInput.dispatchEvent(new Event('change'));
   });
 
-  $('#logoutButton').addEventListener('click', async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.assign('/login');
-  });
   processButton.addEventListener('click', processFile);
   $('#newClaimTab').addEventListener('click', () => showAppView('new'));
   $('#claimedLandTab').addEventListener('click', () => showAppView('claimed'));

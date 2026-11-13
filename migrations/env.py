@@ -16,6 +16,9 @@ if config.config_file_name:
     fileConfig(config.config_file_name)
 if config.get_main_option("sqlalchemy.url") == "sqlite+pysqlite:///./aranyasetu.db":
     config.set_main_option("sqlalchemy.url", get_settings().database_url)
+from app.db import user_plot_models  # noqa: F401
+from app.db import community_models  # noqa: F401
+
 target_metadata = Base.metadata
 
 

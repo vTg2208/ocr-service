@@ -72,7 +72,7 @@ class LandMappingUITests(unittest.TestCase):
         self.assertNotIn("Signed access token", html)
         self.assertNotIn("Staff access code", html)
 
-    def test_login_page_has_one_access_code_form_and_inline_feedback(self):
+    def test_login_page_supports_accounts_and_staff_code_with_inline_feedback(self):
         html = (LOGIN_ROOT / "index.html").read_text(encoding="utf-8")
         parser = StructureParser()
         parser.feed(html)
@@ -80,7 +80,9 @@ class LandMappingUITests(unittest.TestCase):
         self.assertTrue({"loginForm", "accessCode", "loginButton", "loginStatus"}.issubset(parser.ids))
         self.assertIn('inputmode="numeric"', html)
         self.assertIn('maxlength="4"', html)
-        self.assertIn("Authorized FRA platform access", html)
+        self.assertTrue({"username", "password", "displayName"}.issubset(parser.ids))
+        self.assertIn('data-mode="register"', html)
+        self.assertIn('data-mode="staff"', html)
         self.assertNotIn("demonstration", html.casefold())
 
     def test_confidence_badge_is_labeled_as_ocr_quality(self):
