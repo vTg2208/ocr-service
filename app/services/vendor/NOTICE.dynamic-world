@@ -1,0 +1,7 @@
+Dynamic World PyTorch port: Copyright 2026 Caleb Robinson.
+Source: https://github.com/calebrob6/dynamic_world_pytorch
+Pinned revision: 626dc9114145f31534c5d6cebd28816f81c5e284
+Original model: Google Dynamic World, Brown et al. (2022), Apache-2.0.
+https://github.com/google/dynamicworld
+https://doi.org/10.1038/s41597-022-01307-4
+Modification: restrict torch.load to weights_only=True.

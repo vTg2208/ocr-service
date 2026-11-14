@@ -1,0 +1,146 @@
+{
+  "validation_kind": "live_execution_only",
+  "execution_date": "2026-11-14",
+  "not_a_parcel": true,
+  "area_definition": "Small validation window around the centroid of the bundled public Arpisampalaiyam village polygon; not an authoritative parcel.",
+  "geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            79.59926011681802,
+            11.885171623718318
+          ],
+          [
+            79.59926011681802,
+            11.889171623718319
+          ],
+          [
+            79.59526011681803,
+            11.889171623718319
+          ],
+          [
+            79.59526011681803,
+            11.885171623718318
+          ],
+          [
+            79.59926011681802,
+            11.885171623718318
+          ]
+        ]
+      ]
+    ]
+  },
+  "model_version": "dynamic-world-626dc911-v1",
+  "source_revision": "626dc9114145f31534c5d6cebd28816f81c5e284",
+  "weights_sha256": "a70b3a60ceec1bd468dee75b94d30c511ecfbf19b31cd4a3c205c3dc2b8efb94",
+  "scene_id": "S2C_44PLU_20260305_0_L1C",
+  "quality_scene_id": "S2C_44PLU_20260305_0_L2A",
+  "input_shape": [
+    9,
+    109,
+    109
+  ],
+  "summary": {
+    "classes": [
+      {
+        "class_id": 0,
+        "class_name": "water",
+        "color": "#419bdf",
+        "pixels": 5,
+        "estimated_area_sqm": 500.0,
+        "fraction": 0.0025826446280991736,
+        "mean_probability": 0.23150965571403503
+      },
+      {
+        "class_id": 1,
+        "class_name": "trees",
+        "color": "#397d49",
+        "pixels": 858,
+        "estimated_area_sqm": 85800.0,
+        "fraction": 0.4431818181818182,
+        "mean_probability": 0.5349926352500916
+      },
+      {
+        "class_id": 2,
+        "class_name": "grass",
+        "color": "#88b053",
+        "pixels": 3,
+        "estimated_area_sqm": 300.0,
+        "fraction": 0.0015495867768595042,
+        "mean_probability": 0.331654816865921
+      },
+      {
+        "class_id": 3,
+        "class_name": "flooded_vegetation",
+        "color": "#7a87c6",
+        "pixels": 0,
+        "estimated_area_sqm": 0.0,
+        "fraction": 0.0,
+        "mean_probability": null
+      },
+      {
+        "class_id": 4,
+        "class_name": "crops",
+        "color": "#e49635",
+        "pixels": 85,
+        "estimated_area_sqm": 8500.0,
+        "fraction": 0.04390495867768595,
+        "mean_probability": 0.2792605459690094
+      },
+      {
+        "class_id": 5,
+        "class_name": "shrub_and_scrub",
+        "color": "#dfc35a",
+        "pixels": 81,
+        "estimated_area_sqm": 8100.0,
+        "fraction": 0.04183884297520661,
+        "mean_probability": 0.28942275047302246
+      },
+      {
+        "class_id": 6,
+        "class_name": "built_area",
+        "color": "#c4281b",
+        "pixels": 888,
+        "estimated_area_sqm": 88800.0,
+        "fraction": 0.45867768595041325,
+        "mean_probability": 0.5736638307571411
+      },
+      {
+        "class_id": 7,
+        "class_name": "bare_ground",
+        "color": "#a59b8f",
+        "pixels": 16,
+        "estimated_area_sqm": 1600.0,
+        "fraction": 0.008264462809917356,
+        "mean_probability": 0.20721739530563354
+      },
+      {
+        "class_id": 8,
+        "class_name": "snow_and_ice",
+        "color": "#b39fe1",
+        "pixels": 0,
+        "estimated_area_sqm": 0.0,
+        "fraction": 0.0,
+        "mean_probability": null
+      }
+    ],
+    "valid_pixels": 1936,
+    "target_pixels": 1936,
+    "valid_fraction": 1.0,
+    "estimated_area_sqm": 193600.0,
+    "resolution_metres": 10,
+    "warnings": [
+      "10 m land-cover estimates; not a cadastral survey or verified asset inventory.",
+      "More than a quarter of valid pixels have maximum model probability below 0.5."
+    ],
+    "accuracy": null,
+    "evaluation_status": "not_evaluated_on_local_ground_truth"
+  },
+  "limitations": [
+    "No ground-truth accuracy evaluation.",
+    "No authoritative claim, asset or title records created.",
+    "The nine-band baseline is separate from the presentation compact-band experiment."
+  ]
+}

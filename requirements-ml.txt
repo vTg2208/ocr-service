@@ -1,0 +1,3 @@
+# Install in the worker environment after requirements.txt.
+# CPU runtime is sufficient for the compact Dynamic World model.
+torch==2.6.0

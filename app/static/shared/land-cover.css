@@ -1,0 +1,13 @@
+.land-cover-dialog { width: min(1000px, 94vw); max-height: 90vh; padding: 24px; border: 1px solid #c9d8ce; border-radius: 12px; background: #fafbf8; color: #243c30; }
+.land-cover-dialog::backdrop { background: #142b25aa; }
+.land-cover-dialog header { display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+.land-cover-dialog h2 { margin: 0; }
+.land-cover-request { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin: 20px 0; }
+.land-cover-request label { display: grid; gap: 6px; }
+.land-cover-request input { padding: 9px; border: 1px solid #bdcbbf; border-radius: 5px; }
+.land-cover-map { height: 330px; margin: 16px 0; }
+.land-cover-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: .875rem; }
+.land-cover-table td, .land-cover-table th { padding: 9px 6px; border-bottom: 1px solid #d7dfd6; text-align: left; }
+.land-cover-downloads { display: flex; gap: 12px; flex-wrap: wrap; }
+.land-cover-dialog button:focus-visible, .land-cover-dialog a:focus-visible { outline: 3px solid #b77220; outline-offset: 3px; }
+@media (max-width: 600px) { .land-cover-dialog { padding: 14px; } .land-cover-table { font-size: .75rem; } .land-cover-map { height: 250px; } }
