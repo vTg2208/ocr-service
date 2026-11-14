@@ -81,3 +81,6 @@ main[tabindex="-1"]:focus, main:focus:not(:focus-visible) { outline: 0; }
 .panel-link { border-radius: var(--radius-sm); }
 
 @media (min-width: 900px) { .login-hero > div { align-self: center; } .login-hero { grid-template-rows: 1fr auto; } }
+
+/* Count badges sit at the right edge of their nav item instead of wrapping to a new grid row */
+.rail-link > .nav-count { position: absolute; right: 10px; top: 50%; margin: 0; transform: translateY(-50%); }

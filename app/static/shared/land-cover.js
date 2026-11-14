@@ -67,7 +67,7 @@
     }
     const summary = analysis.summary || {};
     nodes.results.append(el('h3', `${analysis.state.replaceAll('_', ' ')} · ${analysis.review_state.replaceAll('_', ' ')}`));
-    nodes.results.append(el('p', `${analysis.model_version} · ${analysis.provenance?.acquired_at ? new Date(analysis.provenance.acquired_at).toLocaleDateString('en-IN') : 'Acquisition pending'}`, 'muted'));
+    nodes.results.append(el('p', `${analysis.model_version} · ${analysis.provenance?.acquired_at ? new Date(analysis.provenance.acquired_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : 'Acquisition pending'}`, 'muted'));
     if (analysis.error) nodes.results.append(el('p', analysis.error));
     if (analysis.current_boundary === false) nodes.results.append(el('p', 'This result describes an older boundary. Retain it as historical evidence; request analysis of the current approved boundary.'));
     if (analysis.can_retry && staff) {
