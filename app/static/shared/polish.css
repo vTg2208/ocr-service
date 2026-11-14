@@ -1,0 +1,83 @@
+/* Shared professional polish layer. Loaded last; refines the base tokens without changing layout or markup. */
+:root {
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+  --shadow-1: 0 1px 2px color-mix(in oklch, oklch(24% .032 155) 8%, transparent);
+  --shadow-2: 0 4px 14px color-mix(in oklch, oklch(24% .032 155) 10%, transparent), 0 1px 3px color-mix(in oklch, oklch(24% .032 155) 8%, transparent);
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; scroll-behavior: smooth; }
+body { font-feature-settings: "tnum" 1; }
+::selection { background: color-mix(in oklch, oklch(55% .095 155) 35%, white); }
+
+/* Controls */
+button, .primary-action, .secondary-action, input, select, textarea { transition: background-color .15s var(--ease), border-color .15s var(--ease), box-shadow .15s var(--ease), transform .08s var(--ease), color .15s var(--ease); }
+input, select, textarea { border-radius: var(--radius-sm) !important; box-shadow: inset 0 1px 1px color-mix(in oklch, black 4%, transparent); }
+input:hover, select:hover, textarea:hover { border-color: oklch(55% .095 155); }
+input:focus, select:focus, textarea:focus { border-color: oklch(52% .11 172); outline: 0; box-shadow: 0 0 0 3px color-mix(in oklch, oklch(52% .11 172) 28%, transparent); }
+.primary-action, .secondary-action, .context-filter-toggle { border-radius: var(--radius-sm) !important; }
+.primary-action { box-shadow: var(--shadow-1); }
+.primary-action:hover:not(:disabled) { background: oklch(35% .09 155); box-shadow: var(--shadow-2); transform: translateY(-1px); }
+.secondary-action:hover:not(:disabled), .context-filter-toggle:hover { background: oklch(91% .035 155); border-color: oklch(43% .1 155); }
+button:active:not(:disabled) { transform: translateY(0) scale(.985); }
+
+/* Navigation rail */
+.navigation-rail { box-shadow: 2px 0 12px color-mix(in oklch, black 14%, transparent); }
+.rail-link { position: relative; border-radius: var(--radius-sm) !important; transition: background-color .15s var(--ease), color .15s var(--ease); }
+.rail-link.active::before { content: ""; position: absolute; left: -12px; top: 12px; bottom: 12px; width: 4px; border-radius: 0 4px 4px 0; background: oklch(88% .1 94); }
+.rail-link.active { background: color-mix(in oklch, white 16%, transparent) !important; box-shadow: inset 0 0 0 1px color-mix(in oklch, white 14%, transparent); }
+.rail-icon { border-radius: 8px !important; box-shadow: 0 1px 3px color-mix(in oklch, black 25%, transparent); }
+.rail-account button, .rail-secondary { border-radius: var(--radius-sm) !important; }
+.nav-count { display: inline-flex; min-width: 22px; justify-content: center; margin-left: auto; line-height: 1.4; color: #fff; background: color-mix(in oklch, white 16%, transparent); border-color: color-mix(in oklch, white 30%, transparent) !important; font-weight: 700; }
+
+/* Surfaces */
+.section-bar { border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.case-ledger, .plot-details { border-radius: var(--radius-md); }
+h1 { letter-spacing: -.02em; }
+
+/* Tables */
+table { border-collapse: separate; border-spacing: 0; }
+thead th { position: sticky; top: 0; z-index: 1; background: color-mix(in oklch, oklch(91% .035 155) 70%, white); border-bottom: 1px solid oklch(78% .022 155); }
+tbody tr { transition: background-color .12s var(--ease); }
+tbody tr:hover { background: color-mix(in oklch, oklch(91% .035 155) 55%, transparent); }
+
+/* Maps */
+.leaflet-container { font-family: inherit; }
+.leaflet-bar { border: 0 !important; box-shadow: var(--shadow-2) !important; border-radius: var(--radius-sm) !important; overflow: hidden; }
+
+/* Scrollbars */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, oklch(43% .1 155) 45%, transparent) transparent; }
+
+/* Entrance: subtle, once */
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-panel:not([hidden]) { animation: panel-in .28s var(--ease) both; }
+  @keyframes panel-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+/* Login: split brand panel + form card */
+.login-shell { padding: 0; grid-template-columns: minmax(0, 1fr); place-items: stretch; }
+.login-hero { display: none; }
+.login-card { width: 100%; max-width: 440px; margin: auto; border-radius: var(--radius-lg); border-top-width: 4px; box-shadow: var(--shadow-2); }
+.login-modes button { border-radius: var(--radius-sm) !important; }
+@media (max-width: 899px) { .login-shell { padding: 24px 16px; } }
+@media (min-width: 900px) {
+  .login-shell { grid-template-columns: minmax(0, 1fr) minmax(420px, 560px); }
+  .login-hero { display: grid; align-content: space-between; padding: 56px; color: #fff; background: radial-gradient(120% 80% at 0% 0%, oklch(40% .09 155), transparent 60%), linear-gradient(160deg, oklch(30% .08 155), oklch(22% .06 160)); }
+  .login-hero h2 { margin: 0 0 14px; font: 700 2.4rem/1.1 "Literata", serif; letter-spacing: -.02em; max-width: 14ch; }
+  .login-hero p { margin: 0; max-width: 44ch; color: color-mix(in oklch, white 82%, transparent); font-size: 1.02rem; }
+  .login-hero ul { margin: 28px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .login-hero li { display: flex; gap: 12px; align-items: flex-start; color: color-mix(in oklch, white 90%, transparent); }
+  .login-hero li::before { content: ""; flex: 0 0 8px; height: 8px; margin-top: 9px; border-radius: 50%; background: oklch(82% .13 95); }
+  .login-hero small { color: color-mix(in oklch, white 62%, transparent); }
+}
+
+/* Programmatic focus on the landmark should not draw a ring; real controls keep theirs */
+main[tabindex="-1"]:focus, main:focus:not(:focus-visible) { outline: 0; }
+
+/* Dashboard and workspace cards */
+.analytics-panel, .queue-sheet, .summary-ledger, .status-ledger, .case-info-card, .context-filter-panel, .case-ledger { border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-1); }
+.mis-panel-heading { border-radius: 0; }
+.analytics-panel:hover, .queue-sheet:hover { box-shadow: var(--shadow-2); }
+.panel-link { border-radius: var(--radius-sm); }
+
+@media (min-width: 900px) { .login-hero > div { align-self: center; } .login-hero { grid-template-rows: 1fr auto; } }
