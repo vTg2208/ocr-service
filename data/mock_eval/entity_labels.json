@@ -1,0 +1,4 @@
+[
+  {"mock": true, "claimant_name": "Mock Claimant A", "village": "Mock Village", "right_type": "IFR", "area_hectares": "1.20"},
+  {"mock": true, "claimant_name": "Mock Claimant B", "village": "Mock Village", "right_type": "CFR", "area_hectares": "40.00"}
+]
