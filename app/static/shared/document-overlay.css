@@ -1,0 +1,7 @@
+.document-overlay-dialog { width: min(1100px,94vw); max-height: 94vh; overflow: auto; padding: 24px; border: 1px solid #bacbbd; background: #fafbf8; color: #243c30; }
+.document-overlay-dialog::backdrop { background: #142b25aa; }
+.document-overlay-dialog header,.document-overlay-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+.document-overlay-controls label { display: flex; gap: 8px; align-items: center; }
+.document-overlay-dialog button,.document-overlay-dialog select { padding: 8px; border: 1px solid #9eafa2; background: white; color: #243c30; }
+.document-overlay-viewport { max-height: 65vh; overflow: auto; border: 1px solid #c9d8ce; margin-top: 16px; background: #e6e8e2; }
+.document-overlay-viewport svg { width: 100%; height: auto; display: block; }
