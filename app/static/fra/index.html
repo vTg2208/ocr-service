@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
   <link rel="stylesheet" href="/static/fra/styles.css?v=20260915.3">
-</head>
+<link rel="stylesheet" href="/static/shared/land-cover.css?v=1"><link rel="stylesheet" href="/static/shared/document-overlay.css?v=1"><link rel="stylesheet" href="/static/shared/polish.css?v=1"></head>
 <body>
   <a class="skip-link" id="skipLink" href="#workspaceMain">Skip to workspace</a>
   <div class="app-shell">
@@ -159,6 +159,7 @@
                 <section class="source-evidence" id="sourceEvidence" aria-labelledby="sourceTitle">
                   <div class="section-bar"><h3 id="sourceTitle">Document extraction</h3><span id="modelVersion">Model loading</span></div>
                   <p id="extractionWarnings" class="extraction-warnings" role="status">Loading extraction warnings.</p>
+                  <button type="button" id="documentEvidenceButton" data-document-record="" class="secondary-action" disabled>View source image and field locations</button>
                   <pre id="rawExtraction">Loading reviewer-accessible source text.</pre>
                   <dl class="provenance-list" id="extractionProvenance"><div><dt>Confidence</dt><dd>Loading</dd></div><div><dt>Processing</dt><dd>Loading</dd></div><div><dt>Provenance</dt><dd>Loading</dd></div></dl>
                 </section>
@@ -207,6 +208,7 @@
               <button id="backToCases" class="text-action case-back" type="button">&larr; Back to All Cases</button>
               <article class="case-detail-sheet" id="caseDetail">
                 <header class="sheet-heading"><div><h2 id="caseReference">No case selected</h2><p id="caseLocation">Select a case from the register.</p></div><span id="caseCurrentState" class="record-state">No match</span></header>
+                <p><button id="caseLandCover" type="button" class="secondary-action" disabled>Satellite land cover</button></p>
                 <nav class="case-detail-tabs" aria-label="Case details"><button type="button" data-case-tab="overview" class="active" aria-pressed="true">Overview</button><button type="button" data-case-tab="claim" aria-pressed="false">Claim information</button><button type="button" data-case-tab="evidence" aria-pressed="false">Documents &amp; evidence</button><button type="button" data-case-tab="history" aria-pressed="false">Decisions / history</button><button type="button" data-case-tab="map" aria-pressed="false">Map</button></nav>
                 <div class="case-overview" data-case-pane="overview">
                   <section class="case-info-card"><h3>Case overview</h3><dl><div><dt>Rights holder / community</dt><dd id="caseOverviewHolder"></dd></div><div><dt>Holder type</dt><dd id="caseOverviewHolderType"></dd></div><div><dt>Right type</dt><dd id="caseOverviewType"></dd></div><div><dt>Claim number</dt><dd id="caseOverviewNumber"></dd></div><div><dt>Status</dt><dd id="caseOverviewStatus"></dd></div></dl></section>
@@ -287,8 +289,7 @@
             </div>
           </div>
         </section>
-        <section class="workspace-panel development-workspace" id="atlasPanel" data-panel="atlas" aria-labelledby="atlasDevelopmentTitle" hidden>
-          <div class="under-development-screen"><span class="under-development-mark" aria-hidden="true">⌁</span><p>FRA Atlas</p><h1 id="atlasDevelopmentTitle">Under development</h1></div>
+        <section class="workspace-panel" id="atlasPanel" data-panel="atlas" aria-labelledby="atlasTitle" hidden>
           <header class="workspace-title"><div><h1 id="atlasTitle">FRA Atlas</h1><p>Explore FRA claims and titles with administrative, land, forest, water and infrastructure context.</p></div><div class="workspace-heading-actions filter-host"><span>Reference view</span></div></header>
           <div class="map-workspace">
             <aside class="tool-sheet">
@@ -308,8 +309,7 @@
             <aside class="result-sheet"><div class="section-bar"><h2>Mapped records</h2><span id="atlasFeatureCount">Loading features</span></div><ol id="atlasResults" class="result-list" aria-label="Filtered Atlas features"></ol></aside>
           </div>
         </section>
-        <section class="workspace-panel development-workspace" id="assetsPanel" data-panel="assets" aria-labelledby="assetsDevelopmentTitle" hidden>
-          <div class="under-development-screen"><span class="under-development-mark" aria-hidden="true">⌁</span><p>Asset Intelligence</p><h1 id="assetsDevelopmentTitle">Under development</h1></div>
+        <section class="workspace-panel" id="assetsPanel" data-panel="assets" aria-labelledby="assetsTitle" hidden>
           <header class="workspace-title"><div><h1 id="assetsTitle">Satellite Asset Intelligence</h1><p>Prepare real satellite imagery for spatial FRA records, then review model observations.</p></div><div class="workspace-heading-actions filter-host"><span>Human-in-the-loop</span></div></header>
           <p class="legal-warning">Every model observation is supporting evidence and requires human verification; it does not determine legal validity.</p>
           <div class="asset-workspace">
@@ -324,15 +324,14 @@
                 <button id="prepareImageryButton" class="primary-action" type="submit">Find and prepare imagery</button>
                 <p id="imageryJobStatus" class="inline-status" aria-live="polite"></p>
               </form>
-              <section class="imagery-register"><div class="section-bar"><h2>Asset-detection model</h2><span>Awaiting connection</span></div><p class="model-placeholder">Prepared imagery will be sent to the trained model after its model file, asset classes and input settings are connected. Until then, the system will not generate automated detections.</p></section>
+              <section class="imagery-register"><div class="section-bar"><h2>Satellite land-cover model</h2><span>Dynamic World baseline</span></div><p class="model-placeholder">Request nine-band Sentinel-2 land-cover inference for the selected FRA case. Inspect its cloud mask, class estimates and provenance before recording a review. Trees and built cover do not establish legal forest status or individual buildings.</p><button id="assetLandCover" type="button" class="secondary-action" disabled>Analyse land cover</button></section>
               <section class="imagery-register"><div class="section-bar"><h2>Imagery jobs</h2><button id="refreshImagery" class="text-action" type="button">Refresh</button></div><ol id="imageryIngestionList" class="result-list" aria-label="Satellite imagery ingestion jobs"></ol></section>
             </aside>
             <div class="map-sheet"><div id="assetMap" class="map-canvas" role="region" aria-label="Interactive map of supporting asset observations"></div><aside class="asset-map-legend" aria-label="Asset map legend" hidden><strong>Visible assets</strong><ul id="assetLegend"></ul></aside><p class="map-note">Confidence is displayed as model provenance, never as an entitlement decision.</p></div>
             <aside class="result-sheet"><div class="section-bar"><h2>Observation register</h2><button id="refreshAssets" class="text-action" type="button">Refresh</button></div><ol id="assetList" class="result-list" aria-label="Asset observations"></ol><div class="section-bar profile-bar"><h2>Village profiles</h2><button id="refreshVillageAssetProfiles" class="text-action" type="button">Refresh</button></div><ol id="villageAssetProfiles" class="result-list profile-list" aria-label="Village asset profiles"></ol></aside>
           </div>
         </section>
-        <section class="workspace-panel development-workspace" id="plannerPanel" data-panel="planner" aria-labelledby="plannerDevelopmentTitle" hidden>
-          <div class="under-development-screen"><span class="under-development-mark" aria-hidden="true">⌁</span><p>DSS Planner</p><h1 id="plannerDevelopmentTitle">Under development</h1></div>
+        <section class="workspace-panel" id="plannerPanel" data-panel="planner" aria-labelledby="plannerTitle" hidden>
           <header class="workspace-title"><div><h1 id="plannerTitle">DSS Planner</h1><p>Inspect explainable recommendations and manage advisory referrals.</p></div><div class="workspace-heading-actions filter-host"><span>Advisory only</span></div></header>
           <p class="legal-warning">This decision-support workspace does not approve or sanction benefits. A responsible department must independently review every referral.</p>
           <div class="planner-summary" id="plannerSummary" aria-label="Scheme convergence summary">
@@ -360,8 +359,7 @@
             <section class="recommendation-sheet"><div class="section-bar"><h2>Deficiencies and recommendations</h2><span id="recommendationCount">Scheme convergence</span></div><ol id="recommendationList" class="recommendation-list" aria-live="polite"></ol></section>
           </div>
         </section>
-        <section class="workspace-panel development-workspace" id="reportsPanel" data-panel="reports" aria-labelledby="reportsDevelopmentTitle" hidden>
-          <div class="under-development-screen"><span class="under-development-mark" aria-hidden="true">⌁</span><p>Reports</p><h1 id="reportsDevelopmentTitle">Under development</h1></div>
+        <section class="workspace-panel" id="reportsPanel" data-panel="reports" aria-labelledby="reportsTitle" hidden>
           <header class="workspace-title"><div><h1 id="reportsTitle">Reports</h1><p>Open privacy-safe printable case and village reports.</p></div><div class="workspace-heading-actions filter-host"><span>Protected output</span></div></header>
           <div class="report-coverage" aria-label="Report coverage"><span>FRA progress</span><span>Spatial statistics</span><span>Asset statistics</span><span>Scheme convergence</span></div>
           <div class="report-grid">
@@ -378,5 +376,5 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script src="/static/fra/api.js?v=20260905.1"></script><script src="/static/fra/archive.js?v=20260915.5"></script><script src="/static/fra/cases.js?v=20260915.4"></script><script src="/static/fra/assets.js?v=20260907.1"></script><script src="/static/fra/atlas.js?v=20260907.1"></script><script src="/static/fra/planner.js?v=20260907.1"></script><script src="/static/fra/reports.js?v=20260906.1"></script><script src="/static/fra/dashboard.js?v=20260906.3"></script><script src="/static/fra/app.js?v=20260915.4"></script>
-<script src="/static/shared/session.js?v=3"></script></body>
+<script src="/static/shared/session.js?v=3"></script><script src="/static/shared/land-cover.js?v=1"></script><script src="/static/shared/document-overlay.js?v=1"></script></body>
 </html>

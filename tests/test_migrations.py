@@ -95,7 +95,7 @@ class MigrationTests(unittest.TestCase):
     def test_completion_migration_is_the_only_head(self):
         config = Config("alembic.ini")
 
-        self.assertEqual(ScriptDirectory.from_config(config).get_heads(), ["20261112_0016"])
+        self.assertEqual(ScriptDirectory.from_config(config).get_heads(), ["20261114_0019"])
 
     def test_fresh_migration_has_no_orm_schema_drift(self):
         with tempfile.TemporaryDirectory() as temp:

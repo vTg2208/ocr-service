@@ -30,6 +30,9 @@ class OCRPageResult:
     text: str
     confidence: float
     lines: list[dict] = field(default_factory=list)
+    processed_png: bytes | None = field(default=None, repr=False)
+    image_width: int | None = None
+    image_height: int | None = None
 
 
 class PDFProcessor:
@@ -76,7 +79,12 @@ class PDFProcessor:
                 logger.error("Failed processing PDF page %d: %s", page_number, exc)
                 raise OCRException("OCR processing failed.") from exc
 
-            results.append(OCRPageResult(page_number, text, confidence, lines))
+            import cv2
+            ok, encoded = cv2.imencode('.png', prepared)
+            if not ok:
+                raise OCRException('Unable to preserve the OCR evidence frame.')
+            results.append(OCRPageResult(page_number, text, confidence, lines,
+                encoded.tobytes(), int(prepared.shape[1]), int(prepared.shape[0])))
         return results
 
     @staticmethod

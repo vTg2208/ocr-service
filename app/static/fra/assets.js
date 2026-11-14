@@ -69,7 +69,7 @@ if (typeof document !== 'undefined') (() => {
     if (typeof L === 'undefined') {
       const mapNode = document.querySelector('#assetMap'); mapNode.classList.add('map-unavailable'); mapNode.textContent = 'The interactive map could not load. Asset observations remain available in the register.'; return false;
     }
-    map = L.map('assetMap').setView([11.1, 78.65], 7);
+    map = L.map('assetMap').fitBounds([[8.0, 76.2], [13.6, 80.4]]);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
     layer = L.geoJSON([], {
       style: (feature) => { const visual = FRAAssetsUI.visualFor(feature?.properties?.asset_class); return { color: visual.color, weight: 3, fillColor: visual.color, fillOpacity: .2 }; },
@@ -91,7 +91,7 @@ if (typeof document !== 'undefined') (() => {
     (data.jobs || []).filter((job) => !(data.artifacts || []).some((artifact) => artifact.id === job.result?.artifact_id)).forEach((job) => { const row = document.createElement('li'); const name = document.createElement('strong'); const meta = document.createElement('small'); name.textContent = `${job.collection} imagery request`; meta.textContent = `${job.state} · ${job.start_date} to ${job.end_date} · ${job.band_keys.join(', ')}`; row.append(name, meta); imageryList.appendChild(row); });
     if (!imageryList.children.length) { const empty = document.createElement('li'); empty.className = 'empty-row'; empty.textContent = 'No prepared imagery for this FRA claim.'; imageryList.appendChild(empty); }
   }
-  async function loadImagery() { const current = imageryRequests.begin(); if (!claimSelect.value) { renderImagery({}); return; } try { const data = await FRAApi.request(`/api/fra/claims/${claimSelect.value}/imagery-ingestions`); if (current()) renderImagery(data); } catch (error) { if (current()) status.textContent = error.message; } }
+  async function loadImagery() { const current = imageryRequests.begin(); const analysisButton = document.querySelector('#assetLandCover'); if (analysisButton) { analysisButton.disabled = !claimSelect.value; analysisButton.dataset.landCoverEndpoint = `/api/fra/claims/${claimSelect.value}/land-cover`; } if (!claimSelect.value) { renderImagery({}); return; } try { const data = await FRAApi.request(`/api/fra/claims/${claimSelect.value}/imagery-ingestions`); if (current()) renderImagery(data); } catch (error) { if (current()) status.textContent = error.message; } }
   function renderLegend(items) {
     legend.replaceChildren();
     FRAAssetsUI.legendClasses(items).forEach((assetClass) => { const visual = FRAAssetsUI.visualFor(assetClass); const item = document.createElement('li'); const label = document.createElement('span'); label.textContent = visual.label; item.append(spriteElement(assetClass, 'asset-legend-glyph'), label); legend.appendChild(item); });

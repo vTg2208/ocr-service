@@ -1,6 +1,12 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   let mode = 'login';
+  fetch('/api/auth/config').then(response=>{if(!response.ok)throw new Error('Sign-in configuration unavailable');return response.json();}).then(config=>{
+    $('oidcSignIn').hidden=!config.oidc_enabled;
+    if(config.oidc_enabled)$('oidcSignInLink').href=config.oidc_login_url;
+    document.querySelectorAll('[data-mode]').forEach(button=>{button.hidden=button.dataset.mode==='staff'?!config.demo_auth_enabled:!config.local_auth_enabled;});
+    if(!config.local_auth_enabled){$('loginForm').hidden=true;document.querySelector('.login-modes').hidden=true;}
+  }).catch(()=>{$('loginStatus').textContent='Sign-in settings could not be loaded. Refresh to retry.';});
   document.querySelectorAll('[data-mode]').forEach((button) => button.addEventListener('click', () => {
     mode = button.dataset.mode;
     document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b === button)));

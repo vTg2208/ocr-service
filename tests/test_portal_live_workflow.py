@@ -44,7 +44,7 @@ class LivePortalTests(unittest.TestCase):
         dashboard=self.alice.get('/api/user/dashboard').json();workflow=dashboard['plot_workflows'][0]
         self.assertTrue(workflow['atlas_visible']);self.assertEqual(workflow['status'],'approved')
         self.assertEqual([s['state'] for s in workflow['steps']],['done','done','done','pending'])
-        self.assertEqual(workflow['analysis_status'],'not_connected')
+        self.assertEqual(workflow['analysis_status'],'not_requested')
         for client in [self.alice,self.bob,self.staff]:
             self.assertEqual(client.get('/api/user/atlas').json()['features'][0]['properties']['plot_id'],submission['plot_id'])
         detail=self.staff.get('/api/staff/portal/tickets/'+ticket['id']).json()

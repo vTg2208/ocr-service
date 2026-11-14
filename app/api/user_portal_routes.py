@@ -55,6 +55,8 @@ def browser_session(user):
 
 @router.post('/api/auth/register', status_code=201)
 def register(payload: RegisterInput, db: Session = Depends(get_db)):
+    if not get_settings().local_auth_enabled:
+        raise HTTPException(403, 'Use the configured single sign-on service.')
     try:
         encoded = hash_password(payload.password)
     except ValueError as error:
@@ -71,6 +73,8 @@ def register(payload: RegisterInput, db: Session = Depends(get_db)):
 
 @router.post('/api/auth/login')
 def login(payload: LoginInput, db: Session = Depends(get_db)):
+    if not get_settings().local_auth_enabled:
+        raise HTTPException(403, 'Use the configured single sign-on service.')
     user = db.scalar(select(User).where(User.external_id == payload.username))
     credential = db.get(AccountCredential, user.id) if user else None
     correct = verify_password(payload.password, credential.password_hash if credential else DUMMY_HASH)

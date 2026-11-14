@@ -10,9 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/login/styles.css?v=20260907.1">
-</head>
+<link rel="stylesheet" href="/static/shared/polish.css?v=1"></head>
 <body>
   <main class="login-shell">
+    <aside class="login-hero"><div><h2>Forest rights, mapped and verified.</h2><p>One workspace for digitising claims, reviewing boundaries and planning support for forest-dwelling communities.</p><ul><li>Documents read and checked by a reviewer</li><li>Boundaries linked to real satellite evidence</li><li>Advisory planning, always human-reviewed</li></ul></div><small>AranyaSetu · Tamil Nadu pilot</small></aside>
     <section class="login-card" aria-labelledby="loginTitle">
       <header class="login-brand">
         <span class="brand-emblem" aria-hidden="true">
@@ -30,6 +31,7 @@
         <button type="button" data-mode="register" aria-pressed="false">Create account</button>
         <button type="button" data-mode="staff" aria-pressed="false">Staff demo</button>
       </div>
+      <p id="oidcSignIn" hidden><a id="oidcSignInLink" href="/api/auth/oidc/login">Sign in with your organisation</a></p>
       <form id="loginForm">
         <div id="nameGroup" hidden><label for="displayName">Your name</label><input id="displayName" maxlength="120" autocomplete="name"></div>
         <div id="accountGroup"><label for="username">Username</label><input id="username" minlength="3" maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,79}" autocomplete="username" required><small>Letters, numbers, dots, hyphens or underscores.</small>

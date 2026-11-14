@@ -1,5 +1,12 @@
 # Tamil Nadu real-data validation bundle
 
+`land_cover_execution_validation.json` records a live execution check of the
+open-source Dynamic World baseline on real Sentinel-2 pixels over a small
+public village-centroid study window. It is not a parcel assessment or a
+ground-truth accuracy benchmark. See
+[`OPEN_SOURCE_LAND_COVER.md`](../../docs/OPEN_SOURCE_LAND_COVER.md) for model
+provenance, installation and the repeatable validation command.
+
 This directory contains a small public, non-synthetic validation bundle. It is source data for validation, not a claim-level pilot and not proof of any person's FRA rights.
 
 - `arpisampalaiyam_village.geojson` contains the Survey of India village polygon for Census village `632998`, downloaded through the National Water Data Portal and transformed from EPSG:7755 to EPSG:4326. The feature retains source, version, CRS, authority, download, and licence references.

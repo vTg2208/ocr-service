@@ -132,10 +132,10 @@ def dashboard(db,user):
         'schemes':[publication_json(p) for p in publications(db,'scheme')],
         'resources':[resource_json(r) for r in resources], 'submissions':[submission_json(s) for s in submissions],
         'tickets':[ticket_json(db,t) for t in tickets],
-        'plot_workflows':[plot_workflow(p, by_plot[p.id]) for p in plots]}
+        'plot_workflows':[plot_workflow(p, by_plot[p.id], db=db) for p in plots]}
 
 
-def plot_workflow(plot, submissions):
+def plot_workflow(plot, submissions, *, db=None):
     current = next((s for s in submissions if s.plot_id == plot.id and s.plot_revision == plot.revision), None)
     approved = next((s for s in submissions if s.plot_id == plot.id and s.status == 'approved'), None)
     status = current.status if current else 'draft'
@@ -151,11 +151,29 @@ def plot_workflow(plot, submissions):
     ]
     if status in {'changes_requested','rejected','superseded'}:
         steps[1].update(label={'changes_requested':'Changes needed','rejected':'Rejected','superseded':'Superseded'}[status], state='attention')
+    analysis = None
+    if db is not None and approved is not None:
+        from app.services.land_cover import latest_for_submission
+        analysis = latest_for_submission(db, approved.id)
+    analysis_status = analysis['state'] if analysis else 'not_requested'
+    analysis_note = 'Request satellite land-cover analysis after boundary approval.'
+    if analysis:
+        analysis_note = analysis.get('error') or f"Satellite analysis: {analysis_status.replace('_', ' ')}; review: {analysis['review_state'].replace('_', ' ')}."
+        if analysis_status == 'completed' and done:
+            steps[3].update(label='Analysis reviewed' if analysis['review_state']=='verified' else 'Analysis ready for review', state='done' if analysis['review_state']=='verified' else 'current')
+            if analysis['review_state']=='rejected':
+                steps[3].update(label='Analysis rejected',state='attention')
+        elif analysis_status in {'queued','running'} and done:
+            steps[3].update(label='Analysis queued' if analysis_status=='queued' else 'Analysing',state='current')
+        elif done:
+            steps[3].update(label=analysis_status.replace('_',' ').capitalize(),state='attention')
+        if not done:
+            analysis_note=f"Approved revision {approved.plot_revision}: {analysis_note}"
     return {'plot_id':str(plot.id), 'name':plot.name, 'plot_revision':plot.revision,
         'status':status, 'review_note':current.review_note if current else '', 'steps':steps,
         'atlas_visible':approved is not None, 'approved_revision':approved.plot_revision if approved else None,
-        'analysis_status':'not_connected',
-        'analysis_note':'Satellite retrieval and the segmentation runner are not connected to community plots yet.'}
+        'analysis_status':analysis_status, 'analysis_id':analysis['id'] if analysis else None,
+        'analysis_note':analysis_note}
 
 
 def staff_ticket_json(db,t,detail=False):

@@ -24,7 +24,7 @@ class AuthenticatedUser:
     display_name: str | None
 
 
-def create_access_token(external_id: str, *, minutes: int) -> str:
+def create_access_token(external_id: str, *, minutes: int, authentication_method: str = "local") -> str:
     now = datetime.now(timezone.utc)
     return jwt.encode(
         {
@@ -33,6 +33,7 @@ def create_access_token(external_id: str, *, minutes: int) -> str:
             "exp": now + timedelta(minutes=minutes),
             "iss": settings.auth_issuer,
             "aud": settings.auth_audience,
+            "authentication_method": authentication_method,
         },
         settings.auth_secret,
         algorithm="HS256",
@@ -59,6 +60,8 @@ def get_current_user(
             options={"require": ["sub", "iat", "exp", "iss", "aud"]},
         )
         external_id = claims["sub"]
+        if not settings.local_auth_enabled and claims.get("authentication_method") != "oidc":
+            raise jwt.InvalidTokenError("Local sessions are disabled")
     except (jwt.PyJWTError, KeyError):
         raise HTTPException(status_code=401, detail="Invalid authentication token.")
     user = db.scalar(select(User).where(User.external_id == external_id))

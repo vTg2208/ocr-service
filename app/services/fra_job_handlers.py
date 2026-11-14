@@ -65,7 +65,12 @@ def _recognize_archive_document(content: bytes, filename: str):
             text, confidence_percent = engine.extract_text(prepared)
             lines = []
         from app.services.pdf_processor import OCRPageResult
-        page_results = [OCRPageResult(1, text, confidence_percent, lines)]
+        import cv2
+        ok, encoded = cv2.imencode('.png', prepared)
+        if not ok:
+            raise ValueError('Unable to preserve the OCR evidence frame.')
+        page_results = [OCRPageResult(1, text, confidence_percent, lines,
+            encoded.tobytes(), int(prepared.shape[1]), int(prepared.shape[0]))]
     raw_text = "\n\n".join(page.text for page in page_results)
     confidence_percent = (
         round(sum(page.confidence for page in page_results) / len(page_results), 2)
@@ -83,6 +88,9 @@ def _recognize_archive_document(content: bytes, filename: str):
             "text": page.text,
             "confidence": float(page.confidence) / 100,
             "lines": list(page.lines),
+            "_processed_png": page.processed_png,
+            "image_width": page.image_width,
+            "image_height": page.image_height,
         }
         for page in page_results
     ]
@@ -143,6 +151,7 @@ def _archive_extract(session, job):
     if record is None:
         raise ValueError("Archive record does not exist.")
     payload = dict(job.payload_json or {})
+    page_images = []
     if record.synthetic:
         extractor = ManifestFRAEntityExtractor(
             payload.get("model_version") or "tn-manifest-v1"
@@ -172,6 +181,10 @@ def _archive_extract(session, job):
         raw_text, ocr_confidence, ocr_model_version, _ocr_time_ms, pages = (
             _recognize_archive_document(content, record.document.original_filename)
         )
+        for page in pages:
+            image = page.pop('_processed_png', None)
+            if image:
+                page_images.append((page['page_number'], image, page['image_width'], page['image_height']))
         manifest = {
             "raw_text": raw_text,
             "ocr_confidence": ocr_confidence,
@@ -191,6 +204,9 @@ def _archive_extract(session, job):
         entity_model_version_id=entity_model_version_id,
         actor_id=job.requested_by,
     )
+    if page_images:
+        from app.services.document_evidence import persist_page_images
+        persist_page_images(session, run, page_images)
     if not record.synthetic:
         upload_district = str((record.provenance_json or {}).get("district") or "").strip().casefold()
         extracted_district = str((run.standardized_json or {}).get("district") or "").strip().casefold()
@@ -314,3 +330,11 @@ register_job_handler("archive_extract", _archive_extract)
 register_job_handler("asset_inference", _asset_inference)
 register_job_handler("historical_evidence", _historical_evidence)
 register_job_handler("satellite_ingestion", _satellite_ingestion)
+
+
+def _land_cover(session, job):
+    from app.services.land_cover import job_handler
+    return job_handler(session, job)
+
+
+register_job_handler("land_cover", _land_cover)

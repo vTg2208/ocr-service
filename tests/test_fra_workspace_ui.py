@@ -104,14 +104,15 @@ class FRAWorkspaceUITests(unittest.TestCase):
             self.assertIn(f"/static/fra/{script}", html)
         self.assertIn("leaflet", html.casefold())
 
-    def test_non_case_operational_workspaces_are_marked_under_development(self):
+    def test_operational_workspaces_expose_their_existing_controls(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
 
         for panel in ("atlasPanel", "assetsPanel", "plannerPanel", "reportsPanel"):
             with self.subTest(panel=panel):
-                self.assertIn(f'class="workspace-panel development-workspace" id="{panel}"', html)
-        self.assertEqual(html.count('class="under-development-screen"'), 4)
-        self.assertEqual(html.count("Under development</h1>"), 4)
+                self.assertIn(f'class="workspace-panel" id="{panel}"', html)
+        self.assertNotIn('class="under-development-screen"', html)
+        for control in ('atlasFilters', 'imageryIngestionForm', 'recommendationFilters', 'reportVillage'):
+            self.assertIn(f'id="{control}"', html)
 
     def test_workspace_navigation_uses_supplied_section_icons(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")
@@ -120,7 +121,7 @@ class FRAWorkspaceUITests(unittest.TestCase):
             with self.subTest(icon=icon_name):
                 self.assertIn(f'/static/fra/icons/{icon_name}', html)
                 self.assertTrue((UI_ROOT / "icons" / icon_name).is_file())
-        self.assertEqual(html.count('class="rail-icon"'), 6)
+        self.assertEqual(html.count('class="rail-icon"'), 7)  # Six FRA sections and Community services.
 
     def test_cases_workspace_exposes_intake_case_and_versioned_casework_controls(self):
         html = (UI_ROOT / "index.html").read_text(encoding="utf-8")

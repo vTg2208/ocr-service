@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.db.fra_completion_models import AssetFeature, FRAVillageProfile, VillageAssetProfile
 from app.db.fra_models import FRAClaim
 from app.services.asset_contracts import (
+    asset_matches_boundary,
     ASSET_TAXONOMY_VERSION,
     asset_subtype,
     cover_fraction,
@@ -100,6 +101,7 @@ def _assets_for_village(
 ) -> list[AssetFeature]:
     village_shape = shape(village.boundary)
     claim_ids = {claim.id for claim in village_claims}
+    claim_map = {claim.id: claim for claim in village_claims}
     result = []
     for asset in assets:
         if asset.village_id is not None:
@@ -107,7 +109,7 @@ def _assets_for_village(
                 result.append(asset)
             continue
         if asset.claim_id is not None:
-            if asset.claim_id in claim_ids:
+            if asset.claim_id in claim_ids and asset_matches_boundary(asset, claim_map[asset.claim_id]):
                 result.append(asset)
             continue
         geometry = _asset_geometry(asset)
@@ -339,7 +341,7 @@ def claim_asset_context(session, claim: FRAClaim) -> dict:
             ),
         )
         if village is not None
-        else [asset for asset in all_assets if asset.claim_id == claim.id]
+        else [asset for asset in all_assets if asset.claim_id == claim.id and asset_matches_boundary(asset, claim)]
     )
     verified = [
         asset

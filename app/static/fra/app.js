@@ -71,6 +71,7 @@ if (typeof document !== 'undefined') (() => {
     } catch (error) { if (current()) setStatus(error.message, 'error'); }
   }
   function clearRecord() {
+    document.dispatchEvent(new CustomEvent('fra:archive-selection', {detail:{id:null}}));
     recordRequests.invalidate(); mutations.invalidate();
     state = FRAWorkspace.reduce(state, { type: 'archive', value: { selected: null } });
     $('#recordReference').textContent = 'No archive record matches the current filters.';

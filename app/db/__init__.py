@@ -10,3 +10,5 @@ __all__ = ["Base", "get_db"]
 
 from app.db import user_plot_models  # noqa: F401
 from app.db import community_models  # noqa: F401
+from app.db import land_cover_models as land_cover_models  # noqa: F401
+from app.db import document_evidence_models as document_evidence_models  # noqa: F401

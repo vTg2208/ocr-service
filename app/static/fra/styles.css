@@ -51,11 +51,6 @@ main { padding: var(--space-5); }
 .workspace-title h1 { margin: 0; color: var(--green-900); font: 700 clamp(2rem, 3vw, 2.8rem)/1 "Literata", serif; letter-spacing: -.045em; }
 .workspace-title p { margin: 5px 0 0; color: var(--ink-500); }
 .workspace-heading-actions { display: flex; align-items: center; gap: var(--space-2); color: var(--ink-500); font-size: .75rem; }
-.development-workspace > :not(.under-development-screen) { display: none !important; }
-.under-development-screen { min-height: calc(100vh - 64px); display: grid; place-content: center; justify-items: center; padding: var(--space-7) var(--space-5); text-align: center; border: 1px solid var(--rule); background: var(--paper-50); }
-.under-development-screen p { margin: var(--space-3) 0 4px; color: var(--green-700); font-size: .8125rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.under-development-screen h1 { margin: 0; color: var(--green-900); font: 700 clamp(2rem, 5vw, 3.5rem)/1.08 "Literata", serif; letter-spacing: -.04em; }
-.under-development-mark { width: 58px; height: 58px; display: grid; place-items: center; color: var(--green-800); border: 1px solid var(--green-700); border-radius: 50%; background: var(--green-100); font-size: 2rem; font-weight: 700; }
 .filter-host { position: relative; }
 .workspace-filter-widget { position: relative; z-index: 700; }
 .context-filter-toggle { min-height: 40px; padding: 7px 10px; display: inline-flex; align-items: center; gap: 7px; color: var(--green-800); border: 1px solid var(--green-700); border-radius: 2px; background: var(--paper-50); }

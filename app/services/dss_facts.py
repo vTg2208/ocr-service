@@ -11,6 +11,7 @@ from app.db.fra_operational_models import DSSFactSnapshot, ImageryArtifact, Spat
 from app.db.models import User
 from app.services.audit import record_audit
 from app.services.asset_contracts import (
+    asset_matches_boundary,
     asset_subtype,
     canonical_asset_class,
     cover_fraction,
@@ -340,6 +341,7 @@ def derive_facts(
         AssetFeature.verification_state == "verified",
         or_(*asset_filters),
     )))
+    verified_assets = [asset for asset in verified_assets if asset_matches_boundary(asset, claim)]
     for fact_name, classes in ASSET_FACTS.items():
         facts[fact_name], sources[fact_name] = _asset_fact(
             verified_assets,

@@ -1,5 +1,11 @@
 # AranyaSetu
 
+The open-source satellite integration is documented in
+[Open-source land cover](docs/OPEN_SOURCE_LAND_COVER.md). It connects real
+Sentinel-2 acquisition and pretrained Dynamic World inference to approved user
+plots and FRA boundaries, with private results and explicit staff review. The
+current database migration head is `20261114_0017`.
+
 AranyaSetu is an FRA Spatial Intelligence and Decision Support platform for digitizing legacy Forest Rights Act records, managing native FRA cases, spatializing claims and titles, mapping supporting assets, and producing explainable scheme recommendations for authorized staff.
 
 The primary lifecycle is **Ingest → Structure → Spatialize → Enrich → Visualize → Recommend**. FRA claims, verification records, Gram Sabha/SDLC/DLC decisions, titles, villages, geometries, satellite-derived observations, and advisory recommendations are the platform's core records.

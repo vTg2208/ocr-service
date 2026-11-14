@@ -32,6 +32,10 @@ from app.api.fra_evidence_routes import router as fra_evidence_router
 from app.api.fra_dashboard_routes import router as fra_dashboard_router
 from app.api.user_portal_routes import router as user_portal_router
 from app.api.community_routes import router as community_router
+from app.api.land_cover_routes import router as land_cover_router
+from app.api.oidc_routes import router as oidc_router
+from app.api.document_evidence_routes import router as document_evidence_router
+from starlette.middleware.sessions import SessionMiddleware
 from app.api.auth import SESSION_COOKIE, get_current_user
 from app.config import get_settings
 from app.db.session import get_db
@@ -70,17 +74,23 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.add_middleware(SessionMiddleware, secret_key=settings.auth_secret, session_cookie="aranyasetu_oidc",
+    max_age=600, same_site="lax", https_only=settings.environment == "production")
 app.add_middleware(
     RequestContextMiddleware, requests=settings.rate_limit_requests,
     window_seconds=settings.rate_limit_window_seconds,
+    redis_url=settings.redis_url,
 )
 
 app.include_router(document_intelligence_router)
 app.include_router(cadastral_enrichment_router)
 app.include_router(cadastral_evidence_router)
 app.include_router(session_router)
+app.include_router(oidc_router)
+app.include_router(document_evidence_router)
 app.include_router(user_portal_router)
 app.include_router(community_router)
+app.include_router(land_cover_router)
 app.include_router(cadastral_registry_router)
 app.include_router(fra_router)
 app.include_router(fra_archive_router)

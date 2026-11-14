@@ -15,6 +15,19 @@ AssetClass = Literal[
 ]
 ASSET_CLASSES = frozenset(get_args(AssetClass))
 ASSET_TAXONOMY_VERSION = "fra-assets-v1"
+
+
+def asset_matches_boundary(asset, claim):
+    """Version-bound land-cover results cannot describe a subsequently edited claim."""
+    provenance = asset.provenance_json or {}
+    if not provenance.get("analysis_id"):
+        return True
+    if claim is None or asset.claim_id != claim.id:
+        return False
+    version = max(claim.geometry_versions, key=lambda item: item.version, default=None)
+    return version is not None and provenance.get("boundary_version") == str(version.id)
+
+
 ASSET_CLASS_LABELS = {
     "agricultural_land": "Agricultural land",
     "water_body": "Water body",

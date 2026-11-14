@@ -7,9 +7,9 @@ which matters for deployment on platforms like Render or Railway.
 """
 
 from functools import lru_cache
-from typing import List
+from typing import List, Literal
 
-from pydantic import model_validator
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -53,6 +53,25 @@ class Settings(BaseSettings):
     demo_auth_enabled: bool = True
     demo_access_code: str = "1234"
     demo_session_minutes: int = 480
+    local_auth_enabled: bool = True
+    oidc_enabled: bool = False
+    oidc_issuer: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: SecretStr = SecretStr("")
+    oidc_redirect_uri: str = ""
+    oidc_auto_provision: bool = False
+    redis_url: str = ""
+    otp_email_backend: Literal["terminal", "smtp"] = "terminal"
+    otp_sms_backend: Literal["terminal", "twilio"] = "terminal"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    smtp_sender: str = ""
+    smtp_tls_mode: Literal["starttls", "ssl", "plain"] = "starttls"
+    twilio_account_sid: str = ""
+    twilio_auth_token: SecretStr = SecretStr("")
+    twilio_sender: str = ""
     upload_storage_backend: str = "local"
     s3_bucket: str = ""
     s3_prefix: str = "fra-evidence"
@@ -82,6 +101,11 @@ class Settings(BaseSettings):
     satellite_default_band_keys: List[str] = ["green", "nir"]
     satellite_max_output_pixels: int = 4_000_000
 
+    # Pinned open-source land-cover baseline; weights are installed explicitly.
+    land_cover_weights_path: str = "models/dynamic_world.pt"
+    land_cover_max_pixels: int = 1_000_000
+    land_cover_max_cloud: float = 10.0
+
     # --- Durable FRA background processing ---
     job_lease_seconds: int = 300
     job_heartbeat_seconds: int = 30
@@ -102,6 +126,25 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_safeguards(self):
+        from urllib.parse import urlparse
+        if self.rate_limit_requests < 1 or self.rate_limit_window_seconds < 1:
+            raise ValueError("Rate-limit count and window must be positive.")
+        if self.redis_url and urlparse(self.redis_url).scheme not in {"redis", "rediss"}:
+            raise ValueError("REDIS_URL must use redis:// or rediss://.")
+        if self.oidc_enabled:
+            for value in (self.oidc_issuer, self.oidc_redirect_uri):
+                parsed = urlparse(value)
+                local = self.environment != "production" and parsed.hostname in {"localhost", "127.0.0.1"}
+                if not parsed.hostname or parsed.username or parsed.password or (parsed.scheme != "https" and not (local and parsed.scheme == "http")):
+                    raise ValueError("OIDC issuer and callback must use HTTPS (loopback HTTP is development only).")
+            if not self.oidc_client_id or not self.oidc_client_secret.get_secret_value():
+                raise ValueError("OIDC client ID and secret are required.")
+        if self.environment == "production" and self.smtp_tls_mode == "plain":
+            raise ValueError("Production SMTP requires TLS.")
+        if not 4096 <= self.land_cover_max_pixels <= 4_000_000:
+            raise ValueError("LAND_COVER_MAX_PIXELS must be between 4096 and 4000000.")
+        if not 0 <= self.land_cover_max_cloud <= 100:
+            raise ValueError("LAND_COVER_MAX_CLOUD must be between 0 and 100.")
         if self.job_lease_seconds < 2:
             raise ValueError("JOB_LEASE_SECONDS must be at least two seconds.")
         if not 0 < self.job_heartbeat_seconds < self.job_lease_seconds:
@@ -119,6 +162,10 @@ class Settings(BaseSettings):
             raise ValueError("Production requires PostgreSQL/PostGIS, not SQLite.")
         if not self.malware_scan_required:
             raise ValueError("Production must enable fail-closed malware scanning.")
+        if not self.oidc_enabled or self.local_auth_enabled or self.demo_auth_enabled:
+            raise ValueError("Production requires OIDC with local/demo sign-in disabled.")
+        if not self.redis_url:
+            raise ValueError("Production requires a shared Redis rate limiter.")
         return self
 
 

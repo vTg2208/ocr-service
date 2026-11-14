@@ -11,6 +11,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Only the worker needs the optional CPU inference runtime.
+ARG LAND_COVER_ML=false
+COPY requirements-ml.txt .
+RUN if [ "$LAND_COVER_ML" = "true" ]; then pip install --no-cache-dir -r requirements-ml.txt --index-url https://download.pytorch.org/whl/cpu; fi
+
 # PaddleOCR installs opencv-contrib-python, whose native module links libGL.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \

@@ -1,6 +1,14 @@
 name: aranyasetu
 
 services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
   db:
     image: postgis/postgis:16-3.4
     environment:
@@ -31,6 +39,8 @@ services:
       - path: .env
         required: false
     depends_on:
+      redis:
+        condition: service_healthy
       db:
         condition: service_healthy
       clamav:
@@ -38,6 +48,7 @@ services:
     ports: ["8000:8000"]
     environment:
       SECURE_UPLOAD_DIR: /var/lib/aranyasetu/private_uploads
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - private_uploads:/var/lib/aranyasetu/private_uploads
       - paddle_models:/root/.paddlex
@@ -48,7 +59,10 @@ services:
       timeout: 10s
       retries: 3
   worker:
-    build: .
+    build:
+      context: .
+      args:
+        LAND_COVER_ML: "true"
     image: aranyasetu-worker:local
     command: ["python", "-m", "scripts.run_fra_jobs", "--forever"]
     env_file:
@@ -60,12 +74,15 @@ services:
         condition: service_healthy
     environment:
       SECURE_UPLOAD_DIR: /var/lib/aranyasetu/private_uploads
+      LAND_COVER_WEIGHTS_PATH: /var/lib/aranyasetu/models/dynamic_world.pt
     volumes:
       - private_uploads:/var/lib/aranyasetu/private_uploads
       - paddle_models:/root/.paddlex
+      - land_cover_models:/var/lib/aranyasetu/models
     restart: unless-stopped
 volumes:
   postgres_data:
   clamav_data:
   private_uploads:
   paddle_models:
+  land_cover_models:

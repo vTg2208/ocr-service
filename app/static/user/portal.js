@@ -29,6 +29,7 @@
       const timeline=el('ol',null,'plot-timeline');timeline.setAttribute('aria-label','Plot progress');
       w.steps.forEach(step=>{const li=el('li',null,step.state);li.append(el('strong',step.label));if(step.at)li.append(el('small',new Date(step.at).toLocaleDateString('en-IN')));if(step.state==='current')li.setAttribute('aria-current','step');timeline.append(li);});item.append(timeline);
       if(w.status==='approved')item.append(el('p',w.analysis_note,'muted'));
+      if(w.atlas_visible){const analyse=el('button','Satellite land cover','secondary-action');analyse.type='button';analyse.dataset.landCoverEndpoint=`/api/user/plots/${w.plot_id}/land-cover`;item.append(analyse);}
       const link=el('a',w.atlas_visible?'View in Atlas':'Open plot','secondary-action');link.href=w.atlas_visible?'#atlas':'#map';if(!w.atlas_visible)link.onclick=async event=>{event.preventDefault();try{const plot=await FRAApi.request(`/api/user/plots/${w.plot_id}`);window.UserPlotMap?.open?.(plot);}catch(error){say(error.message,true);}};item.append(link);
       card(profileHost,w.name,w.status.replaceAll('_',' '),w.review_note);
     });
@@ -41,13 +42,14 @@
   window.UserPortal={navigate};window.addEventListener('hashchange',()=>navigate(location.hash));
   $('profileForm').onsubmit=async(event)=>{event.preventDefault();if(profileBusy)return;profileBusy=true;const form=event.currentTarget,b=form.querySelector('button');b.disabled=true;const data=Object.fromEntries(new FormData(form));data.share_label=form.elements.share_label.checked;data.expected_revision=profile?.revision??0;try{profile=await FRAApi.request('/api/user/profile',FRAApi.json('PUT',data));$('userName').textContent=profile.display_name;otpChallenge=null;$('otpForm').hidden=true;renderVerification();say('Profile saved. You can add or submit your plot whenever you’re ready.');await loadDashboard();}catch(e){say(e.message,true);}finally{profileBusy=false;b.disabled=false;}};
   function renderVerification(){
-    $('emailVerificationState').textContent=profile?.email ? `Email: ${profile.email_verified?'Verified (development)':'Not verified'}` : 'No email saved';
-    $('phoneVerificationState').textContent=profile?.phone ? `Phone: ${profile.phone_verified?'Verified (development)':'Not verified'}` : 'No phone saved';
+    const verifiedLabel=channel=>profile?.[channel+'_verified']?(profile[channel+'_verification_method']==='development_terminal'?'Verified (development)':'Verified'):'Not verified';
+    $('emailVerificationState').textContent=profile?.email ? `Email: ${verifiedLabel('email')}` : 'No email saved';
+    $('phoneVerificationState').textContent=profile?.phone ? `Phone: ${verifiedLabel('phone')}` : 'No phone saved';
     $('requestEmailOTP').disabled=!profile?.email || !!profile?.email_verified;
     $('requestPhoneOTP').disabled=!profile?.phone || !!profile?.phone_verified;
   }
   async function requestOTP(channel){const typed=$('profileForm').elements.namedItem(channel).value.trim();if((channel==='email'?typed.toLowerCase():typed)!==profile?.[channel]){$('otpStatus').textContent='Save your updated contact details before requesting a code.';return;}const button=$(channel==='email'?'requestEmailOTP':'requestPhoneOTP');button.disabled=true;
-    try{otpChallenge=await FRAApi.request('/api/user/profile/otp/request',FRAApi.json('POST',{channel}));$('otpForm').hidden=false;$('otpCode').value='';$('otpLabel').textContent=`Enter the six-digit ${channel} code`;$('otpStatus').textContent='Code printed in the API terminal. Expires in five minutes.';$('otpCode').focus();}
+    try{otpChallenge=await FRAApi.request('/api/user/profile/otp/request',FRAApi.json('POST',{channel}));$('otpForm').hidden=false;$('otpCode').value='';$('otpLabel').textContent=`Enter the six-digit ${channel} code`;$('otpStatus').textContent=otpChallenge.delivery==='development_terminal'?'Development code printed in the API terminal. Expires in five minutes.':`Code sent to your saved ${channel}. Expires in five minutes.`;$('otpCode').focus();}
     catch(error){$('otpStatus').textContent=error.message;}finally{renderVerification();}}
   $('requestEmailOTP').onclick=()=>requestOTP('email');$('requestPhoneOTP').onclick=()=>requestOTP('phone');
   $('otpForm').onsubmit=async(event)=>{event.preventDefault();if(!otpChallenge)return;const b=event.currentTarget.querySelector('button');b.disabled=true;

@@ -120,6 +120,9 @@ if (typeof document !== 'undefined') (() => {
   }
   function renderDocumentWorkspace(detail) {
     const source = detail.source_document; const archive = selectedArchive; const run = latestExtraction();
+    let sourcePixels=$('#caseSourcePixels');
+    if(!sourcePixels){sourcePixels=document.createElement('button');sourcePixels.id='caseSourcePixels';sourcePixels.type='button';sourcePixels.className='secondary-action';sourcePixels.textContent='View source image and field locations';$('#caseOriginalNote').after(sourcePixels);}
+    sourcePixels.disabled=!archive?.id;sourcePixels.dataset.documentRecord=archive?.id||'';
     const samplePlaceholder = Boolean(source?.filename?.endsWith('.synthetic.txt') && (archive?.synthetic || detail.provenance?.synthetic));
     const processing = source?.processing_status === 'promoted' ? 'Promoted to case' : source?.processing_status === 'needs_review' ? 'Needs human review' : human(source?.processing_status);
     const ocr = samplePlaceholder ? 'Not run (synthetic source)' : run?.ocr_model_version ? 'Processed' : human(source?.ocr_status);
@@ -205,6 +208,11 @@ if (typeof document !== 'undefined') (() => {
   async function loadHistoricalEvidence() { if (!selectedCase) return; const current = historyRequests.begin(); const claimId = selectedCase.id; try { const data = await FRAApi.request(`/api/fra/claims/${claimId}/historical-evidence`); if (current() && selectedCase?.id === claimId) renderHistoricalEvidence(data); } catch (error) { if (current() && selectedCase?.id === claimId) empty($('#caseHistoricalEvidence'), error.message); } }
   async function requestHistoricalEvidence() { if (!selectedCase) return; const years = $('#caseHistoricalYears').value.split(',').map((value) => Number(value.trim())).filter(Number.isInteger); const key = `history-${selectedCase.id}-${[...new Set(years)].sort().join('-')}`; const current = mutations.begin(); const claimId = selectedCase?.id; try { const options = FRAApi.json('POST', { target_years: years }); options.headers['Idempotency-Key'] = key; await FRAApi.request(`/api/fra/claims/${selectedCase.id}/historical-evidence`, options); if (!current() || selectedCase?.id !== claimId) return; setMessage('Historical evidence processing queued.', 'success'); await loadHistoricalEvidence(); } catch (error) { if (current()) setMessage(error.message, 'error'); } }
   function renderCaseWorkspace(detail) {
+    const analysisButton = $('#caseLandCover');
+    if (analysisButton) {
+      analysisButton.disabled = !detail.geometry_versions.length;
+      analysisButton.dataset.landCoverEndpoint = `/api/fra/claims/${detail.id}/land-cover`;
+    }
     renderCase(detail);
     renderClaimInformation(detail);
     renderDocumentWorkspace(detail);

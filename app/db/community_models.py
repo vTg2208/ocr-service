@@ -114,6 +114,7 @@ class ContactOTP(Base):
     channel: Mapped[str] = mapped_column(String(12), nullable=False)
     contact_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     code_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    delivery_method: Mapped[str] = mapped_column(String(32), default='development_terminal', server_default='development_terminal', nullable=False)
     attempts: Mapped[int] = mapped_column(default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

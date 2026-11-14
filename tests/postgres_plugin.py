@@ -31,7 +31,7 @@ def postgres_engine():
     try:
         with engine.connect() as connection:
             assert set(Base.metadata.tables) <= set(inspect(connection).get_table_names())
-            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261112_0016"
+            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261114_0019"
             print("\nPostgreSQL", connection.scalar(text("SHOW server_version")),
                   "| PostGIS", connection.scalar(text("SELECT postgis_lib_version()")))
         yield engine

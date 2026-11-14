@@ -120,6 +120,9 @@ const FRAArchiveUI = (() => {
       if (metaText) row.append(element(doc, 'small', 'field-evidence', metaText));
       const chain = reviews.get(key)?.evidence_chain;
       if (chain) appendEvidenceChain(row, chain, doc);
+      if (fieldEvidence.source_page) {
+        const pixels=element(doc,'button','secondary-action','View source pixels');pixels.type='button';pixels.dataset.documentField=key;row.append(pixels);
+      }
       container.appendChild(row);
     });
     if (intakeKind === 'new_claim') {

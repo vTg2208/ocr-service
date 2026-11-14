@@ -77,6 +77,16 @@ async def readiness_check(db: Session = Depends(get_db)) -> HealthResponse:
         assert_portal_schema(db.get_bind())
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
+    from app.config import get_settings
+    if get_settings().redis_url:
+        from redis.asyncio import Redis
+        client = Redis.from_url(get_settings().redis_url, socket_connect_timeout=2, socket_timeout=2)
+        try:
+            await client.ping()
+        except Exception as error:
+            raise HTTPException(503, "Shared request protection is unavailable.") from error
+        finally:
+            await client.aclose()
     return HealthResponse(status="ready")
 
 

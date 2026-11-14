@@ -27,6 +27,7 @@ class DatabaseModelTests(unittest.TestCase):
                 "notifications",
                 "users",
                 "contact_otps", "account_credentials", "user_plots", "community_profiles",
+                "land_cover_analyses", "ocr_page_artifacts",
                 "plot_submissions", "portal_publications", "user_resources",
                 "support_tickets", "ticket_messages", "ticket_attachments",
                 "rights_holders",
