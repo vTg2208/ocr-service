@@ -16,6 +16,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 [hidden] { display: none !important; }
 .skip-link { position: fixed; z-index: 1000; top: 8px; left: 8px; padding: 10px 14px; color: white; background: var(--green-900); transform: translateY(-150%); }
 .skip-link:focus { transform: none; }
+.skip-link:not(:focus) { clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; white-space: nowrap; }
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 224px minmax(0, 1fr); }
 .navigation-rail { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; color: var(--paper-50); background: var(--green-900); border-right: 1px solid var(--green-800); }
 .rail-brand { min-height: 150px; padding: var(--space-5) var(--space-4); display: grid; justify-items: center; gap: var(--space-3); color: inherit; text-align: center; text-decoration: none; border-bottom: 1px solid color-mix(in oklch, white 18%, transparent); }

@@ -4,7 +4,9 @@ The open-source satellite integration is documented in
 [Open-source land cover](docs/OPEN_SOURCE_LAND_COVER.md). It connects real
 Sentinel-2 acquisition and pretrained Dynamic World inference to approved user
 plots and FRA boundaries, with private results and explicit staff review. The
-current database migration head is `20261114_0017`.
+current database migration head is `20261114_0019`. See
+[implementation and readiness checks](docs/PROJECT_READINESS.md) for the current
+completion status, production configuration and verification commands.
 
 AranyaSetu is an FRA Spatial Intelligence and Decision Support platform for digitizing legacy Forest Rights Act records, managing native FRA cases, spatializing claims and titles, mapping supporting assets, and producing explainable scheme recommendations for authorized staff.
 
@@ -308,7 +310,7 @@ The first OCR request can take longer because PaddleOCR may download and initial
 The access-code authentication is intentionally temporary. Before a real deployment:
 
 - disable `DEMO_AUTH_ENABLED`;
-- replace the local HS256 adapter with the authority's OIDC verifier;
+- configure the authority's OIDC authorization-code/PKCE provider and disable local login;
 - provision staff identities and roles from the trusted identity system;
 - rotate `AUTH_SECRET` and invalidate temporary sessions.
 
@@ -547,7 +549,7 @@ See [Privacy and retention](docs/PRIVACY_RETENTION.md) for the baseline data pol
 
 Before using this system with real records:
 
-- Replace the temporary access code with an approved OIDC identity provider.
+- Configure the implemented OIDC adapter with an approved identity provider; disable local and demo login.
 - Use PostgreSQL/PostGIS and apply all Alembic migrations.
 - Import licensed, authoritative cadastral boundaries with provenance.
 - Remove synthetic parcels from the user-facing database.

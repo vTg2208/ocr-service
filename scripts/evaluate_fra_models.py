@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from statistics import mean
 from typing import Any
@@ -37,11 +38,13 @@ def _ocr_report(labels: list, predictions: list) -> dict:
     return {
         "character_error_rate": round(mean(row.character_error_rate for row in rows), 4),
         "word_error_rate": round(mean(row.word_error_rate for row in rows), 4),
+        **{name: round(mean(getattr(row, name) for row in rows), 4) for name in (
+            "numeric_field_accuracy", "date_accuracy", "survey_number_accuracy", "critical_field_exact_match_accuracy")},
     }
 
 
 def _entity_report(labels: list, predictions: list) -> dict:
-    keys = sorted({key for item in labels + predictions if isinstance(item, dict) for key in item})
+    keys = sorted({key for item in labels + predictions if isinstance(item, dict) for key in item if key != "mock"})
     scores = {}
     for key in keys:
         tp = fp = fn = 0
@@ -86,7 +89,7 @@ def _asset_report(labels: list, predictions: list) -> dict:
     report: dict[str, Any] = {"per_class": per_class, "macro": macro}
     ious = [float(item["iou"]) for item in predictions if isinstance(item, dict) and item.get("iou") is not None]
     if ious:
-        if any(value < 0 or value > 1 for value in ious):
+        if any(not math.isfinite(value) or value < 0 or value > 1 for value in ious):
             raise ValueError("IoU values must be between zero and one.")
         report["mean_iou"] = round(mean(ious), 4)
     return report
@@ -102,13 +105,23 @@ def evaluation_report(labels: list, predictions: list, *, task: str) -> dict:
         return {"task": task, "status": "not_evaluated", "sample_count": 0}
     if len(labels) != len(predictions):
         raise ValueError("Labels and predictions must contain the same number of samples.")
+    mock_flags = [isinstance(item, dict) and item.get("mock") is True for item in labels]
+    if any(mock_flags) and not all(mock_flags):
+        raise ValueError("Mock samples and real benchmark labels must be evaluated separately.")
+    is_mock = all(mock_flags)
+    if not is_mock and any(isinstance(item, dict) and item.get("mock") is True for item in predictions):
+        raise ValueError("Mock predictions cannot be scored against a real benchmark.")
     if task == "ocr":
         metrics = _ocr_report(labels, predictions)
     elif task == "entity_extraction":
         metrics = _entity_report(labels, predictions)
     else:
         metrics = _asset_report(labels, predictions)
-    return {"task": task, "status": "evaluated", "sample_count": len(labels), **metrics}
+    report = {"task": task, "status": "evaluated", "sample_count": len(labels), **metrics}
+    if is_mock:
+        report.update(data_kind="mock", benchmark_eligible=False,
+            warning="Invented samples exercise the software only; these scores are not real model accuracy.")
+    return report
 
 
 def _load(path: Path) -> list:

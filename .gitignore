@@ -14,6 +14,7 @@ tmp/
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # Local OCR models and runtime artifacts
 uploads/

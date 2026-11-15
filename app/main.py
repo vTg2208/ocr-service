@@ -60,8 +60,16 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     logger.info("%s starting up.", settings.app_name)
-    yield
-    logger.info("%s shutting down.", settings.app_name)
+    try:
+        yield
+    finally:
+        node = _app.middleware_stack
+        while node is not None:
+            shared = getattr(node, "shared", None)
+            if shared is not None:
+                await shared.close()
+            node = getattr(node, "app", None)
+        logger.info("%s shutting down.", settings.app_name)
 
 
 app = FastAPI(

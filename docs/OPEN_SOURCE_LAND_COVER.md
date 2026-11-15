@@ -86,7 +86,7 @@ docker compose exec api python -m scripts.migrate
 docker compose exec api alembic current
 ```
 
-Expected migration head: `20261114_0017`. Do not reset database volumes.
+Expected migration head: `20261114_0019`. Do not reset database volumes.
 
 For an existing local Python 3.11 environment:
 
@@ -148,9 +148,10 @@ predicted raster, preview, clipped GeoJSON and a checksum/provenance manifest.
 Use `--geometry path/to/boundary.geojson` instead for an explicitly selected
 boundary. This CLI does not create claims, plot approvals or legal records.
 
-Docker/PostGIS execution and visual browser validation must still be repeated
-in the deployment environment. The automated suite uses isolated SQLite
-databases for most workflows; service-dependent tests remain conditional.
+Real Chromium checks now cover independent user/staff sessions, drawing,
+submission, review, the analysis dialog, the four FRA workspaces and mobile
+rendering. See [the readiness record](PROJECT_READINESS.md) for native database
+checks and the remaining deployment gates.
 
 ## Remaining presentation work
 
@@ -161,8 +162,8 @@ databases for most workflows; service-dependent tests remain conditional.
 | Atlas/assets/DSS/reports interfaces | Existing interfaces exposed; reviewed inference feeds FRA assets and DSS |
 | Verified Tamil OCR CER/WER benchmark | Evaluation tools exist; verified labelled data still required |
 | All-12-band and wider U-Net experiments | Research data/training work remains; no results invented |
-| Document-image evidence overlays | Still to implement |
+| Document-image evidence overlays | Implemented with saved, exact OCR frames, private audited endpoints and an SVG field viewer |
 | Authoritative cadastral coverage | Import machinery exists; licensed authoritative source still required |
-| Production OIDC and shared rate limiter | Still to implement/configure |
-| Production contact delivery | Development terminal OTP remains; real provider still required |
+| Production OIDC and shared rate limiter | Implemented and protocol-tested; configure the real issuer/client and Redis |
+| Production contact delivery | SMTP/Twilio adapters implemented; real provider credentials and delivery validation still required |
 | Final evaluation, deployment, thesis/paper | Requires ground truth, deployment environment, and research artifacts |
